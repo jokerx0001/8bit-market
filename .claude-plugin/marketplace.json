@@ -1,0 +1,24 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "8bit-market",
+  "description": "NeonBit 开发插件集合",
+  "owner": {
+    "name": "neonbit",
+    "email": "neon-bit-wh@outlook.com"
+  },
+  "plugins": [
+    {
+      "name": "neonbit-vibe-factory",
+      "description": "开发任务工作流编排器 - 从需求收集到 E2E 测试完成的完整开发周期管理",
+      "version": "0.1.0",
+      "source": "./plugins/neonbit-vibe-factory",
+      "category": "development",
+      "author": {
+        "name": "neonbit",
+        "email": "neon-bit-wh@outlook.com"
+      },
+      "tags": ["workflow", "orchestration"],
+      "keywords": ["development", "workflow", "e2e", "testing"]
+    }
+  ]
+}
