@@ -20,6 +20,15 @@ description: |
   用户明确要求开始新任务。
   </commentary>
   </example>
+
+  <example>
+  Context: 工作流前端阶段检测
+  user: "当前工作流是否需要前端开发？"
+  assistant: "orchestrator 检查 plan.md 中的任务类型，如果有 frontend 任务则需要，否则跳过。"
+  <commentary>
+  工作流根据 plan.md 内容决定是否执行前端阶段。
+  </commentary>
+  </example>
 ---
 
 # Orchestrator Skill
@@ -37,9 +46,18 @@ idle → requirements_collected → architecture_design → detailed_design
 ## 核心职责
 
 1. **状态管理** — 追踪当前工作流阶段，确保按顺序执行
-2. **调用子技能** — 在适当的阶段调用 `superpowers:brainstorming`、`superpowers:writing-plans`、`superpowers:test-driven-development`
+2. **调用子技能** — 在适当的阶段调用相关技能
 3. **输出管理** — 通过 `artifact-manager` skill 管理所有设计文档
 4. **阶段协调** — 通过 `phase-coordinator` skill 确保阶段间正确传递
+
+## 外部依赖技能
+
+| 阶段 | 调用技能 | 说明 |
+|------|----------|------|
+| 架构设计 | `superpowers:brainstorming` | 架构分析和 Mermaid 图生成 |
+| 详细设计 | `superpowers:brainstorming` | 技术选型、关键逻辑分析 |
+| 执行计划 | `superpowers:writing-plans` | 任务拆解和实施路线图 |
+| 后端开发 | `neonbit-vibe-factory:test-driven-workflow` | 多 Agent TDD 流程 (内部) |
 
 ## 阶段详细说明
 
@@ -136,10 +154,19 @@ idle → requirements_collected → architecture_design → detailed_design
 
 **执行**:
 1. 调用 `conductor` agent 启动后端开发
-2. conductor agent 读取设计文档，拆分任务
-3. 分配给 coding subagent 执行
-4. 审查代码，确保符合设计
-5. 全部完成后进入前端阶段
+2. conductor 读取设计文档，拆分 TDD 任务
+3. 调用 `test-driven-workflow` skill 执行多 Agent TDD 流程：
+   - test agent 编写失败测试 (RED)
+   - coding agent 实现功能 (GREEN)
+   - conductor 审查 (REFACTOR)
+4. 全部任务完成后进入前端阶段
+
+**TDD 多 Agent 流程**:
+```
+conductor → test agent (RED) → coding agent (GREEN) → conductor (REFACTOR)
+                                              ↓
+                                         循环直到完成
+```
 
 **约束**:
 - 任何人不允许修改测试代码
@@ -150,22 +177,67 @@ idle → requirements_collected → architecture_design → detailed_design
 
 **触发**: 后端开发完成
 
-**执行**:
+**前置条件检测**:
+1. 读取 `.neonbit-vibe-factory/feat-{N}/plan.md`
+2. 检查是否存在 `type: frontend` 或 `frontend` 相关任务标记
+3. 如果无前端任务标记 → **跳过此阶段，直接进入阶段 8**
+
+**跳过条件**:
+- `plan.md` 中无 `frontend`、`ui`、`page` 相关任务
+- `ui-design.md` 不存在且 `page-design.md` 不存在
+
+**执行 (有前端任务时)**:
 1. 读取页面设计文档和 UI 设计文档
 2. 调用 `frontend-design` skill 与用户讨论 UI
-3. 用户批准 UI 设计后，前端 subagent 开始开发
+3. 用户批准 UI 设计后，调用 `coding agent` 开始前端开发
 4. 保存 UI 设计文档到 `.neonbit-vibe-factory/feat-{N}/ui-design.md`
+
+**跳过输出**:
+```
+## 阶段跳过: 前端开发
+
+原因: plan.md 中无前端任务标记
+
+进入下一阶段: E2E 测试
+```
 
 ### 阶段 8: E2E 测试 (e2e_testing)
 
 **触发**: 前端开发完成
 
+**前置条件**:
+- 检查 `ui-design.md` 或 `page-design.md` 是否存在
+- 若无前端设计文档 → **跳过此阶段，直接进入阶段 9**
+
 **执行**:
-1. 调用 `e2e-test` agent 启动 E2E 测试
-2. 编写测试用例，提交 `conductor` 审查
-3. 审查通过后执行测试
-4. 分析测试结果，分配 BUG 修复
-5. 全部测试通过后任务完成
+1. 读取 `.neonbit-vibe-factory/feat-{N}/ui-design.md` 或 `page-design.md`
+2. 提取页面列表（如有多个页面用逗号分隔）
+3. 调用 `e2e-test` agent，传递：
+   - `pages`: 页面列表
+   - `baseDir`: 前端源码目录
+   - `testOutputDir`: 测试输出目录
+4. e2e-test agent 生成 Playwright 测试
+5. 编写测试用例，提交 `conductor` 审查
+6. 审查通过后执行测试
+7. 分析测试结果，分配 BUG 修复
+8. 全部测试通过后任务完成
+
+**示例调用**:
+```
+调用 e2e-test agent:
+- pages: login, user-list, user-edit
+- baseDir: ./frontend/src/views
+- testOutputDir: ./e2e-tests
+```
+
+**跳过输出**:
+```
+## 阶段跳过: E2E 测试
+
+原因: 无前端设计文档，无页面可测
+
+进入下一阶段: 完成
+```
 
 ### 阶段 9: 完成 (completed)
 
