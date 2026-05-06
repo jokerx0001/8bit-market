@@ -146,7 +146,21 @@ idle → requirements_collected → architecture_design → detailed_design
 2. 基于以上所有设计文档，生成执行计划
 3. 保存到 `.neonbit-vibe-factory/feat-{N}/plan.md`
 4. **等待用户审查**执行计划
-5. 用户批准后，进入下一阶段
+5. 用户批准后，输出上下文清理提示，进入阶段 6
+
+**上下文清理提示**:
+```
+## 上下文已清理
+
+设计文档已就绪，开发阶段将以设计文档为准：
+- requirements.md — 需求定义
+- architecture.md — 架构设计
+- design.md — 详细设计
+- openapi.yaml — 接口规范
+- plan.md — 执行计划
+
+不参考任何之前的需求讨论、架构辩论等过程性内容。
+```
 
 ### 阶段 6: 后端开发 (backend_development)
 
@@ -168,10 +182,12 @@ conductor → test agent (RED) → coding agent (GREEN) → conductor (REFACTOR)
                                          循环直到完成
 ```
 
-**约束**:
+**约束（必须遵守）**:
 - 任何人不允许修改测试代码
 - 不允许有空代码或假代码
-- 必须基于设计文档开发
+- **只参考设计文档**：requirements.md、architecture.md、design.md、openapi.yaml、plan.md
+- **不参考过程讨论**：不参考需求收集、架构辩论等任何过程性讨论内容
+- 设计文档与之前讨论冲突时，以设计文档为准
 
 ### 阶段 7: 前端开发 (frontend_development)
 
@@ -191,6 +207,10 @@ conductor → test agent (RED) → coding agent (GREEN) → conductor (REFACTOR)
 2. 调用 `frontend-design` skill 与用户讨论 UI
 3. 用户批准 UI 设计后，调用 `coding agent` 开始前端开发
 4. 保存 UI 设计文档到 `.neonbit-vibe-factory/feat-{N}/ui-design.md`
+
+**约束（必须遵守）**:
+- **只参考设计文档**：ui-design.md、page-design.md、requirements.md
+- **不参考过程讨论**：不参考之前的 UI 讨论、需求讨论等过程性内容
 
 **跳过输出**:
 ```
@@ -221,6 +241,10 @@ conductor → test agent (RED) → coding agent (GREEN) → conductor (REFACTOR)
 6. 审查通过后执行测试
 7. 分析测试结果，分配 BUG 修复
 8. 全部测试通过后任务完成
+
+**约束（必须遵守）**:
+- **只参考设计文档**：ui-design.md、openapi.yaml、requirements.md
+- **不参考过程讨论**：不参考之前的讨论内容
 
 **示例调用**:
 ```
