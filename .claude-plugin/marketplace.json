@@ -10,7 +10,7 @@
     {
       "name": "neonbit-vibe-factory",
       "description": "开发任务工作流编排器 - 从需求收集到 E2E 测试完成的完整开发周期管理",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "source": "./plugins/neonbit-vibe-factory",
       "category": "development",
       "author": {
