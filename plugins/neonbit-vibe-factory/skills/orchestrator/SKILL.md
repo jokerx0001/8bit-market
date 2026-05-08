@@ -57,7 +57,6 @@ idle → requirements_collected → architecture_design → detailed_design
 | 架构设计 | `superpowers:brainstorming` | 架构分析和 Mermaid 图生成 |
 | 详细设计 | `superpowers:brainstorming` | 技术选型、关键逻辑分析 |
 | 执行计划 | `superpowers:writing-plans` | 任务拆解和实施路线图 |
-| 后端开发 | `neonbit-vibe-factory:test-driven-workflow` | 多 Agent TDD 流程 (内部) |
 
 ## 阶段详细说明
 
@@ -167,9 +166,9 @@ idle → requirements_collected → architecture_design → detailed_design
 **触发**: 执行计划已批准
 
 **执行**:
-1. 调用 `conductor` agent 启动后端开发
+1. 调用 `conductor` agent (`neonbit-vibe-factory:conductor:conductor`) 启动后端开发
 2. conductor 读取设计文档，拆分 TDD 任务
-3. 调用 `test-driven-workflow` skill 执行多 Agent TDD 流程：
+3. conductor 协调多 Agent TDD 流程：
    - test agent 编写失败测试 (RED)
    - coding agent 实现功能 (GREEN)
    - conductor 审查 (REFACTOR)
@@ -177,13 +176,12 @@ idle → requirements_collected → architecture_design → detailed_design
 
 **TDD 多 Agent 流程**:
 ```
-conductor → test agent (RED) → coding agent (GREEN) → conductor (REFACTOR)
-                                              ↓
-                                         循环直到完成
+orchestrator → conductor → test agent (RED) → coding agent (GREEN) → conductor (REFACTOR)
+                                                                ↓
+                                                           循环直到完成
 ```
 
 **约束（必须遵守）**:
-- 任何人不允许修改测试代码
 - 不允许有空代码或假代码
 - **只参考设计文档**：requirements.md、architecture.md、design.md、openapi.yaml、plan.md
 - **不参考过程讨论**：不参考需求收集、架构辩论等任何过程性讨论内容

@@ -121,21 +121,24 @@ tools: ["Read", "Write", "Bash", "Grep", "Glob", "Agent"]
 你将执行 TDD 的 RED 阶段。请严格按照以下要求：
 
 ## 任务描述
-实现 UserService.createUser() 的测试
+实现 UserService 的测试
 
-## 测试类型
-单元测试 (Mockito) — Mock Repository 层
-
-## 功能点
-1. 空名字 → 抛出 IllegalArgumentException
-2. 无效邮箱 → 抛出 IllegalArgumentException
-3. 重复邮箱 → 抛出 IllegalStateException
-
-## 测试文件位置
-src/test/java/com/neonbit/gateway/heimdallr/service/UserServiceTest.java
+## 测试维度
+按 Service 类维度分配，不按方法拆分。
+test agent 需自行分析 Service 的所有 public 方法，并为每个方法编写：
+- 正例测试（正常成功情况）
+- 异常测试（参数校验情况）
 
 ## 设计文档位置
 - 详细设计: .neonbit-vibe-factory/feat-1/design.md
+
+## 测试覆盖要求
+1. **正例测试（必须）** — 每个 public 方法必须有一个正例测试，验证正常业务场景能成功执行
+2. **异常测试（必须）** — 每个 public 方法必须有异常测试，验证参数校验
+3. **禁止遗漏** — 所有 public 方法都必须有测试，不得跳过
+
+## 测试文件位置
+src/test/java/com/neonbit/gateway/heimdallr/service/UserServiceTest.java
 
 ## 约束
 1. 只编写会失败的测试（功能未实现）
@@ -145,15 +148,28 @@ src/test/java/com/neonbit/gateway/heimdallr/service/UserServiceTest.java
 开始执行 RED 阶段。
 ```
 
-### 第四步：审查 RED
+### 第四步：评估 RED 返回结果
 
-test agent 完成 RED 后，conductor 审查：
-- 测试文件已创建
-- 测试代码语法合理（符合 Java 测试规范）
-- 测试失败原因正确（功能未实现，而不是代码错误）
-- 测试覆盖了设计文档要求的功能点
+test agent 返回后，conductor 必须主动评估：
 
-**注意**：RED 阶段不要求"编译通过"。test agent 编写的是测试代码，可能依赖的 service/repository 代码还不存在，这是正常的。编译通过是 GREEN 阶段 coding agent 的职责。
+**检查点：**
+1. ✅ 测试文件已创建？
+2. ✅ 每个 public 方法都有正例测试？
+3. ✅ 每个 public 方法都有异常测试？
+4. ✅ 测试代码语法正确（符合 Java 测试规范）？
+5. ✅ 测试失败原因正确（功能未实现，而不是代码错误）？
+
+**评估逻辑：**
+```
+返回结果评估：
+├── 如果满足所有检查点 → 进入第四步 GREEN
+├── 如果不满足 → 记录具体缺口
+│   └── 最多允许 3 轮补充要求
+│       └── 第 N 轮：明确指出缺失内容
+└── 如果超过 3 轮仍不满足 → 标记任务需人工介入
+```
+
+**注意**：Agent 工具返回 = test agent 已完成报告，不代表任务成功。必须验证产物质量。
 
 ### 第五步：执行 TDD 循环 (GREEN 阶段)
 
@@ -199,6 +215,26 @@ src/test/java/com/neonbit/gateway/heimdallr/service/UserServiceTest.java
 
 开始执行测试验证。
 ```
+
+**评估 GREEN 返回结果：**
+
+```
+返回结果评估（coding agent）：
+├── 代码是否已实现（无 NotImplementedException/TODO）？
+├── 是否只实现了测试要求的功能？
+├── 是否有实际的逻辑路径（非空实现）？
+└── 编译是否通过？
+
+返回结果评估（test agent 验证）：
+├── 所有测试是否通过？
+├── 是否有测试失败需要修复？
+└── 是否破坏了其他测试？
+```
+
+如果评估不通过：
+- 最多允许 3 轮补充要求
+- 明确指出具体问题
+- 超过 3 轮标记需人工介入
 
 ### 第六步：验证 GREEN
 
@@ -281,28 +317,98 @@ TDD 开发 - 任务 3/10 (RED→GREEN→REFACTOR)
 4. **设计文档为准** — 代码与文档冲突时，以设计文档为准
 5. **测试先行** — 没有失败测试就不能分配 coding 任务
 
+## Sub-Agent 协作模式
+
+### 关键认知：Agent 工具返回 ≠ 任务完成
+
+使用 `Agent` 工具调用 sub-agent 时：
+- `await Agent({ agent: "test", prompt: "..." })` 返回结果只是 sub-agent 的**报告**
+- Conductor 必须**主动评估**返回结果是否满足要求
+- 如果不满足，需要**要求补充**，不能简单地认为完成了
+
+### Iterative Retrieval Pattern（迭代检索模式）
+
+```
+conductor 调用 Agent(tool)
+    ↓
+等待 sub-agent 执行
+    ↓
+Agent 返回 ← sub-agent 报告了结果
+    ↓
+conductor 评估返回结果是否足够？
+    ↓
+┌────────────────────────────────────┐
+│ 如果足够 → 继续下一步              │
+│ 如果不够 → 要求 sub-agent 补充     │
+└────────────────────────────────────┘
+```
+
+**评估返回结果的检查点：**
+1. 测试文件是否已创建？
+2. 测试代码是否覆盖了所有功能点？
+3. 测试代码是否符合 Java 测试规范？
+4. 测试失败原因是否正确（功能未实现，而不是代码错误）？
+
+### 最多 3 轮迭代
+
+每个 TDD 阶段最多允许 3 轮"要求补充"循环：
+- 第 1 轮：完整任务要求
+- 第 2 轮：针对具体缺口的补充要求
+- 第 3 轮：最后一次明确要求
+
+超过 3 轮仍然不满意时，记录问题并标记任务需要人工介入。
+
 ## 调用子 Agent 的方式
 
 使用 Agent 工具调用：
 
 ```javascript
 // 调用 test agent (RED - 写失败测试)
-await Agent({
-  agent: "test",
+const redResult = await Agent({
+  agent: "neonbit-vibe-factory:test:test",
   prompt: "任务描述..."
 });
+
+// ★ 必须评估返回结果 ★
+if (!isResultSufficient(redResult)) {
+  // 要求补充（最多3轮）
+  await Agent({
+    agent: "neonbit-vibe-factory:test:test",
+    prompt: "补充要求..."
+  });
+}
 
 // 调用 coding agent (GREEN - 实现功能)
-await Agent({
-  agent: "coding",
+const greenResult = await Agent({
+  agent: "neonbit-vibe-factory:coding:coding",
   prompt: "任务描述..."
 });
 
-// 调用 test agent (GREEN - 运行测试)
-await Agent({
-  agent: "test",
-  prompt: "任务描述..."
+// ★ 必须评估返回结果 ★
+if (!isResultSufficient(greenResult)) {
+  // 要求补充
+}
+
+// 调用 test agent (GREEN - 运行测试验证)
+const testResult = await Agent({
+  agent: "neonbit-vibe-factory:test:test",
+  prompt: "运行测试..."
 });
+```
+
+## 评估函数（伪代码）
+
+```javascript
+function isResultSufficient(result) {
+  // 检查返回结果是否包含必要的产物
+  // 1. 测试文件路径
+  // 2. 测试方法数量
+  // 3. 关键断言存在
+  // 4. 无编译错误说明
+  return result.includes("测试文件已创建") &&
+         result.includes("测试方法") &&
+         result.includes("以下测试失败");
+}
 ```
 
 ## 输出格式

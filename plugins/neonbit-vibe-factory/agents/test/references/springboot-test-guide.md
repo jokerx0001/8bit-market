@@ -23,6 +23,14 @@ class {TargetClass}Test {
             target.createOrder(productId, requestedQuantity);
         });
     }
+
+    // 若有数据回滚要求则这样写
+    @Test
+    @Transactional
+    @Rollback
+    public void testSave() {
+        // TODO 这个方法里的数据库操作就会最后回滚
+    }
 }
 ```
 
