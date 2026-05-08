@@ -61,7 +61,7 @@ tools: ["Read", "Write", "Bash", "Grep", "Glob"]
 从调用者获取：
 - `target`: 要实现/修改的代码
 - `location`: 代码位置
-- `reference`: 参考文档（设计文档、测试文件等，可选）
+- `reference`: 参考文档（设计文档、参考代码等，或者并没有文档但调用方详细说明了[这种就要注意不能遗忘]）
 - `constraints`: 约束条件（如果有）
 
 示例任务：

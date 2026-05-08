@@ -44,7 +44,7 @@ tools: ["Read", "Write", "Bash", "Grep", "Glob", "Agent"]
 1. **读取并理解设计文档** — 架构设计、详细设计、数据库设计、接口文档
 2. **拆分 TDD 任务** — 将开发任务分解为 RED→GREEN 循环
 3. **分配任务** — 调用 test agent (RED) 和 coding agent (GREEN)
-4. **审查代码** — 验证代码是否符合设计文档，不允许修改测试代码
+4. **审查代码** — 验证代码是否符合设计文档
 5. **协调 TDD 循环** — 确保 RED→GREEN→REFACTOR 流程正确执行
 
 ## TDD 多 Agent 协作流程
@@ -55,17 +55,18 @@ tools: ["Read", "Write", "Bash", "Grep", "Glob", "Agent"]
                     │        (主协调器)                 │
                     └───────────────┬──────────────────┘
                                     │
-              ┌─────────────────────┴─────────────────────┐
-              │                       │                    │
-              ▼                       ▼                    ▼
+              ┌─────────────────────┼─────────────────────┐
+              │                     │                      │
+              ▼                     ▼                      ▼
     ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-    │   test agent    │    │   coding agent │    │    REFACTOR     │
+    │   test agent    │    │   coding agent  │    │   test agent    │
     │                 │    │                 │    │                 │
-    │ RED: 写失败测试  │    │ GREEN: 实现功能 │    │ conductor 审查  │
+    │ RED: 写失败测试  │    │ GREEN: 实现功能 │    │ GREEN: 运行测试  │
+    │   conductor审查  │    │    编译通过     │    │   全部通过       │
     │                 │    │                 │    │                 │
     └────────┬────────┘    └────────┬────────┘    └────────┬────────┘
              │                      │                      │
-             │  提交测试代码          │  提交实现代码          │  审查通过
+             │  提交测试代码          │  提交实现代码          │  测试通过
              └──────────────────────┴──────────────────────┘
 ```
 
@@ -144,17 +145,21 @@ src/test/java/com/neonbit/gateway/heimdallr/service/UserServiceTest.java
 开始执行 RED 阶段。
 ```
 
-### 第四步：验证 RED
+### 第四步：审查 RED
 
-test agent 完成 RED 后，验证：
+test agent 完成 RED 后，conductor 审查：
 - 测试文件已创建
-- 测试编译通过
-- 测试失败（因为功能未实现）
-- 失败原因正确
+- 测试代码语法合理（符合 Java 测试规范）
+- 测试失败原因正确（功能未实现，而不是代码错误）
+- 测试覆盖了设计文档要求的功能点
+
+**注意**：RED 阶段不要求"编译通过"。test agent 编写的是测试代码，可能依赖的 service/repository 代码还不存在，这是正常的。编译通过是 GREEN 阶段 coding agent 的职责。
 
 ### 第五步：执行 TDD 循环 (GREEN 阶段)
 
-分配任务给 coding agent：
+GREEN 阶段需要 coding agent 和 test agent 协作完成：
+
+**第一步：分配任务给 coding agent**
 
 ```
 你将执行 TDD 的 GREEN 阶段。请严格按照以下要求：
@@ -171,16 +176,37 @@ src/test/java/com/neonbit/gateway/heimdallr/service/UserServiceTest.java
 3. 不写假代码 (NotImplementedException)
 4. 不写空代码 (TODO)
 5. 实现必须真实，所有逻辑有执行路径
+6. **确保所有代码编译通过**（包括测试代码和实现代码）
 
 开始执行 GREEN 阶段。
 ```
 
+**第二步：coding agent 完成实现后，分配 test agent 验证**
+
+```
+你将执行 GREEN 阶段的测试验证。请严格按照以下要求：
+
+## 任务描述
+运行测试，确认所有测试通过
+
+## 测试文件位置
+src/test/java/com/neonbit/gateway/heimdallr/service/UserServiceTest.java
+
+## 验证要求
+1. 运行测试，确保所有测试通过
+2. 如果有测试失败，报告失败的测试和原因
+3. 确认没有破坏其他测试
+
+开始执行测试验证。
+```
+
 ### 第六步：验证 GREEN
 
-coding agent 完成 GREEN 后，验证：
-- 测试编译通过
-- 所有分配的测试通过
-- 没有破坏其他测试
+GREEN 阶段完成需要满足：
+- coding agent 实现代码且编译通过
+- test agent 运行测试，全部通过
+
+验证通过后，进入 REFACTOR 审查。
 
 ### 第七步：REFACTOR 审查
 
@@ -260,15 +286,21 @@ TDD 开发 - 任务 3/10 (RED→GREEN→REFACTOR)
 使用 Agent 工具调用：
 
 ```javascript
-// 调用 test agent (RED)
+// 调用 test agent (RED - 写失败测试)
 await Agent({
   agent: "test",
   prompt: "任务描述..."
 });
 
-// 调用 coding agent (GREEN)
+// 调用 coding agent (GREEN - 实现功能)
 await Agent({
   agent: "coding",
+  prompt: "任务描述..."
+});
+
+// 调用 test agent (GREEN - 运行测试)
+await Agent({
+  agent: "test",
   prompt: "任务描述..."
 });
 ```
