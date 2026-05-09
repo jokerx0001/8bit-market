@@ -15,21 +15,21 @@ This is a **Claude Code plugin** (`neonbit-vibe-factory`) that orchestrates the 
 ### Multi-Agent TDD Flow
 
 ```
-conductor (主协调器)
-    ├── test agent ──→ RED (写失败测试)
-    ├── coding agent ──→ GREEN (实现功能)
-    └── conductor ──→ REFACTOR (审查)
+主会话 (tdd-conductor skill 协调)
+    ├── spawn test agent ──→ RED (写失败测试)
+    ├── spawn coding agent ──→ GREEN (实现功能)
+    └── 主会话 ──→ REFACTOR (审查)
 ```
 
 ### Key Components
 
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| `orchestrator` skill | `skills/orchestrator/` | Workflow state machine - manages phases from requirements to E2E |
-| `conductor` agent | `agents/conductor/` | TDD导演 - coordinates RED→GREEN→REFACTOR cycles |
-| `test` agent | `agents/test/` | Writes failing tests (RED phase) |
-| `coding` agent | `agents/coding/` | Implements features (GREEN phase) |
-| `e2e-test` agent | `agents/e2e-test/` | Playwright E2E tests |
+| Component | Type | Location | Purpose |
+|-----------|------|----------|---------|
+| `orchestrator` | skill | `skills/orchestrator/` | Workflow state machine - manages phases from requirements to E2E |
+| `tdd-conductor` | skill | `skills/tdd-conductor/` | TDD coordinator - orchestrates RED→GREEN→REFACTOR cycles in main session |
+| `test` | agent | `agents/test/` | Writes failing tests (RED phase) |
+| `coding` | agent | `agents/coding/` | Implements features (GREEN phase) |
+| `e2e-test` | agent | `agents/e2e-test/` | Playwright E2E tests |
 
 ### Workflow Phases
 
@@ -48,7 +48,7 @@ plan_approved → backend_development (TDD) → frontend_development → e2e_tes
 1. Implement minimal code to make tests pass
 2. **Never modify test code**
 
-### REFACTOR phase (conductor)
+### REFACTOR phase (main session)
 1. Review code quality against design documents
 2. Ensure no stub code or fake implementations
 

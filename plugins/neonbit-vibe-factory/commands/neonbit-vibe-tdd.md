@@ -2,7 +2,7 @@
 name: neonbit-vibe-tdd
 description: 直接启动 TDD 开发流程，用于补充测试或新功能开发
 argument-hint: <模块名> <目标> [特殊约束]
-allowed-tools: ["Read", "Write", "Bash", "Agent"]
+allowed-tools: ["Read", "Write", "Bash", "Agent", "Skill"]
 ---
 
 # /neonbit-vibe-tdd
@@ -25,37 +25,25 @@ allowed-tools: ["Read", "Write", "Bash", "Agent"]
 
 ## 执行流程
 
-1. **直接调用 `conductor` agent** — 不经过 orchestrator
-2. **conductor 读取设计文档** (如果存在)
-3. **conductor 拆分 TDD 任务**
-4. **conductor 协调 TDD 循环**:
-   - test agent 编写失败测试 (RED)
-   - coding agent 实现功能 (GREEN)
-   - conductor 审查 (REFACTOR)
+1. **加载 `tdd-conductor` skill** — 在主会话中协调 TDD 流程
+2. **读取设计文档** (如果存在)
+3. **拆分 TDD 任务**
+4. **协调 TDD 循环**:
+   - spawn test agent 编写失败测试 (RED)
+   - spawn coding agent 实现功能 (GREEN)
+   - 主会话审查 (REFACTOR)
 
-## 调用 conductor
+## 调用 tdd-conductor
 
 ```javascript
-await Agent({
-  agent: "neonbit-vibe-factory:conductor:conductor",
-  prompt: `
-## 任务描述
-在 {模块名} 模块的 {目标} 进行 TDD 开发。
-
-## 技术栈
-Spring Boot Web 技术栈
-
-## 特殊约束
-{特殊约束 || "无"}
-
-## 设计文档 (如果存在)
-- .neonbit-vibe-factory/feat-{N}/design.md
-- .neonbit-vibe-factory/feat-{N}/openapi.yaml
-
-开始执行 TDD 流程。
-  `
-});
+await Skill("neonbit-vibe-factory:tdd-conductor")
 ```
+
+加载 skill 后，按照 skill 指令执行：
+- 在 {模块名} 模块的 {目标} 进行 TDD 开发
+- 技术栈: Spring Boot Web
+- 特殊约束: {特殊约束 || "无"}
+- 设计文档 (如果存在): `.neonbit-vibe-factory/feat-{N}/design.md`
 
 ## 约束
 

@@ -23,8 +23,8 @@
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────┐
-│                     conductor                            │
-│               (主协调器 - TDD 导演)                      │
+│              tdd-conductor skill                         │
+│          (主会话中协调 TDD 流程)                          │
 └───────────────────────────┬─────────────────────────────┘
                             │
           ┌─────────────────┼─────────────────┐
@@ -33,30 +33,29 @@
 ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
 │   test agent    │ │  coding agent   │ │   REFACTOR      │
 │                 │ │                 │ │                 │
-│ RED: 写失败测试  │ │ GREEN: 实现功能  │ │ conductor 审查  │
+│ RED: 写失败测试  │ │ GREEN: 实现功能  │ │ 主会话审查      │
 │                 │ │                 │ │                 │
 │ 单元测试        │ │ 最小化实现       │ │ 代码质量检查    │
 │ 集成测试        │ │ 不改测试         │ │ 设计文档验证    │
 └─────────────────┘ └─────────────────┘ └─────────────────┘
 ```
 
-### Agent 职责
+### 组件职责
 
-| Agent | 职责 | 阶段 |
-|-------|------|------|
-| conductor | 协调整个 TDD 流程，分配任务，审查代码 | 全局 |
-| test agent | 编写失败测试 (单元测试/集成测试) | RED |
-| coding agent | 实现功能让测试通过 | GREEN / 前端开发 |
+| 组件 | 类型 | 职责 | 阶段 |
+|------|------|------|------|
+| tdd-conductor | skill | 在主会话中协调 TDD 流程，spawn agent，审查代码 | 全局 |
+| test agent | agent | 编写失败测试 (单元测试/集成测试) | RED |
+| coding agent | agent | 实现功能让测试通过 | GREEN / 前端开发 |
 
 ### 技能 (Skills)
 
 | Skill | 说明 |
 |-------|------|
 | orchestrator | 工作流状态机，协调所有阶段 |
+| tdd-conductor | 在主会话中协调多 Agent TDD 流程 |
 | artifact-manager | 管理 `.neonbit-vibe-factory/` 下的所有设计文档 |
 | phase-coordinator | 协调阶段间的输入输出传递 |
-| test-driven-workflow | **多 Agent TDD 流程** (内部实现，不依赖外部) |
-| coding (agent) | 前端/后端代码实现，统一复用 coding agent |
 
 ## 命令
 
@@ -68,16 +67,24 @@
 /neonbit-vibe-start 开发一个用户管理模块，包含增删改查功能
 ```
 
-## TDD 流程 (多 Agent 版本)
+### `/neonbit-vibe-tdd`
+
+直接启动 TDD 开发流程（跳过设计阶段）。
+
+```
+/neonbit-vibe-tdd rag-plug-file service层
+```
+
+## TDD 流程
 
 ### RED → GREEN → REFACTOR 循环
 
 ```
-1. conductor 拆分任务，分配给 test agent (RED)
-2. test agent 编写失败测试，提交给 conductor
-3. conductor 验证 RED，分配给 coding agent (GREEN)
-4. coding agent 实现功能，提交给 conductor
-5. conductor 审查代码 (REFACTOR)
+1. tdd-conductor 拆分任务，spawn test agent (RED)
+2. test agent 编写失败测试，返回主会话
+3. 主会话评估 RED 结果，spawn coding agent (GREEN)
+4. coding agent 实现功能，返回主会话
+5. 主会话审查代码 (REFACTOR)
 6. 循环直到所有任务完成
 ```
 
@@ -120,4 +127,3 @@
 - `superpowers:brainstorming` - 用于架构和设计分析
 - `superpowers:writing-plans` - 用于执行计划生成
 - `/frontend-design:frontend-design` - 用于设计前端页面 
-

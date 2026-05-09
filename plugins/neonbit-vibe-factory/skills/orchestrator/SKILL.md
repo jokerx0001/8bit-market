@@ -166,19 +166,20 @@ idle → requirements_collected → architecture_design → detailed_design
 **触发**: 执行计划已批准
 
 **执行**:
-1. 调用 `conductor` agent (`neonbit-vibe-factory:conductor:conductor`) 启动后端开发
-2. conductor 读取设计文档，拆分 TDD 任务
-3. conductor 协调多 Agent TDD 流程：
-   - test agent 编写失败测试 (RED)
-   - coding agent 实现功能 (GREEN)
-   - conductor 审查 (REFACTOR)
-4. 全部任务完成后进入前端阶段
+1. 调用 `Skill` 工具加载 `neonbit-vibe-factory:tdd-conductor` skill
+2. 按照 tdd-conductor skill 的指令协调 TDD 流程：
+   - 读取设计文档，拆分 TDD 任务
+   - spawn test agent 编写失败测试 (RED)
+   - spawn coding agent 实现功能 (GREEN)
+   - 主会话审查代码 (REFACTOR)
+3. 全部任务完成后进入前端阶段
 
 **TDD 多 Agent 流程**:
 ```
-orchestrator → conductor → test agent (RED) → coding agent (GREEN) → conductor (REFACTOR)
-                                                                ↓
-                                                           循环直到完成
+orchestrator → 加载 tdd-conductor skill → spawn test agent (RED)
+                                        → spawn coding agent (GREEN)
+                                        → 主会话 REFACTOR 审查
+                                        → 循环直到完成
 ```
 
 **约束（必须遵守）**:
