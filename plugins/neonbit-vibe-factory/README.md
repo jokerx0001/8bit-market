@@ -1,37 +1,106 @@
 # NeonBit Vibe Factory
 
-开发任务工作流编排器 - 从需求到 E2E 测试的完整开发周期管理。
+**Development Workflow Orchestrator — From Requirements to E2E Testing**
 
-## 概述
+一个掌控开发全流程的 Claude Code 插件，将传统需要数周的开发周期压缩为自动化工作流。
 
-本插件管理完整的开发周期：
-1. **需求收集** - 分析用户需求
-2. **架构设计** - 系统结构与模块设计（Mermaid 图）
-3. **详细设计** - 技术规格、关键逻辑、数据库设计
-4. **执行计划** - 任务拆解与实施路线图
-5. **后端开发** - 基于多 Agent TDD 的后端编码
-6. **前端开发** - UI 实现与设计审查
-7. **E2E 测试** - 基于 Playwright 的端到端测试
+[![Version](https://img.shields.io/badge/version-0.666.0-blue.svg)](.claude-plugin/plugin.json)
+[![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
 
-## TDD 多 Agent 架构
+---
+
+## ✨ 为什么选择 Vibe Factory？
+
+### 🏗️ 从零到生产级代码，只需一个命令
+
+```bash
+/neonbit-vibe-start 开发一个电商订单系统，包含下单、退货、库存管理
+```
+
+传统流程需要：需求评审 → 技术方案设计 → 接口定义 → 代码实现 → 测试 → 集成 → 上线
+
+Vibe Factory 流程：描述需求 → AI 自动完成全流程 → 可执行的 E2E 测试
+
+### 🤖 真正的多 Agent TDD
+
+不是口号，而是架构：
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    orchestrator                          │
-│                  (工作流状态机)                           │
-└───────────────────────────┬─────────────────────────────┘
+主会话 (tdd-conductor 协调)
+    ├── test agent  ──→ RED (编写失败测试)
+    ├── coding agent ──→ GREEN (实现功能)
+    └── 主会话  ──→ REFACTOR (审查代码)
+```
+
+每个功能都经历：**测试先行 → 最小实现 → 代码审查**，确保交付质量。
+
+### 📊 文档驱动开发
+
+设计文档是唯一的事实来源，告别"口口相传"：
+
+- `requirements.md` — 需求定义
+- `architecture.md` — 架构设计 (Mermaid 图)
+- `design.md` — 详细设计
+- `openapi.yaml` — 接口规范 (OpenAPI 3.0.3)
+- `plan.md` — 执行计划（需用户批准）
+
+### 🎯 智能阶段跳过
+
+根据实际需要自动跳过不必要的阶段：
+
+- 无前端任务？自动跳过前端开发阶段
+- 无页面设计？自动跳过 E2E 测试阶段
+- 不浪费任何时间
+
+---
+
+## 🚀 快速开始
+
+### 安装
+
+克隆本仓库，将 `plugins/neonbit-vibe-factory` 目录放入 Claude Code 插件目录：
+
+```bash
+git clone https://github.com/neonbit/8bit-market.git
+```
+
+### 启动完整工作流
+
+```bash
+/neonbit-vibe-start 开发一个用户管理模块，包含增删改查功能
+```
+
+### 直接进入 TDD 开发
+
+当已有设计文档或需要快速补充测试时：
+
+```bash
+/neonbit-vibe-tdd UserService service层
+```
+
+---
+
+## 🏛️ 架构
+
+### 核心组件
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    orchestrator                              │
+│                  (工作流状态机)                                │
+└───────────────────────────┬─────────────────────────────────┘
                             │
                             ▼
-┌─────────────────────────────────────────────────────────┐
-│              tdd-conductor skill                         │
-│          (主会话中协调 TDD 流程)                          │
-└───────────────────────────┬─────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│              tdd-conductor skill                              │
+│          (主会话中协调 TDD 流程)                               │
+└───────────────────────────┬─────────────────────────────────┘
                             │
           ┌─────────────────┼─────────────────┐
           │                 │                 │
           ▼                 ▼                 ▼
 ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│   test agent    │ │  coding agent   │ │   REFACTOR      │
+│   test agent    │ │  coding agent   │ │   REFACTOR     │
 │                 │ │                 │ │                 │
 │ RED: 写失败测试  │ │ GREEN: 实现功能  │ │ 主会话审查      │
 │                 │ │                 │ │                 │
@@ -40,90 +109,88 @@
 └─────────────────┘ └─────────────────┘ └─────────────────┘
 ```
 
-### 组件职责
-
-| 组件 | 类型 | 职责 | 阶段 |
-|------|------|------|------|
-| tdd-conductor | skill | 在主会话中协调 TDD 流程，spawn agent，审查代码 | 全局 |
-| test agent | agent | 编写失败测试 (单元测试/集成测试) | RED |
-| coding agent | agent | 实现功能让测试通过 | GREEN / 前端开发 |
-
-### 技能 (Skills)
-
-| Skill | 说明 |
-|-------|------|
-| orchestrator | 工作流状态机，协调所有阶段 |
-| tdd-conductor | 在主会话中协调多 Agent TDD 流程 |
-| artifact-manager | 管理 `.neonbit-vibe-factory/` 下的所有设计文档 |
-| phase-coordinator | 协调阶段间的输入输出传递 |
-
-## 命令
-
-### `/neonbit-vibe-start`
-
-启动新的开发任务工作流。
+### 工作流状态机
 
 ```
-/neonbit-vibe-start 开发一个用户管理模块，包含增删改查功能
+idle → requirements → architecture → detailed_design → api_design
+    → plan_approved → backend_development → frontend_development
+    → e2e_testing → completed
 ```
 
-### `/neonbit-vibe-tdd`
+---
 
-直接启动 TDD 开发流程（跳过设计阶段）。
+## 🔄 TDD 循环详解
 
-```
-/neonbit-vibe-tdd rag-plug-file service层
-```
+### RED → GREEN → REFACTOR
 
-## TDD 流程
+| 阶段 | Agent | 职责 | 约束 |
+|------|-------|------|------|
+| RED | test agent | 编写失败测试 | 只写测试，不写实现 |
+| GREEN | coding agent | 实现功能让测试通过 | 不修改测试代码 |
+| REFACTOR | 主会话 | 审查代码质量 | 不允许假代码/空代码 |
 
-### RED → GREEN → REFACTOR 循环
+### 测试类型
 
-```
-1. tdd-conductor 拆分任务，spawn test agent (RED)
-2. test agent 编写失败测试，返回主会话
-3. 主会话评估 RED 结果，spawn coding agent (GREEN)
-4. coding agent 实现功能，返回主会话
-5. 主会话审查代码 (REFACTOR)
-6. 循环直到所有任务完成
-```
+| 场景 | 测试类型 | 工具 |
+|------|----------|------|
+| Service 层业务逻辑 | 单元测试 | Mockito |
+| Controller 层 HTTP 接口 | 集成测试 | @SpringBootTest + MockMvc |
+| Domain 对象验证规则 | 单元测试 | Mockito |
 
-### 测试类型判断
+---
 
-| 类型 | 场景 | 工具 |
-|------|------|------|
-| 单元测试 | Service 层业务逻辑、Domain 对象 | Mockito |
-| 集成测试 | Controller 层 HTTP 接口 | @SpringBootTest + MockMvc |
+## 📁 产物结构
 
-## 目录结构
-
-所有产物存储在 `.neonbit-vibe-factory/`：
+所有设计文档存储在 `.neonbit-vibe-factory/`：
 
 ```
 .neonbit-vibe-factory/
 ├── current-state.json           # 全局状态追踪
-└── feat-{N}/                    # 第 N 个任务的 workspace
+└── feat-{N}/                    # 第 N 个任务
     ├── requirements.md          # 需求摘要
-    ├── architecture.md          # 架构设计（Mermaid）
+    ├── architecture.md          # 架构设计（Mermaid 图）
     ├── design.md                # 详细设计
     ├── database.sql              # 数据库设计
-    ├── openapi.yaml              # 接口文档
+    ├── openapi.yaml              # 接口文档 (OpenAPI 3.0.3)
     ├── plan.md                  # 执行计划
     ├── ui-design.md             # UI 设计文档
     └── page-design.md           # 页面设计文档
 ```
 
-## 工作流程
+---
 
-```
-用户输入 → 需求收集 → 架构设计 → 详细设计 →
-接口文档 → 执行计划（审查）→ 后端开发 (TDD) →
-前端开发 → E2E 测试 → 完成
-```
+## ⚙️ 依赖
 
-## 依赖
+本插件依赖以下 Claude Code 技能：
 
-本插件依赖外部技能：
-- `superpowers:brainstorming` - 用于架构和设计分析
-- `superpowers:writing-plans` - 用于执行计划生成
-- `/frontend-design:frontend-design` - 用于设计前端页面 
+| 技能 | 用途 |
+|------|------|
+| `superpowers:brainstorming` | 架构分析和设计规划 |
+| `superpowers:writing-plans` | 执行计划生成 |
+| `frontend-design` | 前端页面设计 |
+
+---
+
+## 📖 详细文档
+
+- [CLAUDE.md](CLAUDE.md) — 开发者指南
+- [Orchestrator Skill](skills/orchestrator/SKILL.md) — 工作流状态机
+- [TDD Conductor Skill](skills/tdd-conductor/SKILL.md) — TDD 协调器
+- [Artifact Manager Skill](skills/artifact-manager/SKILL.md) — 文档管理
+- [Phase Coordinator Skill](skills/phase-coordinator/SKILL.md) — 阶段协调
+
+---
+
+## 📄 License
+
+Apache License 2.0
+
+---
+
+<div align="center">
+
+**Built with ❤️ by [neonbit](mailto:neon-bit-wh@outlook.com)**
+
+*让开发工作流自动化成为可能*
+
+</div> 
