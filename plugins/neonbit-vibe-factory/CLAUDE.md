@@ -8,16 +8,24 @@ This is a **Claude Code plugin** (`neonbit-vibe-factory`) that orchestrates the 
 
 ## Plugin Commands
 
-- `/neonbit-vibe-start <task>` — Start a new development workflow (e.g., `/neonbit-vibe-start 开发一个用户管理模块`)
+- `/neonbit-vibe-start <task>` — Start a new feature development workflow (full: requirements → architecture → design → TDD)
+- `/neonbit-vibe-refactor <target> [constraints]` — Start a refactoring/modification workflow (lightweight: analyze → impact → plan → TDD refactor)
+- `/neonbit-vibe-tdd <module> <target>` — Direct TDD entry point (skip all design phases)
 
 ## Architecture
 
 ### Multi-Agent TDD Flow
 
 ```
-主会话 (tdd-conductor skill 协调)
+新功能 (/neonbit-vibe-start → orchestrator → tdd-conductor)
     ├── spawn test agent ──→ RED (写失败测试)
     ├── spawn coding agent ──→ GREEN (实现功能)
+    └── 主会话 ──→ REFACTOR (审查)
+
+重构改造 (/neonbit-vibe-refactor → refactor-conductor)
+    ├── 分析现有代码 → 影响评估 → 变更计划(审批)
+    ├── spawn test agent ──→ RED (写验证目标行为的测试)
+    ├── spawn coding agent ──→ GREEN (修改现有代码)
     └── 主会话 ──→ REFACTOR (审查)
 ```
 
@@ -26,16 +34,23 @@ This is a **Claude Code plugin** (`neonbit-vibe-factory`) that orchestrates the 
 | Component | Type | Location | Purpose |
 |-----------|------|----------|---------|
 | `orchestrator` | skill | `skills/orchestrator/` | Workflow state machine - manages phases from requirements to E2E |
-| `tdd-conductor` | skill | `skills/tdd-conductor/` | TDD coordinator - orchestrates RED→GREEN→REFACTOR cycles in main session |
+| `tdd-conductor` | skill | `skills/tdd-conductor/` | TDD coordinator - orchestrates RED→GREEN→REFACTOR for new features |
+| `refactor-conductor` | skill | `skills/refactor-conductor/` | Refactor coordinator - analyze→impact→plan→TDD refactor for existing code |
 | `test` | agent | `agents/test/` | Writes failing tests (RED phase) |
 | `coding` | agent | `agents/coding/` | Implements features (GREEN phase) |
 | `e2e-test` | agent | `agents/e2e-test/` | Playwright E2E tests |
 
 ### Workflow Phases
 
+New feature (`/neonbit-vibe-start`):
 ```
 requirements → architecture → detailed_design → api_design →
 plan_approved → backend_development (TDD) → frontend_development → e2e_testing → completed
+```
+
+Refactoring (`/neonbit-vibe-refactor`):
+```
+analyze → impact_assessment → change_plan (approval) → TDD refactor loop → completed
 ```
 
 ## TDD Workflow
