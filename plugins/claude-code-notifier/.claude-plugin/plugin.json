@@ -1,0 +1,10 @@
+{
+  "name": "claude-code-notifier",
+  "version": "0.1.0",
+  "description": "Notify user via Feishu when Claude Code stops waiting for input, and allow user to reply directly from Feishu to continue the conversation.",
+  "author": {
+    "name": "jokerx001"
+  },
+  "license": "MIT",
+  "keywords": ["feishu", "notification", "remote", "hook"]
+}
