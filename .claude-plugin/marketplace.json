@@ -19,6 +19,18 @@
       },
       "tags": ["workflow", "orchestration"],
       "keywords": ["development", "workflow", "e2e", "testing"]
+    },
+    {
+      "name": "claude-code-notifier",
+      "description": "Claude Code 停止等待时通过飞书通知用户，用户可直接在飞书中回复继续对话",
+      "version": "0.1.0",
+      "source": "./plugins/claude-code-notifier",
+      "category": "productivity",
+      "author": {
+        "name": "jokerx001"
+      },
+      "tags": ["feishu", "notification"],
+      "keywords": ["feishu", "notification", "hook", "remote"]
     }
   ]
 }
