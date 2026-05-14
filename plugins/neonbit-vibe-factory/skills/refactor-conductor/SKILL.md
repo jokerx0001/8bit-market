@@ -101,6 +101,13 @@ description: |
 - {调用链和依赖}
 ```
 
+### 第一步 b：检测技术栈
+
+在分析完现有代码后，调用 `stack-detector` skill：
+- 入参：`task_dir = .neonbit-vibe-factory/refactor-{N}/`
+- 等待用户确认门通过
+- 完成后 `refactor-{N}/stack.json` 与 `refactor-{N}/routing-table.md` 已落盘
+
 ### 第二步：影响评估
 
 列出所有需要修改的文件和方法，按风险分级：
@@ -147,6 +154,17 @@ description: |
 对变更计划中的每个任务，执行 RED → GREEN → REFACTOR 循环。
 
 #### 4a. RED 阶段 — spawn test agent
+
+**注入 rules**：从 `<task_dir>/routing-table.md` 中提取 test 角色对应的 rules 路径列表，追加到 prompt 的"必读编程规范"段：
+
+```
+## 必读编程规范（第零步强制 Read）
+
+以下文件必须在开始任务前全部读取：
+- {path1}
+- {path2}
+- ...
+```
 
 ```
 Agent({
@@ -197,6 +215,17 @@ Agent({
 ```
 
 #### 4c. GREEN 阶段 — spawn coding agent
+
+**注入 rules**：从 `<task_dir>/routing-table.md` 中提取 coding 角色对应的 rules 路径列表，追加到 prompt 的"必读编程规范"段：
+
+```
+## 必读编程规范（第零步强制 Read）
+
+以下文件必须在开始任务前全部读取：
+- {path1}
+- {path2}
+- ...
+```
 
 ```
 Agent({
