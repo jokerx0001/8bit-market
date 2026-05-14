@@ -47,6 +47,18 @@ tools: ["Read", "Write", "Bash", "Grep", "Glob"]
 - `reference`: 参考文档（可选）
 - `constraints`: 约束条件（可选）
 
+## 第零步：加载必读规范（如果调用者提供了"必读编程规范"段）
+
+如果 prompt 中包含"必读编程规范"段：
+
+1. 按列表 Read 全部 rule 文件（绝对路径，调用者已展开）
+2. 在最终状态报告中增加 `Rules loaded: <N> files`
+3. 如果实现与某条 rule 明确冲突，**不要自行妥协**：在状态报告里说明冲突点并请求决策
+
+如果 prompt 中没有"必读编程规范"段，跳过本步骤直接进入第一步。
+
+---
+
 ## 第一步：加载技术栈参考（所有模式必须）
 
 根据设计文档或项目 CLAUDE.md 中声明的技术栈，加载对应参考文档：
@@ -117,6 +129,9 @@ void createUser_withNullName_shouldThrow() {
 
 ### 下一步
 等待审查。
+
+### 必读规范加载
+- Rules loaded: {N} files
 ```
 
 ---
@@ -153,6 +168,9 @@ void createUser_withNullName_shouldThrow() {
 
 ### 下一步
 等待下一步指令。
+
+### 必读规范加载
+- Rules loaded: {N} files
 ```
 
 ---
