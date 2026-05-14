@@ -73,6 +73,15 @@ description: |
 
 如果没有设计文档（如通过 `/neonbit-vibe-tdd` 直接触发），则根据现有代码和用户描述来确定任务范围。
 
+### 第一步 b：检测技术栈
+
+调用 `stack-detector` skill：
+- 入参：`task_dir` = 当前任务目录（如 `.neonbit-vibe-factory/feat-{N}/` 或 `.neonbit-vibe-factory/tdd-{N}/`）
+- 等待用户确认门通过
+- 完成后 `<task_dir>/stack.json` 与 `<task_dir>/routing-table.md` 已落盘
+
+> 若 stack.json 已存在（如 orchestrator 已调过），stack-detector 幂等跳过。
+
 ### 第二步：拆分 TDD 任务
 
 将开发任务拆分为独立的 TDD 任务：
@@ -108,6 +117,23 @@ description: |
 - 目标: UserController.createUser()
 - 状态: 待分配
 ```
+
+### Rules 注入规则
+
+在每次 spawn agent 前，从 `<task_dir>/routing-table.md` 中提取对应角色的 rules 路径列表，追加到 prompt 的"必读编程规范"段：
+
+```
+## 必读编程规范（第零步强制 Read）
+
+以下文件必须在开始任务前全部读取：
+- {path1}
+- {path2}
+- ...
+```
+
+角色映射：
+- spawn test agent → 提取 `Applies to` 含 `test` 的路径
+- spawn coding agent → 提取 `Applies to` 含 `coding` 的路径
 
 ### 第三步：执行 RED 阶段
 
