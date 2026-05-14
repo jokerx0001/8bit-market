@@ -44,27 +44,6 @@ public class OrderService {
 }
 ```
 
-## Constructor Injection
-
-Always use constructor injection — never field injection:
-
-```java
-// GOOD — constructor injection (testable, immutable)
-public class NotificationService {
-    private final EmailSender emailSender;
-
-    public NotificationService(EmailSender emailSender) {
-        this.emailSender = emailSender;
-    }
-}
-
-// BAD — field injection (untestable without reflection, requires framework magic)
-public class NotificationService {
-    @Inject // or @Autowired
-    private EmailSender emailSender;
-}
-```
-
 ## DTO Mapping
 
 Use records for DTOs. Map at service/controller boundaries:
@@ -125,22 +104,6 @@ String message = switch (result) {
 };
 ```
 
-## API Response Envelope
-
-Consistent API responses:
-
-```java
-public record ApiResponse<T>(boolean success, T data, String error) {
-    public static <T> ApiResponse<T> ok(T data) {
-        return new ApiResponse<>(true, data, null);
-    }
-    public static <T> ApiResponse<T> error(String message) {
-        return new ApiResponse<>(false, null, message);
-    }
-}
-```
-
 ## References
+[springboot.md] for Spring Boot architecture patterns.
 
-See skill: `springboot-patterns` for Spring Boot architecture patterns.
-See skill: `jpa-patterns` for entity design and query optimization.

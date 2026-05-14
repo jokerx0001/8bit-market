@@ -42,6 +42,14 @@ Follow standard Java conventions:
 - `camelCase` for methods, fields, parameters, local variables
 - `SCREAMING_SNAKE_CASE` for `static final` constants
 - Packages: all lowercase, reverse domain (`com.example.app.service`)
+- 除非类名冲突,要import然后代码里只写类名
+```java
+// GOOD — short className
+FileDTO fileDTO;
+
+// BAD - verbose
+com.neonbit.test.FileDTO fileDTO;
+```
 
 ## Modern Java Features
 
@@ -108,7 +116,31 @@ public class OrderNotFoundException extends RuntimeException {
 - Avoid side effects in stream operations
 - For complex logic, prefer a loop over a convoluted stream pipeline
 
-## References
+## 注释规范
+- 类注释：描述类的功能和用途，使用Javadoc格式
+```java
+/**
+ * UserService负责处理用户相关的业务逻辑
+ */
+@Service
+public class UserService {
+    // ...
+}
+```
+- 方法注释：描述方法的功能、参数和返回值，使用Javadoc格式
+```java
+/**
+ * 更新用户信息
+ * @param updateUserVO 包含用户更新信息的对象
+ * @return 更新结果的响应对象
+ */
+public ApiResponse<String> update(@RequestBody @Valid UpdateUserVO updateUserVO) {
+    // ...
+}
+```
+- 变量注释：描述变量的用途和含义，使用单行注释
+```java
+// 存储用户的电话号码
+private String phone;
+```
 
-See skill: `java-coding-standards` for full coding standards with examples.
-See skill: `jpa-patterns` for JPA/Hibernate entity design patterns.
