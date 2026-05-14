@@ -60,4 +60,7 @@ class {TargetClass}Test {
 4. **测试名称必须清晰描述行为，不使用 "test1" 之类**
 5. **一个测试方法只验证一个行为**
 6. 使用junit5 jupiter测试.除非根据版本检测到更合适的,这时候直接上报让用户决策
+7. 所有的数据库存储逻辑测试都必须有存入成功的case,并且要用用查询语句查询到刚才存储数据,逐字段比对无误才算通过。包括数据库,milvu
+s,Elasticsearch
+8. UserJwt这种入参对象允许自己创建 例 UserJwt userjwt = new UserJwt(....) 如此来测试
 
