@@ -23,27 +23,34 @@ allowed-tools: ["Read", "Write", "Bash", "Agent", "Skill"]
 - `目标`: 要测试的目标，如 service层、controller层、api层
 - `特殊约束` (可选): 如"禁止任何mock"、"使用真实数据库"等
 
-## 执行流程
+## 命令入口流程
 
-1. **加载 `tdd-conductor` skill** — 在主会话中协调 TDD 流程
-2. **读取设计文档** (如果存在)
-3. **拆分 TDD 任务**
-4. **协调 TDD 循环**:
-   - spawn test agent 编写失败测试 (RED)
-   - spawn coding agent 实现功能 (GREEN)
-   - 主会话审查 (REFACTOR)
+1. **创建任务目录**：调用 `artifact-manager` skill：
+   ```
+   - 操作: create_task
+   - kind: tdd
+   ```
+   得到 `tdd-{N}/`
 
-## 调用 tdd-conductor
+2. **写 task.md**：把用户的 `<模块名>` `<目标>` `<特殊约束>` 原样保存到 `tdd-{N}/task.md`
 
-```javascript
-await Skill("neonbit-vibe-factory:tdd-conductor")
-```
+3. **检测技术栈**：调用 `stack-detector` skill：
+   ```
+   - task_dir: .neonbit-vibe-factory/tdd-{N}/
+   - 等待用户确认门通过
+   ```
+   完成后 `tdd-{N}/stack.json` 与 `tdd-{N}/routing-table.md` 已落盘。
 
-加载 skill 后，按照 skill 指令执行：
-- 在 {模块名} 模块的 {目标} 进行 TDD 开发
-- 技术栈: Spring Boot Web
-- 特殊约束: {特殊约束 || "无"}
-- 设计文档 (如果存在): `.neonbit-vibe-factory/feat-{N}/design.md`
+4. **进入 tdd-conductor**：
+   ```javascript
+   await Skill("neonbit-vibe-factory:tdd-conductor")
+   ```
+   按 skill 指令执行：
+   - 模块: `<模块名>`
+   - 目标: `<目标>`
+   - 特殊约束: `<特殊约束 || "无">`
+   - 任务目录: `.neonbit-vibe-factory/tdd-{N}/`
+   - 设计文档（如果存在）: `.neonbit-vibe-factory/feat-{N}/design.md`
 
 ## 约束
 
