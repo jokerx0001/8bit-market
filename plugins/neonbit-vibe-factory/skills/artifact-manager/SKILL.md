@@ -44,30 +44,36 @@ description: |
 
 ## 核心功能
 
-### 1. 创建新的 feat 目录
+### 1. 创建新的任务目录（支持三种 kind）
+
+**入参**：
+- `kind`: 取值 `feat` / `refactor` / `tdd`
+- `task_name`（可选）: 用于日志，不影响目录命名
 
 **执行**:
-1. 读取当前状态 `.neonbit-vibe-factory/current-state.json`
-2. 确定下一个 feat 编号
-3. 创建目录结构
-4. 初始化 `current-state.json`
+1. 读取 `.neonbit-vibe-factory/current-state.json`
+2. 在 `counters` 对象中查 `kind` 对应计数器；不存在则初始化为 0
+3. 计数器 +1，作为新任务编号 N
+4. 创建目录：`mkdir -p .neonbit-vibe-factory/{kind}-{N}`
+5. 更新 `current-state.json`：写回新计数器，并设置 `current_task = {kind}-{N}`、`current_kind = {kind}`
 
-```bash
-mkdir -p .neonbit-vibe-factory/feat-{N}
+**约束**：三种 kind 的计数器**互相独立**。`feat-1` 与 `refactor-1` 可同时存在，互不冲突。
+
+**输出**：
+```
+已创建 {kind}-{N} 目录：
+.neonbit-vibe-factory/{kind}-{N}/
 ```
 
-**输出**:
-```
-已创建 feat-{N} 目录结构：
-.neonbit-vibe-factory/feat-{N}/
-├── requirements.md
-├── architecture.md
-├── design.md
-├── database.sql
-├── openapi.yaml
-├── plan.md
-└── ui-design.md (前端阶段创建)
-```
+### 1a. 目录结构按 kind 区分
+
+| kind | 必有产物 | 备注 |
+|------|----------|------|
+| feat | requirements.md, architecture.md, design.md, database.sql, openapi.yaml, plan.md, ui-design.md（前端阶段） | orchestrator 流程 |
+| refactor | analysis.md, impact.md, change-plan.md | refactor-conductor 流程 |
+| tdd | task.md（命令入口写入用户输入） | tdd-conductor 流程 |
+
+**所有 kind 都必须包含**：`stack.json` 和 `routing-table.md`（由 stack-detector skill 生成）。
 
 ### 2. 保存设计文档
 
@@ -105,21 +111,30 @@ mkdir -p .neonbit-vibe-factory/feat-{N}
 **current-state.json 结构**:
 ```json
 {
-  "current_feat": "feat-1",
+  "current_task": "feat-1",
+  "current_kind": "feat",
   "phase": "architecture_designed",
   "phases_completed": ["requirements_collected", "architecture_designed"],
+  "counters": {
+    "feat": 1,
+    "refactor": 0,
+    "tdd": 0
+  },
   "started_at": "2026-04-28T10:00:00Z",
   "last_updated": "2026-04-28T10:30:00Z"
 }
 ```
+
+> **向后兼容**：旧版 current-state.json 使用 `current_feat` 字段。读取时如发现旧字段而无 `current_task`，按 `current_task = current_feat`、`current_kind = "feat"`、`counters.feat = N` 转换并改写一次。
 
 ## 使用方式
 
 ### 开始新任务时
 ```markdown
 调用 artifact-manager skill：
-- 操作: create_feat
-- 任务名称: 用户管理模块
+- 操作: create_task
+- kind: feat | refactor | tdd
+- 任务名称: <可选，仅日志用>
 ```
 
 ### 保存设计文档时
