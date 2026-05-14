@@ -196,6 +196,19 @@ idle → requirements → architecture → detailed_design → api_design
 
 `references/rules/` 已与上游脱钩，可自由演化。修改后无需重新检测；下次派发 agent 时即生效。
 
+### 设计动机
+
+coding agent 与 test agent 原本不知道项目的编程规范。把所有语言的规范一次性塞进上下文既冗杂又消耗 token。渐进式注入解决三个问题：
+
+1. **自动识别**：命令入口执行后自动检测项目语言/框架，无需手动配置
+2. **按需加载**：每个 agent 只看到与自己角色相关的 rules（coding agent 不看 testing rules，反之亦然）
+3. **强制确认**：检测结果必须经用户确认才落盘，避免误判导致注入错误规范
+
+关键设计决策：
+- Rules vendor 到 plugin 内而非引用外部仓库 — 脱钩后可自由演化，不受上游变更影响
+- Conductor 端解析路径而非 agent 端 — `${CLAUDE_PLUGIN_ROOT}` 在 agent 子会话中可能不可解析
+- 每任务独立 stack.json — 同一项目多次运行互不干扰，支持手动修正后重跑
+
 ---
 
 ## ⚙️ 依赖
