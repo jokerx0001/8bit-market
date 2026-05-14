@@ -68,6 +68,11 @@ idle → requirements_collected → architecture_design → detailed_design
 1. 使用 `artifact-manager` skill 创建新的 feat 目录
 2. 解析用户需求，生成需求摘要文档
 3. 保存到 `.neonbit-vibe-factory/feat-{N}/requirements.md`
+4. **检测技术栈**：调用 `stack-detector` skill 的 `detect` 动作
+   - 入参：`task_dir = .neonbit-vibe-factory/feat-{N}/`
+   - 等待用户确认门通过
+   - 完成后 `feat-{N}/stack.json` 与 `feat-{N}/routing-table.md` 已落盘
+5. **填回需求摘要**：将 stack.json 中的 backend/frontend 信息写回 requirements.md 的"技术栈"字段（替换原"待定"占位）
 
 **输出**:
 ```
@@ -76,7 +81,7 @@ idle → requirements_collected → architecture_design → detailed_design
 - 功能: 用户管理模块的增删改查
 - 页面: 用户列表页、用户编辑弹窗
 - 接口: GET/POST/PUT/DELETE /api/users
-- 技术栈: 待定
+- 技术栈: backend={language}({framework}), frontend={language}({framework})
 ```
 
 ### 阶段 2: 架构设计 (architecture_designed)
@@ -166,13 +171,14 @@ idle → requirements_collected → architecture_design → detailed_design
 **触发**: 执行计划已批准
 
 **执行**:
-1. 调用 `Skill` 工具加载 `neonbit-vibe-factory:tdd-conductor` skill
-2. 按照 tdd-conductor skill 的指令协调 TDD 流程：
+1. **注入 rules 路径**：读取 `.neonbit-vibe-factory/feat-{N}/routing-table.md`，提取 backend 相关的 rules 路径列表。后续 spawn agent 时将这些路径写入 prompt 的"必读编程规范"段。
+2. 调用 `Skill` 工具加载 `neonbit-vibe-factory:tdd-conductor` skill
+3. 按照 tdd-conductor skill 的指令协调 TDD 流程：
    - 读取设计文档，拆分 TDD 任务
    - spawn test agent 编写失败测试 (RED)
    - spawn coding agent 实现功能 (GREEN)
    - 主会话审查代码 (REFACTOR)
-3. 全部任务完成后进入前端阶段
+4. 全部任务完成后进入前端阶段
 
 **TDD 多 Agent 流程**:
 ```
