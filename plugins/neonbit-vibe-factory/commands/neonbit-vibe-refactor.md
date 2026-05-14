@@ -7,7 +7,7 @@ allowed-tools: ["Read", "Write", "Bash", "Agent", "Skill"]
 
 # /neonbit-vibe-refactor
 
-对现有代码进行重构或修改。跳过完整的 orchestrator 工作流，直接进入分析→影响评估→变更计划→TDD 重构流程。
+对现有代码进行重构或修改。命令入口创建任务目录，然后进入分析→影响评估→变更计划→TDD 重构流程。
 
 ## 使用方式
 
@@ -19,17 +19,26 @@ allowed-tools: ["Read", "Write", "Bash", "Agent", "Skill"]
 
 ## 参数
 
-- `重构目标描述`: 要重构/修改的内容，包含目标和范围
+- `重构目标描述`: 要重构/修改的内容
 - `特殊约束` (可选): 如"禁止任何mock"、"不改变公共接口签名"等
 
-## 调用 refactor-conductor
+## 命令入口流程
 
-```javascript
-await Skill("neonbit-vibe-factory:refactor-conductor")
-```
+1. **创建任务目录**：调用 `artifact-manager` skill：
+   ```
+   - 操作: create_task
+   - kind: refactor
+   ```
+   得到 `refactor-{N}/`
 
-加载 skill 后，按照 skill 指令执行：
-- 重构目标: {重构目标描述}
-- 特殊约束: {特殊约束 || "无"}
+2. **写 task.md**：把用户的"重构目标描述"和"特殊约束"原样保存到 `refactor-{N}/task.md`
+
+3. **进入 refactor-conductor**：
+   ```javascript
+   await Skill("neonbit-vibe-factory:refactor-conductor")
+   ```
+   把 `task_dir = .neonbit-vibe-factory/refactor-{N}/` 传入。
+
+refactor-conductor 会在第零步调用 stack-detector 并完成后续工作流。
 
 **绝对不要**跳过 refactor-conductor 直接编码。
