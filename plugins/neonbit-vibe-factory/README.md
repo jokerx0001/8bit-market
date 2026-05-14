@@ -141,21 +141,60 @@ idle → requirements → architecture → detailed_design → api_design
 
 ## 📁 产物结构
 
-所有设计文档存储在 `.neonbit-vibe-factory/`：
+所有设计文档存储在 `.neonbit-vibe-factory/<kind>-{N}/`，其中 `<kind>` 为 `feat`/`refactor`/`tdd`。每种 kind 的计数器独立。
 
 ```
 .neonbit-vibe-factory/
 ├── current-state.json           # 全局状态追踪
-└── feat-{N}/                    # 第 N 个任务
-    ├── requirements.md          # 需求摘要
-    ├── architecture.md          # 架构设计（Mermaid 图）
-    ├── design.md                # 详细设计
-    ├── database.sql              # 数据库设计
-    ├── openapi.yaml              # 接口文档 (OpenAPI 3.0.3)
-    ├── plan.md                  # 执行计划
-    ├── ui-design.md             # UI 设计文档
-    └── page-design.md           # 页面设计文档
+├── feat-{N}/                    # 新功能任务
+│   ├── requirements.md          # 需求摘要
+│   ├── architecture.md          # 架构设计（Mermaid 图）
+│   ├── design.md                # 详细设计
+│   ├── database.sql              # 数据库设计
+│   ├── openapi.yaml              # 接口文档 (OpenAPI 3.0.3)
+│   ├── plan.md                  # 执行计划
+│   ├── stack.json               # 技术栈检测结果
+│   ├── routing-table.md         # Rules 路由表
+│   ├── ui-design.md             # UI 设计文档
+│   └── page-design.md           # 页面设计文档
+├── refactor-{N}/                # 重构任务
+│   ├── task.md                  # 重构目标描述
+│   ├── analysis.md              # 现有代码分析
+│   ├── impact.md                # 影响评估
+│   ├── change-plan.md           # 变更计划
+│   ├── stack.json               # 技术栈检测结果
+│   └── routing-table.md         # Rules 路由表
+└── tdd-{N}/                     # TDD 任务
+    ├── task.md                  # 任务描述
+    ├── stack.json               # 技术栈检测结果
+    └── routing-table.md         # Rules 路由表
 ```
+
+---
+
+## 📐 Rules 注入机制
+
+本 plugin 内 vendor 了一份语言无关 + 12 个语言特化的编程规范（位于 `references/rules/`）。
+
+工作流：
+
+1. 命令入口（`/neonbit-vibe-start` / `/neonbit-vibe-refactor` / `/neonbit-vibe-tdd`）创建任务目录后，调用 `stack-detector` skill 检测项目语言/框架
+2. 检测结果在主会话中以"确认门"形式呈现，由用户确认或修正
+3. 确认后写入 `<task_dir>/stack.json` 与 `<task_dir>/routing-table.md`
+4. conductor 派发 sub-agent 时读 routing-table.md，按 (语言, 角色) 把对应 rule 的绝对路径注入 prompt
+5. agent 在第零步强制 Read 全部必读 rule，再开始任务
+
+### 任务目录类型
+
+| 命令 | 目录 | 主要产物 |
+|------|------|----------|
+| `/neonbit-vibe-start` | `.neonbit-vibe-factory/feat-{N}/` | requirements/architecture/design/openapi/plan + stack.json + routing-table.md |
+| `/neonbit-vibe-refactor` | `.neonbit-vibe-factory/refactor-{N}/` | task/analysis/impact/change-plan + stack.json + routing-table.md |
+| `/neonbit-vibe-tdd` | `.neonbit-vibe-factory/tdd-{N}/` | task + stack.json + routing-table.md |
+
+### 修改 rules
+
+`references/rules/` 已与上游脱钩，可自由演化。修改后无需重新检测；下次派发 agent 时即生效。
 
 ---
 

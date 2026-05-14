@@ -31,12 +31,11 @@ routing-table.md 由以下段组成：
 | # | File | Applies to |
 |---|------|-----------|
 | 1 | {PLUGIN_ROOT}/references/rules/common/coding-style.md | coding, test |
-| 2 | {PLUGIN_ROOT}/references/rules/common/documentation.md | coding |
-| 3 | {PLUGIN_ROOT}/references/rules/common/error-handling.md | coding, test |
-| 4 | {PLUGIN_ROOT}/references/rules/common/naming-conventions.md | coding, test |
-| 5 | {PLUGIN_ROOT}/references/rules/common/performance.md | coding |
-| 6 | {PLUGIN_ROOT}/references/rules/common/security.md | coding, test |
-| 7 | {PLUGIN_ROOT}/references/rules/common/testing.md | test |
+| 2 | {PLUGIN_ROOT}/references/rules/common/patterns.md | coding |
+| 3 | {PLUGIN_ROOT}/references/rules/common/performance.md | coding |
+| 4 | {PLUGIN_ROOT}/references/rules/common/security.md | coding, test |
+| 5 | {PLUGIN_ROOT}/references/rules/common/testing.md | test |
+| 6 | {PLUGIN_ROOT}/references/rules/common/code-review.md | coding |
 ```
 
 ## Backend 段
@@ -49,12 +48,10 @@ routing-table.md 由以下段组成：
 | # | File | Applies to |
 |---|------|-----------|
 | 1 | {PLUGIN_ROOT}/references/rules/{LANG}/coding-style.md | coding |
-| 2 | {PLUGIN_ROOT}/references/rules/{LANG}/error-handling.md | coding |
-| 3 | {PLUGIN_ROOT}/references/rules/{LANG}/naming-conventions.md | coding |
-| 4 | {PLUGIN_ROOT}/references/rules/{LANG}/performance.md | coding |
-| 5 | {PLUGIN_ROOT}/references/rules/{LANG}/security.md | coding |
-| 6 | {PLUGIN_ROOT}/references/rules/{LANG}/testing.md | test |
-| 7 | {PLUGIN_ROOT}/references/rules/{LANG}/tooling.md | coding |
+| 2 | {PLUGIN_ROOT}/references/rules/{LANG}/patterns.md | coding |
+| 3 | {PLUGIN_ROOT}/references/rules/{LANG}/security.md | coding |
+| 4 | {PLUGIN_ROOT}/references/rules/{LANG}/testing.md | test |
+| 5 | {PLUGIN_ROOT}/references/rules/{LANG}/hooks.md | coding |
 ```
 
 ## Frontend 段
@@ -67,12 +64,10 @@ routing-table.md 由以下段组成：
 | # | File | Applies to |
 |---|------|-----------|
 | 1 | {PLUGIN_ROOT}/references/rules/{LANG}/coding-style.md | coding |
-| 2 | {PLUGIN_ROOT}/references/rules/{LANG}/error-handling.md | coding |
-| 3 | {PLUGIN_ROOT}/references/rules/{LANG}/naming-conventions.md | coding |
-| 4 | {PLUGIN_ROOT}/references/rules/{LANG}/performance.md | coding |
-| 5 | {PLUGIN_ROOT}/references/rules/{LANG}/security.md | coding |
-| 6 | {PLUGIN_ROOT}/references/rules/{LANG}/testing.md | test |
-| 7 | {PLUGIN_ROOT}/references/rules/{LANG}/tooling.md | coding |
+| 2 | {PLUGIN_ROOT}/references/rules/{LANG}/patterns.md | coding |
+| 3 | {PLUGIN_ROOT}/references/rules/{LANG}/security.md | coding |
+| 4 | {PLUGIN_ROOT}/references/rules/{LANG}/testing.md | test |
+| 5 | {PLUGIN_ROOT}/references/rules/{LANG}/hooks.md | coding |
 ```
 
 ## Web 段（仅当 frontend 非 null）
@@ -82,11 +77,12 @@ routing-table.md 由以下段组成：
 
 | # | File | Applies to |
 |---|------|-----------|
-| 1 | {PLUGIN_ROOT}/references/rules/web/accessibility.md | coding, e2e |
-| 2 | {PLUGIN_ROOT}/references/rules/web/css.md | coding |
-| 3 | {PLUGIN_ROOT}/references/rules/web/html.md | coding |
+| 1 | {PLUGIN_ROOT}/references/rules/web/coding-style.md | coding |
+| 2 | {PLUGIN_ROOT}/references/rules/web/design-quality.md | coding, e2e |
+| 3 | {PLUGIN_ROOT}/references/rules/web/patterns.md | coding |
 | 4 | {PLUGIN_ROOT}/references/rules/web/performance.md | coding |
 | 5 | {PLUGIN_ROOT}/references/rules/web/security.md | coding, test |
+| 6 | {PLUGIN_ROOT}/references/rules/web/testing.md | test, e2e |
 ```
 
 ## 渲染规则
