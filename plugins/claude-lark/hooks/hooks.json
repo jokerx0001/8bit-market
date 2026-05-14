@@ -1,0 +1,26 @@
+{
+  "Stop": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "python3 ${CLAUDE_PLUGIN_ROOT}/lib/claude_lark_notify.py",
+          "timeout": 30
+        }
+      ]
+    }
+  ],
+  "Notification": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "python3 ${CLAUDE_PLUGIN_ROOT}/lib/claude_lark_notify.py",
+          "timeout": 30
+        }
+      ]
+    }
+  ]
+}

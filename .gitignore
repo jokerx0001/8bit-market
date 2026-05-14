@@ -219,3 +219,10 @@ __marimo__/
 
 **/superpowers/
 
+# claude-lark plugin runtime files
+plugins/claude-lark/config.json
+plugins/claude-lark/.token_cache
+plugins/claude-lark/.last_stats
+plugins/claude-lark/checkpoints/
+plugins/claude-lark/team-configs/
+plugins/claude-lark/docs/team-quickstart.md

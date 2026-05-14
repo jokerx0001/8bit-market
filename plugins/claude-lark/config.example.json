@@ -1,0 +1,8 @@
+{
+    "app_id": "cli_xxx",
+    "app_secret": "your_app_secret_here",
+    "open_id": "ou_your_open_id_here",
+    "events": ["Stop", "Notification"],
+    "min_duration": 0,
+    "quiet_hours": null
+}

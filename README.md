@@ -68,6 +68,7 @@ git clone https://github.com/neonbit/8bit-market.git
 | `test` | Agent | 编写高质量的失败测试 (RED) |
 | `coding` | Agent | 实现功能让测试通过 (GREEN) |
 | `e2e-test` | Agent | 生成 Playwright E2E 测试 |
+| `claude-lark` | Plugin | 飞书消息集成，支持发送/接收飞书消息 |
 
 ### 工作流状态
 
@@ -147,6 +148,14 @@ idle → requirements_collected → architecture_design → detailed_design
 - [CLAUDE.md](plugins/neonbit-vibe-factory/CLAUDE.md) — 开发者指南
 - [Orchestrator Skill](plugins/neonbit-vibe-factory/skills/orchestrator/SKILL.md)
 - [TDD Conductor Skill](plugins/neonbit-vibe-factory/skills/tdd-conductor/SKILL.md)
+
+---
+
+## 🚧 开发中插件
+
+| 插件 | 说明 |
+|------|------|
+| Notifier | 多通道通知插件，支持邮件、Slack 等通知方式 |
 
 ---
 

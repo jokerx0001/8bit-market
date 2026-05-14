@@ -1,0 +1,13 @@
+{
+  "name": "claude-lark",
+  "description": "Send Claude Code notifications to Lark (Feishu). Get instant rich cards when tasks complete or need your attention.",
+  "version": "1.0.0",
+  "author": {
+    "name": "ysyecust"
+  },
+  "homepage": "https://github.com/ysyecust/claude-lark",
+  "repository": "https://github.com/ysyecust/claude-lark",
+  "license": "MIT",
+  "keywords": ["lark", "feishu", "notifications", "hooks"],
+  "skills": ["skills/*/SKILL.md"]
+}

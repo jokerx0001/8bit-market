@@ -31,6 +31,18 @@
       },
       "tags": ["feishu", "notification"],
       "keywords": ["feishu", "notification", "hook", "remote"]
+    },
+    {
+      "name": "claude-lark",
+      "description": "Claude Code → Lark (Feishu) 通知插件，任务完成或需要确认时自动发送飞书卡片",
+      "version": "1.0.0",
+      "source": "./plugins/claude-lark",
+      "category": "productivity",
+      "author": {
+        "name": "ysyecust"
+      },
+      "tags": ["lark", "feishu", "notification"],
+      "keywords": ["lark", "feishu", "notification", "hook"]
     }
   ]
 }
