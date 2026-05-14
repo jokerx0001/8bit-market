@@ -54,7 +54,7 @@ plan_approved → backend_development (TDD) → frontend_development → e2e_tes
 
 Refactoring (`/neonbit-vibe-refactor`):
 ```
-analyze → impact_assessment → change_plan (approval) → TDD refactor loop → completed
+analyze (→ analysis.md) → impact_assessment (→ impact.md) → change_plan (→ change-plan.md, approval) → context_cleanup → TDD refactor loop → completed
 ```
 
 ## TDD Workflow
@@ -74,12 +74,20 @@ analyze → impact_assessment → change_plan (approval) → TDD refactor loop �
 ## Artifact Storage
 
 All design documents stored in `.neonbit-vibe-factory/<kind>-{N}/` where `<kind>` is one of `feat`/`refactor`/`tdd`. Each kind's counter is independent.
+
+### feat artifacts
 - `requirements.md` — Requirements summary
 - `architecture.md` — Architecture design (Mermaid diagrams)
 - `design.md` — Detailed design
 - `database.sql` — Database design
 - `openapi.yaml` — API documentation (OpenAPI 3.0.3)
 - `plan.md` — Execution plan (requires user approval before development)
+
+### refactor artifacts
+- `task.md` — User's refactor goal and constraints (verbatim)
+- `analysis.md` — Existing code analysis
+- `impact.md` — Impact assessment (files, risks)
+- `change-plan.md` — Change plan (requires user approval before TDD)
 
 ## Key Constraints
 

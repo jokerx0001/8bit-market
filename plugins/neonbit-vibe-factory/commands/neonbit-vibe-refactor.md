@@ -39,6 +39,11 @@ allowed-tools: ["Read", "Write", "Bash", "Agent", "Skill"]
    ```
    把 `task_dir = .neonbit-vibe-factory/refactor-{N}/` 传入。
 
-refactor-conductor 会在第零步调用 stack-detector 并完成后续工作流。
+refactor-conductor 会在第零步调用 stack-detector，然后依次产出设计文档：
+- `analysis.md` — 现有代码分析
+- `impact.md` — 影响评估
+- `change-plan.md` — 变更计划（需用户审批）
+
+审批后进入 TDD 阶段，以设计文档为唯一真相源。
 
 **绝对不要**跳过 refactor-conductor 直接编码。

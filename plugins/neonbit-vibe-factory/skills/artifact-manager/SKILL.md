@@ -70,7 +70,7 @@ description: |
 | kind | 必有产物 | 备注 |
 |------|----------|------|
 | feat | requirements.md, architecture.md, design.md, database.sql, openapi.yaml, plan.md, ui-design.md（前端阶段） | orchestrator 流程 |
-| refactor | analysis.md, impact.md, change-plan.md | refactor-conductor 流程 |
+| refactor | task.md, analysis.md, impact.md, change-plan.md | refactor-conductor 流程，审批后以文档为唯一真相源 |
 | tdd | task.md（命令入口写入用户输入） | tdd-conductor 流程 |
 
 **所有 kind 都必须包含**：`stack.json` 和 `routing-table.md`（由 stack-detector skill 生成）。
