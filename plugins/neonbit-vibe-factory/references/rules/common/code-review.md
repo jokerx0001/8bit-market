@@ -118,7 +118,5 @@ Use these agents for code review:
 
 This rule works with:
 
-- [testing.md](testing.md) - Test coverage requirements
 - [security.md](security.md) - Security checklist
 - [git-workflow.md](git-workflow.md) - Commit standards
-- [agents.md](agents.md) - Agent delegation
