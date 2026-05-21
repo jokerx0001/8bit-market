@@ -4,7 +4,7 @@
 
 从需求到 E2E 测试的完整开发周期管理 — 一个插件掌控全流程。
 
-[![Version](https://img.shields.io/badge/version-0.666.0-blue.svg)](plugins/neonbit-vibe-factory/.claude-plugin/plugin.json)
+[![Version](https://img.shields.io/badge/version-0.10.0-blue.svg)](plugins/neonbit-vibe-factory/.claude-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
 
 ---
