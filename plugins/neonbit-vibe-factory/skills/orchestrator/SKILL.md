@@ -146,11 +146,12 @@ idle → requirements_collected → architecture_design → detailed_design
 **触发**: 接口设计完成
 
 **执行**:
-1. 调用 `Skill` 工具加载 `superpowers:writing-plans`
-2. 基于以上所有设计文档，生成执行计划
-3. 保存到 `.neonbit-vibe-factory/feat-{N}/plan.md`
-4. **等待用户审查**执行计划
-5. 用户批准后，输出上下文清理提示，进入阶段 6
+1. **加载测试约束**：读取 `.neonbit-vibe-factory/feat-{N}/routing-table.md`，提取 `Applies to` 含 `test` 的 rules 文件，Read 这些文件，提取排除约束（如"不测试 DTO/Entity/Config/Mapper"），传递给 writing-plans 作为任务拆分约束
+2. 调用 `Skill` 工具加载 `superpowers:writing-plans`
+3. 基于以上所有设计文档和测试约束，生成执行计划
+4. 保存到 `.neonbit-vibe-factory/feat-{N}/plan.md`
+5. **等待用户审查**执行计划
+6. 用户批准后，输出上下文清理提示，进入阶段 6
 
 **上下文清理提示**:
 ```

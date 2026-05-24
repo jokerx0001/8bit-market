@@ -106,14 +106,92 @@ description: |
 
 ### 第五步：渲染 routing-table.md
 
-按 `references/routing-template.md` 中的模板，结合 stack.json 的 language 字段，渲染出 `task_dir/routing-table.md`。
+按 `references/routing-template.md` 中定义的目录扫描规则，实际扫描 `references/rules/` 目录并生成 `task_dir/routing-table.md`。
 
-渲染规则：
-1. 读 stack.json 的 backend.language 和 frontend.language
-2. 对每个非 null 的语言，从模板中取对应段
-3. 将 `${PLUGIN_ROOT}` 替换为 plugin 的绝对路径（运行时解析）
-4. 校验每条路径对应的文件是否真实存在于 `references/rules/` 下
-5. 不存在的路径跳过，末尾加注释 `<!-- skipped: <path> not found -->`
+**步骤 5.1：确定 PLUGIN_ROOT**
+
+获取 plugin 目录的绝对路径作为 `{PLUGIN_ROOT}`（即当前 plugin 根目录）。
+
+**步骤 5.2：准备变量**
+
+从 `stack.json` 读取：
+- `backend.language` → `{BACKEND_LANG}`（如 `java`、`golang`），null 则跳过 backend 段
+- `backend.framework` → `{BACKEND_FW}`（如 `spring-boot`），null 则不过滤框架
+- `frontend.language` → `{FRONTEND_LANG}`（如 `typescript`），null 则跳过 frontend 和 web 段
+
+**步骤 5.3：框架过滤函数**
+
+对 `code/` 和 `test/` 下的每个 `.md` 文件判断是否应包含：
+
+```
+function framework_match(filename, framework):
+    if filename 不含 "-{name}.md" 后缀 → 包含（无框架标记，总是包含）
+    if framework == null → 跳过（纯语言不需要框架特有文件）
+    else:
+        提取文件名中最后一个 "-{name}.md" 的 {name}
+        if {name} == framework（小写比较）→ 包含
+        else → 跳过
+```
+
+根目录（非 code/ 非 test/）的 `.md` 文件不做框架过滤，总是包含。
+
+**步骤 5.4：扫描并生成路由表**
+
+依次扫描以下目录层级，对每个文件校验存在性后写入路由表：
+
+**Common 段**（总是执行）：
+- `ls {PLUGIN_ROOT}/references/rules/common/code/*.md` → Applies to: coding
+- `ls {PLUGIN_ROOT}/references/rules/common/test/*.md` → Applies to: test
+- `ls {PLUGIN_ROOT}/references/rules/common/*.md`（根目录直接子文件）→ Applies to: coding, test
+
+**Backend 段**（仅当 BACKEND_LANG 非 null）：
+- `ls {PLUGIN_ROOT}/references/rules/{BACKEND_LANG}/code/*.md` → 应用框架过滤(BACKEND_FW) → Applies to: coding
+- `ls {PLUGIN_ROOT}/references/rules/{BACKEND_LANG}/test/*.md` → 应用框架过滤(BACKEND_FW) → Applies to: test
+- `ls {PLUGIN_ROOT}/references/rules/{BACKEND_LANG}/*.md`（根目录直接子文件）→ Applies to: coding, test
+
+**Frontend 段**（仅当 FRONTEND_LANG 非 null）：
+- `ls {PLUGIN_ROOT}/references/rules/{FRONTEND_LANG}/code/*.md` → Applies to: coding
+- `ls {PLUGIN_ROOT}/references/rules/{FRONTEND_LANG}/test/*.md` → Applies to: test
+- `ls {PLUGIN_ROOT}/references/rules/{FRONTEND_LANG}/*.md`（根目录直接子文件）→ Applies to: coding, test
+
+**Web 段**（仅当 FRONTEND_LANG 非 null）：
+- `ls {PLUGIN_ROOT}/references/rules/web/code/*.md` → Applies to: coding, e2e
+- `ls {PLUGIN_ROOT}/references/rules/web/test/*.md` → Applies to: test, e2e
+- `ls {PLUGIN_ROOT}/references/rules/web/*.md`（根目录直接子文件）→ Applies to: coding, test, e2e
+
+**步骤 5.5：输出格式**
+
+生成的 `routing-table.md` 按角色分组为 Markdown 表格：
+
+```markdown
+# Rules Routing Table
+
+> 本文件由 stack-detector 自动生成。
+> conductor 派发 agent 时读取本文件，按角色注入对应路径列表。
+
+- Generated: {ISO timestamp}
+- Stack: backend={BACKEND_LANG}/{BACKEND_FW}, frontend={FRONTEND_LANG}
+
+## Coding Rules
+| # | File | Applies to |
+|---|------|-----------|
+| 1 | {PLUGIN_ROOT}/references/rules/common/code/coding-style.md | coding |
+| ...
+
+## Test Rules
+| # | File | Applies to |
+|---|------|-----------|
+| 1 | {PLUGIN_ROOT}/references/rules/common/test/testing.md | test |
+| ...
+
+## Shared Rules (code & test)
+| # | File | Applies to |
+|---|------|-----------|
+| 1 | {PLUGIN_ROOT}/references/rules/common/hooks.md | coding, test |
+| ...
+```
+
+文件路径使用绝对路径。不存在的目录或空目录对应段输出 `(empty)`。不存在的文件跳过。
 
 ### 第六步：输出完成报告
 

@@ -136,9 +136,21 @@ description: |
 
 ### 第三步：变更计划（等待用户审批）
 
-将变更拆分为独立的 TDD 任务，每个任务对应一个可验证的修改单元，**将变更计划写入 `<task_dir>/change-plan.md`**：
+**第三步 a：加载测试约束**
 
-**写入 `change-plan.md` 的内容：**
+在拆分任务之前，必须先读取测试相关的 rules，了解哪些文件/类型不需要测试：
+
+1. 读取 `<task_dir>/routing-table.md`
+2. 提取所有 `Applies to` 列包含 `test` 的 rules 文件路径
+3. **Read 这些文件**，特别关注其中的排除约束（如"不写 DTO/Record/VO/Config/Mapper/Entity 的测试"、"只对 Service 和 Util 编写测试"等）
+4. 将提取的约束记录下来，作为任务拆分的过滤条件
+
+**第三步 b：拆分任务**
+
+将变更拆分为独立的 TDD 任务，每个任务对应一个可验证的修改单元。**拆分时必须遵守第三步 a 中加载的测试约束**，不为被明确排除的文件类型生成测试任务。
+
+**将变更计划写入 `<task_dir>/change-plan.md`**：
+
 ```markdown
 # 变更计划
 
@@ -151,6 +163,9 @@ description: |
 
 ## 特殊约束
 - {用户指定的约束，如"禁止mock"等}
+
+## 测试排除项（基于 rules）
+- {从 test rules 中提取的排除约束，如"不测试 DTO/Entity/Config/Mapper"}
 ```
 
 **必须等待用户明确批准后才能继续。** 用户可以要求修改计划（修改后重新写入 `change-plan.md`）。
