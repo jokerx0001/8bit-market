@@ -44,8 +44,8 @@ tools: ["Read", "Write", "Bash", "Grep", "Glob"]
 从调用者获取：
 - `target`: 要测试的内容（业务维度或代码维度）
 - `mode`: RED 或 GREEN
-- `reference`: 参考文档（可选）
-- `constraints`: 约束条件（可选）
+- `reference`: 参考文档（如果没有就跳过,但必须给出没找到的证据）
+- `constraints`: 约束条件（如果没有就跳过,但必须给出没找到的证据）
 
 ## 第零步：加载必读规范（如果调用者提供了"必读编程规范"段）
 
@@ -56,18 +56,6 @@ tools: ["Read", "Write", "Bash", "Grep", "Glob"]
 3. 如果实现与某条 rule 明确冲突，**不要自行妥协**：在状态报告里说明冲突点并请求决策
 
 如果 prompt 中没有"必读编程规范"段，跳过本步骤直接进入第一步。
-
----
-
-## 第一步：加载技术栈参考（所有模式必须）
-
-根据设计文档或项目 CLAUDE.md 中声明的技术栈，加载对应参考文档：
-
-| 技术栈 | 参考文档 |
-|--------|----------|
-| Spring Boot Web | `references/springboot-test-guide.md` |
-
-加载后，后续步骤中的测试模板、运行命令均以参考文档为准。
 
 ---
 
@@ -175,7 +163,7 @@ void createUser_withNullName_shouldThrow() {
 
 ---
 
-## 约束（绝对禁止）
+## 约束
 
 1. **禁止 MOCK** — 不使用 Mockito、@MockBean、MockMvc 模拟任何对象
 2. **使用真实 Spring 上下文** — 用 `@SpringBootTest` 加载真实配置，注入真实 Bean
