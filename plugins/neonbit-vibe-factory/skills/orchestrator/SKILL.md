@@ -146,26 +146,12 @@ idle → requirements_collected → architecture_design → detailed_design
 **触发**: 接口设计完成
 
 **执行**:
-1. **加载测试约束**：读取 `.neonbit-vibe-factory/feat-{N}/routing-table.md`，提取 `Applies to` 含 `test` 的 rules 文件，Read 这些文件，提取排除约束（如"不测试 DTO/Entity/Config/Mapper"），传递给 writing-plans 作为任务拆分约束
+1. **加载 Rules**：读取 `.neonbit-vibe-factory/feat-{N}/routing-table.md`，提取全部 rules 文件路径，Read 这些文件。提取 coding rules（编码规范、设计模式、安全约束作为审查标准）和 test rules（排除不测试的文件如"不测试 DTO/Entity/Config/Mapper",作为审查测试代码标准），传递给 writing-plans 作为任务拆分约束
 2. 调用 `Skill` 工具加载 `superpowers:writing-plans`
 3. 基于以上所有设计文档和测试约束，生成执行计划
 4. 保存到 `.neonbit-vibe-factory/feat-{N}/plan.md`
 5. **等待用户审查**执行计划
-6. 用户批准后，输出上下文清理提示，进入阶段 6
-
-**上下文清理提示**:
-```
-## 上下文已清理
-
-设计文档已就绪，开发阶段将以设计文档为准：
-- requirements.md — 需求定义
-- architecture.md — 架构设计
-- design.md — 详细设计
-- openapi.yaml — 接口规范
-- plan.md — 执行计划
-
-不参考任何之前的需求讨论、架构辩论等过程性内容。
-```
+6. 用户批准后进入阶段 6。设计文档与之前讨论冲突时，以设计文档为准。
 
 ### 阶段 6: 后端开发 (backend_development)
 
@@ -191,9 +177,7 @@ orchestrator → 加载 tdd-conductor skill → spawn test agent (RED)
 
 **约束（必须遵守）**:
 - 不允许有空代码或假代码
-- **只参考设计文档**：requirements.md、architecture.md、design.md、openapi.yaml、plan.md
-- **不参考过程讨论**：不参考需求收集、架构辩论等任何过程性讨论内容
-- 设计文档与之前讨论冲突时，以设计文档为准
+- 以设计文档（requirements.md、architecture.md、design.md、openapi.yaml、plan.md）为准，与之前讨论冲突时以文档为准
 
 ### 阶段 7: 前端开发 (frontend_development)
 
@@ -215,8 +199,7 @@ orchestrator → 加载 tdd-conductor skill → spawn test agent (RED)
 4. 保存 UI 设计文档到 `.neonbit-vibe-factory/feat-{N}/ui-design.md`
 
 **约束（必须遵守）**:
-- **只参考设计文档**：ui-design.md、page-design.md、requirements.md
-- **不参考过程讨论**：不参考之前的 UI 讨论、需求讨论等过程性内容
+- 以设计文档（ui-design.md、page-design.md、requirements.md）为准
 
 **跳过输出**:
 ```
@@ -249,8 +232,7 @@ orchestrator → 加载 tdd-conductor skill → spawn test agent (RED)
 8. 全部测试通过后任务完成
 
 **约束（必须遵守）**:
-- **只参考设计文档**：ui-design.md、openapi.yaml、requirements.md
-- **不参考过程讨论**：不参考之前的讨论内容
+- 以设计文档（ui-design.md、openapi.yaml、requirements.md）为准
 
 **示例调用**:
 ```

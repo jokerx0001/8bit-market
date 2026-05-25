@@ -85,13 +85,15 @@ description: |
 
 ### 第二步：拆分 TDD 任务
 
-**第二步 a：加载测试约束**
+**第二步 a：加载 Rules**
 
-在拆分任务之前，必须先读取测试相关的 rules，了解哪些文件/类型不需要测试：
+在拆分任务之前，必须从 routing-table.md 加载所有相关 rules：
 
 1. 读取 `<task_dir>/routing-table.md`
-2. 提取所有 `Applies to` 列包含 `test` 的 rules 文件路径
-3. **Read 这些文件**，特别关注其中的排除约束（如"不写 DTO/Record/VO/Config/Mapper/Entity 的测试"、"只对 Service 和 Util 编写测试"等）
+2. 提取所有 rules 文件路径，按 Applies to 分类
+3. **Read 全部 rules 文件**，提取关键信息：
+   - **coding rules**：编码规范、设计模式、安全约束 → 用于确定实现标准和审查依据
+   - **test rules**：1.排除不测试内容（如"不写 DTO/Record/VO/Config/Mapper/Entity 的测试"）→ 用于过滤无效测试任务 2.用来审查测试代码
 4. 将提取的约束记录下来，作为任务拆分的过滤条件
 
 **第二步 b：拆分任务**
@@ -273,7 +275,7 @@ GREEN
 
 ### 第六步：REFACTOR 审查
 
-你（主会话）直接审查代码质量，不需要 spawn agent：
+你（主会话）直接审查代码质量，不需要 spawn agent。以第二步 a 中已加载的 coding rules 为审查标准：
 
 **审查清单：**
 1. 代码是否实现了设计文档中定义的功能？
@@ -281,7 +283,10 @@ GREEN
 3. 是否有空代码或假代码？
 4. 是否修改了测试代码？（不允许）
 5. 是否有任务范围外的修改？
-6. 代码可读性和命名是否清晰？
+6. 代码是否符合 coding rules 中的编码规范和设计模式？
+6. 测试代码是否符合 test rules 中的规范？
+7. 代码可读性和命名是否清晰？
+8. 所有已有测试是否仍然通过？
 
 **如果代码不合格：**
 - 记录具体问题
