@@ -29,7 +29,9 @@ app:
 ```
 
 ## controller层
-- 只处理HTTP请求和响应，调用service层执行业务逻辑
+- 只处理HTTP请求和响应，调用service层执行业务逻辑。
+- 不允许在controller里写业务逻辑
+- 不允许在controller里访问数据库
 - Use Bean Validation (@NotNull, @NotBlank, @Size) on DTOs
 ```java
     public ApiResponse<String> update(@RequestBody @Valid UpdateUserVO updateUserVO) {

@@ -218,29 +218,175 @@ orchestrator → 加载 tdd-conductor skill → spawn test agent (RED)
 - 检查 `ui-design.md` 或 `page-design.md` 是否存在
 - 若无前端设计文档 → **跳过此阶段，直接进入阶段 9**
 
+**循环参数**:
+
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| `max_rounds` | 5 | E2E 重跑最大轮数（8b → 8f 外层循环） |
+| `coding_max_retries` | 10 | 单轮内 coding 修复+审查+test 验证最大重试次数（8d → 8e → 8e2 内层循环） |
+| `health_check_timeout` | 60 | 服务启动健康检查超时秒数 |
+| `health_check_interval` | 2 | 健康检查轮询间隔秒数 |
+
 **执行**:
-1. 读取 `.neonbit-vibe-factory/feat-{N}/ui-design.md` 或 `page-design.md`
-2. 提取页面列表（如有多个页面用逗号分隔）
-3. 调用 `e2e-test` agent，传递：
-   - `pages`: 页面列表
-   - `baseDir`: 前端源码目录
-   - `testOutputDir`: 测试输出目录
-4. e2e-test agent 生成 Playwright 测试
-5. 编写测试用例，提交 `conductor` 审查
-6. 审查通过后执行测试
-7. 分析测试结果，分配 BUG 修复
-8. 全部测试通过后任务完成
+
+#### 8a. 启动服务
+
+1. 读取 `.neonbit-vibe-factory/feat-{N}/stack.json`，获取后端框架和前端框架信息
+2. **端口发现**（Spring Boot 配置继承链：按顺序读取 `application.yml` → `application-{profile}.yml`，后读的覆盖先读的；最终未找到则用默认值）：
+   - Spring Boot 后端默认端口: `8080`
+   - Vite 前端默认端口: `5173`
+   - 约定后端 profile 为 `local`
+3. 启动后端（Bash background，记录 PID）：
+   - Maven: `mvn spring-boot:run -Dspring-boot.run.profiles=local`
+   - Gradle: `./gradlew bootRun --args='--spring.profiles.active=local'`
+4. 启动前端（Bash background，记录 PID）：`pnpm run dev`
+5. **健康检查**：轮询后端 `/actuator/health` 和前端 `/`，`health_check_interval` 秒间隔，`health_check_timeout` 秒超时。超时则报错退出，先 kill 已启动的进程
+6. 构造服务地址：
+   - `frontendURL` = `http://localhost:{frontendPort}`
+   - `baseURL` = `http://localhost:{backendPort}`
+
+#### 8b. spawn e2e-test agent（FULL-RUN 模式）
+
+**注入 rules**：从 `<task_dir>/routing-table.md` 中提取 `Applies to` 含 `e2e` 的 rules 路径列表，追加到 prompt 的"必读编程规范"段。
+
+```
+Agent({
+  subagent_type: "neonbit-vibe-factory:e2e-test:e2e-test",
+  prompt: `
+## 任务描述
+对以下页面执行 E2E 测试
+
+## 页面列表
+{从 ui-design.md 或 page-design.md 提取的页面列表}
+
+## 服务地址
+- frontendURL: {frontendURL}
+- baseURL: {baseURL}
+
+## 源码目录
+{前端页面源码根目录}
+
+## 测试输出目录
+./e2e-tests
+
+## 模式
+FULL-RUN
+
+FULL-RUN 模式说明：
+- 跳过审查循环（第四步、第五步），不需要等待 APPROVED
+- 变更检测后，对变更页面生成/更新测试文件
+- 直接进入第六步执行测试
+- 测试完成后输出结构化失败报告
+
+开始执行 E2E 测试。
+  `
+})
+```
+
+#### 8c. 主会话分析测试结果
+
+```
+├── 全部通过 → 跳到 8g（停服完成）
+├── 测试代码问题（选择器定位错误、等待超时配置不当等）：
+│   → 反馈具体问题给 e2e-test agent，重新 spawn（本轮不消耗 coding_max_retries）
+│   → 最多 2 次测试修复尝试，仍失败则降级为业务代码问题处理
+└── 业务代码问题（接口返回错误、页面逻辑缺陷、数据问题等）→ 进入 8d
+```
+
+#### 8d. spawn coding agent 修复业务代码
+
+**注入 rules**：从 `<task_dir>/routing-table.md` 中提取 `Applies to` 含 `coding` 的 rules 路径列表，追加到 prompt 的"必读编程规范"段。
+
+```
+Agent({
+  subagent_type: "neonbit-vibe-factory:coding:coding",
+  prompt: `
+## 任务描述
+修复 E2E 测试发现的 BUG
+
+## 失败测试信息
+{从 e2e-test agent 返回的结构化失败报告中提取：测试名称、错误类型、错误信息、截图路径、疑似根因模块、相关接口}
+
+## E2E 测试文件位置
+{e2e 测试文件路径}
+
+## 实现约束
+1. 分析失败原因，修复业务代码
+2. 不修改任何测试代码（含 E2E 测试和单元/集成测试）
+3. 修复范围限于失败测试对应的功能模块
+4. 不写假代码 (NotImplementedException / TODO)
+
+开始执行 BUG 修复。
+  `
+})
+```
+
+#### 8e. 主会话审查代码变更
+
+**审查清单**：
+1. 修复是否针对失败原因？
+2. 是否有超范围修改？（含修改测试代码、改动无关文件、改动计划外模块）
+3. 是否有空代码/假代码？
+4. 是否符合 coding rules？
+
+```
+├── 合格 → 进入 8e2
+└── 不合格 → 反馈具体问题给 coding agent，重新 spawn（8d），不消耗 coding_max_retries
+```
+
+#### 8e2. spawn test agent 验证
+
+```
+Agent({
+  subagent_type: "neonbit-vibe-factory:test:test",
+  prompt: `
+## 任务描述
+运行受影响模块的全部测试，验证 BUG 修复没有破坏已有功能
+
+## 模式
+GREEN
+
+## 受影响模块
+{根据 coding agent 修改的文件推断}
+
+## 验证要求
+1. 运行受影响模块的全部单元测试和集成测试
+2. 如果有测试失败，报告失败的测试和原因
+3. 确认所有已有测试仍然通过
+
+开始执行测试验证。
+  `
+})
+```
+
+**评估**：
+```
+├── 全部通过 → 进入 8f
+└── 有失败 → 失败信息反馈给 coding agent，回到 8d（消耗 1 次 coding_max_retries）
+```
+
+#### 8f. 判断
+
+```
+本轮 E2E 修复完成，round++
+
+├── 全部 E2E 通过 → 跳到 8g
+├── round < max_rounds → 回到 8b 重跑 E2E（不重启服务）
+├── coding_max_retries 耗尽 → 标记需人工介入，进入 8g
+└── round >= max_rounds → 标记需人工介入，进入 8g
+```
+
+#### 8g. 停服清理
+
+1. 输出最终报告（通过数/失败数/轮数/是否人工介入）
+2. kill 后端进程（从 PID 文件读取）
+3. kill 前端进程（从 PID 文件读取）
+4. 清理 PID 文件 `/tmp/neonbit-e2e-backend.pid`、`/tmp/neonbit-e2e-frontend.pid`
 
 **约束（必须遵守）**:
 - 以设计文档（ui-design.md、openapi.yaml、requirements.md）为准
-
-**示例调用**:
-```
-调用 e2e-test agent:
-- pages: login, user-list, user-edit
-- baseDir: ./frontend/src/views
-- testOutputDir: ./e2e-tests
-```
+- 无论测试结果如何，8g 清理步骤必须执行
+- 服务启动失败时，先 kill 已启动的进程再报错
 
 **跳过输出**:
 ```

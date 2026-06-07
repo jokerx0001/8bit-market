@@ -54,19 +54,27 @@ tools: ["Read", "Write", "Bash", "Grep", "Glob"]
 - `pages`: 页面列表（逗号分隔），如 `login, user-list`
 - `baseDir`: 页面源码根目录（默认 `./`）
 - `testOutputDir`: 测试输出目录（默认 `./e2e-tests`）
+- `frontendURL`: 前端服务地址，如 `http://localhost:5173`（必需，FULL-RUN 模式下必须提供）
+- `baseURL`: 后端 API 地址，如 `http://localhost:8080`（必需，FULL-RUN 模式下必须提供）
+- `mode`: 运行模式，`FULL-RUN` 或 `GENERATE-ONLY`（默认 `GENERATE-ONLY`）
 
 解析优先级：
-1. 显式 key-value：`pages=login,user-list baseDir=./frontend`
+1. 显式 key-value：`pages=login,user-list baseDir=./frontend frontendURL=http://localhost:5173`
 2. 自然语言模式：`为 login、user-list、app-bind 这三个页面编写测试，源码在 ./frontend/src/views`
+3. 从 prompt 中提取 `## 服务地址` 和 `## 模式` 段落
 
 示例任务：
 > "为 login、user-list、app-bind 这三个页面编写 E2E 测试，源码在 ./frontend/src/views，输出到 ./e2e-tests"
+> "frontendURL: http://localhost:5173, baseURL: http://localhost:8080, mode: FULL-RUN"
 
 解析结果：
 ```
 pages: [login, user-list, app-bind]
 baseDir: ./frontend/src/views
 testOutputDir: ./e2e-tests
+frontendURL: http://localhost:5173
+baseURL: http://localhost:8080
+mode: FULL-RUN
 ```
 
 ### 第二步：变更检测
@@ -97,15 +105,20 @@ e2e-tests/
 ```
 
 **Page Object 模板：**
+
+`page.goto()` 必须使用 `frontendURL` 拼接绝对路径（Playwright 需要完整 URL 访问真实服务）。
+
 ```typescript
 // e2e-tests/pages/{page-name}/{PageName}.ts
 import { Page } from '@playwright/test';
+
+const FRONTEND_URL = '{frontendURL}';  // 由调用者注入
 
 export class {PageName}Page {
   constructor(private page: Page) {}
 
   async goto(path: string = '') {
-    await this.page.goto(`/${path || '{page-route}'}`);
+    await this.page.goto(`${FRONTEND_URL}/${path || '{page-route}'}`);
   }
 
   async waitForPageReady() {
@@ -130,10 +143,15 @@ test.describe('{PageName} 页面测试', () => {
   });
 
   test('页面正常加载', async () => {
-    // 通用断言：页面关键元素存在
     await expect(pageObj.page.locator('body')).toBeVisible();
   });
 });
+```
+
+**API 调用**（如果测试需要直接调后端接口）使用 `baseURL`：
+```typescript
+const BASE_URL = '{baseURL}';  // 由调用者注入
+await page.request.post(`${BASE_URL}/api/xxx`, { data: {...} });
 ```
 
 **根据页面内容智能生成测试：**
@@ -142,7 +160,13 @@ test.describe('{PageName} 页面测试', () => {
 - 无 testid 时使用语义化选择器（`button:has-text()`, `input[type="text"]`）
 - 识别页面路由路径
 
-### 第四步：提交审查
+### 第四步：模式路由
+
+**`mode` 判断**：
+- `mode == "FULL-RUN"` → 跳过第四步和第五步（审查循环），直接进入第六步执行测试
+- `mode == "GENERATE-ONLY"` 或未指定 → 进入下面的第四步提交审查
+
+### 第四步 b：提交审查（仅 GENERATE-ONLY 模式）
 
 向主 agent 报告：
 ```
@@ -171,7 +195,7 @@ test.describe('{PageName} 页面测试', () => {
 请审查测试范围是否正确。
 ```
 
-### 第五步：审查循环
+### 第五步：审查循环（仅 GENERATE-ONLY 模式）
 
 等待主 agent 反馈：
 
@@ -201,30 +225,63 @@ test.describe('{PageName} 页面测试', () => {
 cd {testOutputDir}
 npx playwright test --reporter=list
 ```
-4. 捕获结果：passed/failed 数量、失败用例的截图路径、错误信息
+4. **重跑支持**：如果调用者指定了 `--grep` 过滤条件（如只跑失败用例），追加到命令：
+```bash
+npx playwright test --reporter=list --grep="{test name pattern}"
+```
+5. 捕获结果：passed/failed 数量、失败用例的截图路径、错误信息
 
 ### 第七步：返回结果
 
+**全部通过时**：
 ```
 ## E2E 测试结果
 
 ### 执行摘要
 - 总用例：12
-- 通过：10
-- 失败：2
-
-### 失败详情
-1. login-success-redirects-to-home
-   - 错误：expected URL to match /home/, got /login/
-   - 截图：e2e-tests/reports/screenshots/login-success-redirects-to-home.png
-
-2. user-list-create-user-success
-   - 错误：timeout waiting for element
-   - 截图：e2e-tests/reports/screenshots/user-list-create-user-success.png
+- 通过：12
+- 失败：0
 
 ### 测试报告
 HTML 报告：e2e-tests/reports/html/index.html
 ```
+
+**有失败时，输出结构化失败报告**（供 coding agent 消费）：
+
+```
+## E2E 测试结果
+
+### 执行摘要
+- 总用例：{N}
+- 通过：{passed}
+- 失败：{failed}
+
+## 失败用例（结构化）
+
+### FAIL-1: {测试用例名称}
+- 错误类型: ASSERTION | TIMEOUT | NETWORK | ELEMENT_NOT_FOUND | UNKNOWN
+- 错误信息: {Playwright 原始错误消息}
+- 截图: {截图相对路径}
+- 疑似根因模块: {根据页面和错误推断的后端/前端模块}
+- 相关接口: {涉及的 API 路径，如 POST /api/login}
+
+### FAIL-2: ...
+
+### 测试报告
+HTML 报告：e2e-tests/reports/html/index.html
+```
+
+**失败用例分类规则**：
+- `ASSERTION`: expect 断言失败（页面行为不符合预期）
+- `TIMEOUT`: 等待元素/导航超时（页面加载慢或元素不存在）
+- `NETWORK`: 网络请求失败（connection refused, 5xx）
+- `ELEMENT_NOT_FOUND`: 选择器匹配不到元素（页面结构变更或 BUG）
+- `UNKNOWN`: 其他错误
+
+**疑似根因模块推断规则**：
+- 根据失败用例所在的 Page Object 和 spec 文件名推断对应的前端组件/页面
+- 根据错误涉及的 API 路径推断对应的后端 Controller/Service
+- 无法推断时填写 `未知，需人工分析`
 
 ## 变更检测文件存储
 
@@ -239,8 +296,10 @@ HTML 报告：e2e-tests/reports/html/index.html
 ## 错误处理
 
 - 页面目录不存在：跳过该页面，在审查报告中注明
-- 解析失败（无法识别 pages）：向主 agent 请求澄清
+- 解析失败（无法识别 pages/frontendURL/baseURL）：向主 agent 请求澄清
 - Playwright 未安装：返回错误提示，指导安装步骤
+- 服务连接失败（FULL-RUN 模式下 frontendURL 不可达）：报告 `NETWORK` 错误，提示检查服务是否启动
+- FULL-RUN 模式下未提供 frontendURL/baseURL：报错，要求主 agent 提供服务地址
 
 ## 质量标准
 
