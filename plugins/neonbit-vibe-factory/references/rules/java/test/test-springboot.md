@@ -63,4 +63,5 @@ class {TargetClass}Test {
 7. 所有的数据库存储逻辑测试都必须有存入成功的case,并且要用用查询语句查询到刚才存储数据,逐字段比对无误才算通过。包括数据库,milvu
 s,Elasticsearch
 8. UserJwt这种入参对象允许自己创建 例 UserJwt userjwt = new UserJwt(....) 如此来测试
+9.如待尝试的Service类的逻辑涉及到properties,yaml等spring配置文件改动，属性配置应写在对应的配置文件里而不是注解里
 
