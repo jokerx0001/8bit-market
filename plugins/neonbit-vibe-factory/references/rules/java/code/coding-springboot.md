@@ -33,6 +33,7 @@ app:
 - 不允许在controller里写业务逻辑
 - 不允许在controller里访问数据库
 - Use Bean Validation (@NotNull, @NotBlank, @Size) on DTOs
+- 返回值必须是确定的,如ApiResponse<String>,不允许ApiResponse<?> ApiResponse<Object>等行为
 ```java
     public ApiResponse<String> update(@RequestBody @Valid UpdateUserVO updateUserVO) {
         userService.update(updateUserVO);

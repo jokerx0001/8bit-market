@@ -1,6 +1,6 @@
 {
   "name": "neonbit-vibe-factory",
-  "version": "0.16.0",
+  "version": "0.16.1",
   "description": "Development task workflow orchestrator - from requirements to E2E testing",
   "author": {
     "name": "neonbit",
