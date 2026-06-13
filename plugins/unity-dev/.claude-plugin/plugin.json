@@ -1,0 +1,10 @@
+{
+  "name": "unity-dev",
+  "version": "0.1.0",
+  "description": "Unity AI-safe development plugin. Enforces safe collaboration patterns where AI handles C# logic while humans own Scene/Prefab/Animator. Provides plan-driven development with TDD execution.",
+  "author": {
+    "name": "jokerx001"
+  },
+  "license": "MIT",
+  "keywords": ["unity", "game-development", "tdd", "ai-safe", "csharp"]
+}
