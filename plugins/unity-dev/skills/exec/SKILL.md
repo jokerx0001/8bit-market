@@ -2,14 +2,24 @@
 name: unity-dev:exec
 description: "Execute a Unity implementation plan with TDD. Use when asked to 'execute the plan', 'start implementation'. 执行计划，TDD 驱动实现。"
 argument-hint: [plan file path]
-allowed-tools: Read, Write, Bash, Grep, Glob, Edit, Agent, TaskCreate, TaskUpdate, TaskList
 ---
 
 # Unity AI-Safe 开发 — 执行阶段
 
 ## 用途
 
-读取实现计划，按 TDD 循环逐任务执行。写测试 → 分发子代理实现 → 运行测试验证。
+读取实现计划，按 TDD 循环逐任务执行。
+
+## TDD流程
+写测试 → 分发subagent实现 → 运行测试验证→ 通过，下一项
+                               |
+                               |---- 不通过,交由subagent修复
+
+## 核心原则
+
+**方式铁律: 无论任务是什么,必须用TDD完成
+**TDD 铁律：没有失败测试就不允许写生产代码**
+**工作边界 铁律：多agent执行规则必须遵守**
 
 ---
 
@@ -212,6 +222,9 @@ Debug.Log($"[VERIFY] {SystemName} received event, state={currentState}");
 
 ### 7. 提醒人工任务
 
+### Never claim a task is complete unless:
+1. 输出下面的完成报告
+
 ```
 ## 执行完成
 
@@ -226,12 +239,3 @@ Debug.Log($"[VERIFY] {SystemName} received event, state={currentState}");
 运行 /unity-dev:review 验证实现是否符合安全原则。
 ```
 
----
-
-## 安全拦截
-
-执行过程中以下操作被**阻止**：
-
-- 修改 `.unity`、`.prefab`、`.controller`、`.anim` 文件 → 跳过并标记为 `[HUMAN]`
-- 在 Factory 类之外直接调用 `transform.position`、`GetComponent<>()`、`Destroy()`、`Instantiate()` → 子代理必须使用安全模式
-- 散布 boolean 状态标志 → 用 StateMachine 转换替代

@@ -47,7 +47,7 @@
     {
       "name": "unity-dev",
       "description": "Unity AI-safe 开发插件 - AI 负责 C# 逻辑，人类掌控 Scene/Prefab/Animator，计划驱动 + TDD 执行",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "source": "./plugins/unity-dev",
       "category": "development",
       "author": {

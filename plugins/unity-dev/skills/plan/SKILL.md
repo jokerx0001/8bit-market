@@ -2,14 +2,14 @@
 name: unity-dev:plan
 description: "Plan a Unity feature following AI-safe architecture. Use when asked to 'implement/design/plan a Unity feature'. 规划 Unity 功能开发，生成实现计划文档。"
 argument-hint: <功能描述>
-allowed-tools: Read, Write, Bash, Grep, Glob, Skill
 ---
 
 # Unity AI-Safe 开发 — 规划阶段
 
-## 用途
+分析 Unity 开发需求，生成严格遵守 AI-Safe 模式的实现计划文档。
 
-分析 Unity 开发需求，生成严格遵守 AI-Safe 模式的实现计划文档。此 skill **只做分析和规划**，不写实现代码。
+## 核心原则
+**铁律 此 skill **只做分析和规划并输出文档**，不写实现代码。
 
 ---
 
@@ -102,20 +102,11 @@ grep -r "^namespace " --include="*.cs" --max-count=5 | head -10
 **新建 Entities：** N 个
 **人工任务：** N 个
 
-计划已保存：.claude/unity-dev/plans/{feature-name}.md
+# Completion Gate
 
-下一步：/unity-dev:exec 执行此计划
-```
+Never claim a task is complete unless:
 
----
+1. 执行了工作流的所有步骤
+2. 输出了所有需要的文档并输出路径，提交人类确认
+3. 输出需要人类执行的结果，必须来自于文档中，指出具体文档目录
 
-## 安全约束（不可违反）
-
-- 任何 AI 任务不得涉及修改 Scene / Prefab / Animator
-- 所有跨系统通信使用 EventBus
-- 所有状态集中管理（GameStateMachine 控流程，专用 State 对象存数据）
-- ScriptableObject 只含数据字段
-- Entity 创建走 Factory + Config 模式
-- 不直接操作 Unity 组件
-
-如果需求**本质上需要** Scene/Prefab/Animator 操作，明确标记为 `[HUMAN]` 并写清步骤。
