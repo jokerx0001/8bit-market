@@ -7,8 +7,21 @@
 ## 文件路径
 
 ```
-.claude/unity-dev/plans/{feature-name}.md
+.unity-dev/feat-{N}/plan.md
 ```
+
+路径中的 `{N}` 为自增编号（feat-1, feat-2, ...），由 `unity-dev:artifact-manager` skill 的 `create_task` 操作生成。每个任务的所有文档存储在同一目录下。
+
+## 状态管理
+
+Plan 文档的生命周期由 `.unity-dev/current-state.json` 追踪：
+
+- `plan` skill 通过 `artifact-manager` 创建任务目录和保存 plan.md
+- Plan 生成后进入 `plan_generated` 阶段，必须等待用户审批
+- 用户批准后阶段切换为 `plan_approved`，exec 方可执行
+- `exec` skill 通过 `artifact-manager` 的 `get_active_plan` 发现计划
+
+详见 `skills/artifact-manager/SKILL.md`。
 
 ---
 

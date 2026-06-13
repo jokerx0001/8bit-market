@@ -10,13 +10,25 @@ Unity has visual editor systems (Scene, Prefab, Animator) that AI cannot safely 
 
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
-| `plan` | `/unity-dev:plan <task>` or auto-activate | Analyze requirements → documented implementation plan |
-| `exec` | `/unity-dev:exec` | Execute plan via TDD: write tests → subagent implements → verify |
+| `plan` | `/unity-dev:plan <task>` | Analyze requirements → documented implementation plan (requires user approval) |
+| `exec` | `/unity-dev:exec` | Execute approved plan via TDD: write tests → subagent implements → verify |
+| `artifact-manager` | (internal) | Manage `.unity-dev/` documents, state tracking, and approval gates |
 | `scaffold-core` | `/unity-dev:scaffold-core` | Generate GameManager + StateMachine + EventBus + Log |
 | `scaffold-system` | `/unity-dev:scaffold-system <name>` | Generate a System class template |
 | `scaffold-entity` | `/unity-dev:scaffold-entity <name>` | Generate Controller + SO Data + Factory |
 | `scaffold-event` | `/unity-dev:scaffold-event <name>` | Generate an Event type |
 | `review` | `/unity-dev:review` | Audit C# code against safety principles |
+
+## Workflow
+
+```
+/unity-dev:plan <feature>
+  → 生成 plan 文档到 .unity-dev/feat-{N}/plan.md
+  → 用户审阅并回复 "approve" 批准
+  → /unity-dev:exec 执行 TDD 实现
+```
+
+All design documents are stored under `.unity-dev/` at the project root.
 
 ## Usage
 
@@ -24,7 +36,10 @@ Unity has visual editor systems (Scene, Prefab, Animator) that AI cannot safely 
 # Plan a feature
 /unity-dev:plan 实现战斗系统
 
-# Execute the plan
+# Review the generated plan at .unity-dev/feat-1/plan.md
+# Reply "approve" to approve
+
+# Execute the approved plan
 /unity-dev:exec
 
 # Generate architecture
