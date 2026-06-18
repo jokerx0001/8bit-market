@@ -27,21 +27,11 @@ ls -d .renpy-dev/feat-*/ 2>/dev/null | sort -V | tail -5
 
 确定 `task_dir`（如 `.renpy-dev/feat-1/`）。
 
-### 2. 加载设计文档
+### 2. 加载 plan.md
 
-依次读取全部设计文档：
-- `{task_dir}/requirements.md`
-- `{task_dir}/architecture.md`
-- `{task_dir}/design.md`
-- `{task_dir}/plan.md`
+**只读取 `{task_dir}/plan.md`**。plan.md 是自包含的——概述、设计摘要、影响范围、任务列表、测试策略全部在此文件中。不读 `.work/` 下的任何中间产物。
 
-这些是实现的唯一真相来源。与之前讨论冲突时，以文档为准。
-
-### 3. 读取格式契约
-
-读取 `plugins/renpy-dev/references/plan-format.md` 获取解析规则。
-
-### 4. 加载进度追踪
+### 3. 加载进度追踪
 
 读取 `{task_dir}/progress.json`。如果不存在，创建：
 
@@ -54,7 +44,7 @@ ls -d .renpy-dev/feat-*/ 2>/dev/null | sort -V | tail -5
 }
 ```
 
-### 5. 解析任务列表
+### 4. 解析任务列表
 
 按 `plan-format.md` 的解析规则提取 `[AI-N]` 任务：
 
@@ -69,7 +59,7 @@ ls -d .renpy-dev/feat-*/ 2>/dev/null | sort -V | tail -5
 - `pending` 或无记录 → 待执行
 - `in_progress` → 上次中断点，从此任务继续
 
-### 6. 确认测试可用性
+### 5. 确认测试可用性
 
 ```bash
 ls tools/test.py 2>/dev/null && echo "READY" || echo "MISSING"
@@ -77,7 +67,7 @@ ls tools/test.py 2>/dev/null && echo "READY" || echo "MISSING"
 
 如果 `tools/test.py` 不存在，提示用户从 `assets/test-infra/` 安装测试基础设施。
 
-### 7. TDD 循环执行每个任务
+### 6. TDD 循环执行每个任务
 
 对每个待执行的 `[AI-N]` 任务：
 
@@ -98,13 +88,13 @@ Agent({
 为 [AI-N] {任务描述} 编写测试
 
 ## 设计上下文
-{从 requirements.md, architecture.md, design.md 中提取的关于此任务的设计约束}
+{从 plan.md 的"概述"和"设计摘要"段提取的关于此任务的设计约束}
 
 ## 目标行为
 {此任务应该实现什么行为}
 
 ## 测试文件位置
-{根据 plan.md 的测试策略段确定输出路径}
+{根据 plan.md 的"测试策略"段确定输出路径}
 
 ## 测试层
 {structure / behavior / visual — 根据 plan.md 测试策略段}
@@ -117,8 +107,8 @@ Agent({
 5. 使用 test_framework helper API
 6. 新 screen 的测试如果用 visual 层，需要 widget 有 id — 如果没有 id，在测试文件注释中提醒 HUMAN 任务
 
-## 当前 plan 文档
-{plan.md 中与本任务相关的段}
+## plan 文档相关段
+{plan.md 中与本任务相关的"影响范围"和"测试策略"段}
   `
 })
 ```
@@ -143,8 +133,8 @@ Agent({
 ## 任务
 [AI-N] {任务描述}
 
-## 设计文档上下文
-{从所有设计文档中提取的关于此任务的关键设计决策和约束}
+## 设计上下文
+{从 plan.md 的"概述"和"设计摘要"段提取的关于此任务的关键设计决策和约束}
 
 ## 需要通过的测试
 {7b 中 test agent 写的测试代码}
@@ -208,9 +198,9 @@ Agent({
 
 调用 `renpy-dev:review` skill 审查代码变更：
 
-1. coding agent 的实现是否符合设计文档？
+1. coding agent 的实现是否符合 plan.md 的设计摘要？
 2. 是否修改了测试代码？（零容忍）
-3. 是否有超出 plan.md 范围的改动？
+3. 是否有超出 plan.md 影响范围的改动？
 4. 新增 screen 的关键 widget 是否有 `id`？
 5. 跨文件 `jump/call` 目标是否存在？
 6. `OWN_MANIFEST.json` 是否已更新？
@@ -232,7 +222,7 @@ Agent({
    文件: {创建/修改的文件列表}
 ```
 
-### 8. 提醒人工任务
+### 7. 提醒人工任务
 
 所有 AI 任务完成后，汇总 `[HUMAN]` 任务：
 
@@ -245,7 +235,7 @@ Agent({
 完成人工任务后，运行 /renpy-dev:review 进行最终审查。
 ```
 
-### 9. 最终验证
+### 8. 最终验证
 
 1. 运行 `python tools/test.py`（全部三层）检查回归
 2. 输出完成摘要

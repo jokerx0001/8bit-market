@@ -60,14 +60,12 @@ plan → 直接进入 exec → review → 完成
 
 1. 加载 `renpy-dev:plan` skill
 2. 执行设计全流程：
-   - 创建 `.renpy-dev/feat-{N}/` 目录
-   - 收集需求 → `requirements.md`
-   - 架构设计 → `architecture.md`
-   - 详细设计 → `design.md`
-   - 执行计划 → `plan.md`
-3. 输出设计摘要和文档路径
+   - 创建 `.renpy-dev/feat-{N}/.work/` 目录
+   - 中间产物 → `.work/`（requirements, architecture, design）
+   - 自包含计划 → `plan.md`（人类审查此文件）
+3. 输出 plan.md 路径
 
-**正常模式：** 暂停，等待用户审查。
+**正常模式：** 暂停，等待用户审查 plan.md。
 **全自动模式：** 直接进入阶段 2。
 
 状态记录：
@@ -113,7 +111,8 @@ plan → 直接进入 exec → review → 完成
 ## 开发完成
 
 **Feat: feat-{N}**
-**设计文档：** .renpy-dev/feat-{N}/
+**设计文档：** .renpy-dev/feat-{N}/plan.md
+**中间产物：** .renpy-dev/feat-{N}/.work/
 **任务完成：** {done}/{total}
 **测试：** structure ✅ behavior ✅ visual ✅
 **人工任务：** {count} 项待完成

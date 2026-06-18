@@ -5,18 +5,15 @@ description: "Review Ren'Py code against plan documents and boundary rules. Use 
 
 # Ren'Py AI 开发 — 合规审查
 
-审查 agent 产出是否遵守 plan 文档约定和边界规则。只读审计，不修改代码。
+审查 agent 产出是否遵守 plan.md 约定和边界规则。只读审计，不修改代码。
 
 ---
 
 ## 工作流
 
-### 1. 加载上下文
+### 1. 加载 plan.md
 
-读取相关设计文档：
-- `{task_dir}/plan.md` — 任务定义和约束
-- `{task_dir}/design.md` — 详细设计
-- `{task_dir}/architecture.md` — 架构约定
+只读取 `{task_dir}/plan.md`。审查基准是 plan.md 中的设计摘要、影响范围和测试策略。
 
 ### 2. 确定审查范围
 
@@ -53,7 +50,7 @@ grep "^label test_[bv]_" game/tests/test_*.rpy
 | 实现范围是否在 plan.md 的任务列表中？ | 对比变更文件与 plan.md `[AI-N]` 输出路径 |
 | 是否修改了测试代码？ | 检查 game/tests/ 下的变更 — 零容忍 |
 | 是否写了空代码/假代码？ | grep `pass`、`TODO`、`NotImplementedError` |
-| 实现是否遵循设计文档？ | 对比 screen 结构、widget tree、数据流是否匹配 design.md |
+| 实现是否遵循 plan.md 设计摘要？ | 对比 screen 结构、widget tree、数据流是否匹配 plan.md 设计摘要段 |
 
 ```bash
 # 检查空代码

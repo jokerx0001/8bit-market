@@ -18,10 +18,14 @@ description: "Plan Ren'Py feature development. Use when asked to 'design a featu
 确定下一个可用的序号 N，创建目录：
 
 ```bash
-mkdir -p .renpy-dev/feat-{N}
+mkdir -p .renpy-dev/feat-{N}/.work
 ```
 
-### 2. 加载格式契约
+### 2. 读取影响范围约束（仅 refactor）
+
+如果 `{task_dir}/impact.md` 存在（refactor-conductor 写入），读取它。按 `plugins/renpy-dev/references/impact-format.md` 格式解析，其中的修改范围、排除范围、已有测试、风险点、特殊约束是 plan 的硬约束。
+
+### 3. 加载格式契约
 
 读取 `plugins/renpy-dev/references/plan-format.md`。所有输出必须遵守此格式规范，exec skill 依赖此格式解析。
 
@@ -47,7 +51,7 @@ ls tools/test.py 2>/dev/null
 
 ### 4. 收集需求
 
-解析用户的任务描述，生成需求摘要。保存到 `.renpy-dev/feat-{N}/requirements.md`：
+解析用户的任务描述，生成需求摘要。保存到 `.renpy-dev/feat-{N}/.work/requirements.md`：
 
 ```markdown
 # 需求摘要
@@ -75,7 +79,7 @@ ls tools/test.py 2>/dev/null
 - 数据流（label 间传递什么数据、持久化什么数据）
 - Screen 间交互约定
 
-生成 Mermaid 架构图。保存到 `.renpy-dev/feat-{N}/architecture.md`：
+生成 Mermaid 架构图。保存到 `.renpy-dev/feat-{N}/.work/architecture.md`：
 
 ```markdown
 # 架构设计
@@ -106,7 +110,7 @@ ls tools/test.py 2>/dev/null
 - Transform/transition 设计
 - 持久化数据设计（persistent / save）
 
-保存到 `.renpy-dev/feat-{N}/design.md`：
+保存到 `.renpy-dev/feat-{N}/.work/design.md`：
 
 ```markdown
 # 详细设计
@@ -134,7 +138,9 @@ transform xxx:
 
 ### 7. 执行计划
 
-调用 `Skill` 工具加载 `superpowers:writing-plans`，基于以上所有设计文档生成执行计划。
+调用 `Skill` 工具加载 `superpowers:writing-plans`，基于设计文档生成**自包含的 plan.md**（关键决策提炼进去，不引用 .work/ 文件）。
+
+如果在 step 2 读取了 impact.md，plan.md 必须在修改范围、排除范围、已有测试保护、风险应对上遵守 impact.md 的约束。
 
 **传递给 writing-plans 的约束：**
 - 每个 AI 任务必须有 `[AI-N]` 编号 + 输出文件路径 + 依赖标注
@@ -168,20 +174,16 @@ transform xxx:
 ```
 ## Plan: {feature-name}
 
-**设计文档：** .renpy-dev/feat-{N}/
-  - requirements.md
-  - architecture.md
-  - design.md
-  - plan.md
+**审查文件：** .renpy-dev/feat-{N}/plan.md
+**中间产物：** .renpy-dev/feat-{N}/.work/
 
 **AI 任务：** N 个
 **人工任务：** N 个
 **测试覆盖：** structure / behavior / visual
 
 ---
-
-人类审查通过后，运行 `/renpy-dev:start exec .renpy-dev/feat-{N}/plan.md` 开始实现，
-或由 orchestrator 自动进入 exec 阶段。
+人类审查 plan.md 通过后进入 exec。
+exec 只读 plan.md，不读 .work/。
 ```
 
 ---
@@ -191,6 +193,6 @@ transform xxx:
 永远不要声称任务完成，除非：
 
 1. 执行了工作流的所有步骤
-2. 所有四个设计文档已写入 `.renpy-dev/feat-{N}/`
+2. 中间产物已写入 `.renpy-dev/feat-{N}/.work/`，plan.md 已写入 `.renpy-dev/feat-{N}/`
 3. plan.md 通过格式校验清单所有项目
 4. 输出了所有文档路径供人类确认
