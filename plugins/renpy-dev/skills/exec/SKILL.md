@@ -1,0 +1,285 @@
+---
+name: renpy-dev:exec
+description: "Execute a Ren'Py implementation plan with TDD. Use when asked to 'execute the plan', 'start implementation', 'build the feature'. Reads plan documents, spawns subagents for test/code, tracks progress for resume support."
+---
+
+# Ren'Py AI 开发 — 执行阶段
+
+读取实现计划，按 TDD 循环逐任务执行，支持断点续跑。
+
+## 核心原则
+
+**TDD 铁律：没有失败测试就不允许写生产代码。**
+**子代理铁律：coding agent 只写实现，不改测试。test agent 只写测试，不写实现。**
+**任务铁律：不限重试次数，必须完成。连续 5 轮无进展才切换策略。**
+
+---
+
+## 工作流
+
+### 1. 定位任务目录
+
+如果参数提供了 plan 文件路径，使用对应目录。否则查找最近的计划：
+
+```bash
+ls -d .renpy-dev/feat-*/ 2>/dev/null | sort -V | tail -5
+```
+
+确定 `task_dir`（如 `.renpy-dev/feat-1/`）。
+
+### 2. 加载设计文档
+
+依次读取全部设计文档：
+- `{task_dir}/requirements.md`
+- `{task_dir}/architecture.md`
+- `{task_dir}/design.md`
+- `{task_dir}/plan.md`
+
+这些是实现的唯一真相来源。与之前讨论冲突时，以文档为准。
+
+### 3. 读取格式契约
+
+读取 `plugins/renpy-dev/references/plan-format.md` 获取解析规则。
+
+### 4. 加载进度追踪
+
+读取 `{task_dir}/progress.json`。如果不存在，创建：
+
+```json
+{
+  "task_dir": ".renpy-dev/feat-1",
+  "started_at": "{ISO timestamp}",
+  "last_updated": "{ISO timestamp}",
+  "tasks": {}
+}
+```
+
+### 5. 解析任务列表
+
+按 `plan-format.md` 的解析规则提取 `[AI-N]` 任务：
+
+1. 匹配 `- \[AI-(\d+)\]` 提取序号和描述
+2. 匹配 `→ \`(.+)\`` 提取目标文件路径
+3. 匹配 `(依赖: (.+))` 确定执行顺序
+4. 按依赖拓扑排序，无依赖的优先执行
+5. `[HUMAN]` 任务收集但不执行
+
+对每个任务，检查 `progress.json`：
+- `done` → 跳过，输出 `⏭️ [AI-N] 已完成，跳过`
+- `pending` 或无记录 → 待执行
+- `in_progress` → 上次中断点，从此任务继续
+
+### 6. 确认测试可用性
+
+```bash
+ls tools/test.py 2>/dev/null && echo "READY" || echo "MISSING"
+```
+
+如果 `tools/test.py` 不存在，提示用户从 `assets/test-infra/` 安装测试基础设施。
+
+### 7. TDD 循环执行每个任务
+
+对每个待执行的 `[AI-N]` 任务：
+
+#### 7a. 标记开始
+
+更新 `progress.json`：
+```json
+{..., "tasks": {..., "AI-N": {"status": "in_progress", "started_at": "..."}}}
+```
+
+#### 7b. RED — spawn test agent
+
+```
+Agent({
+  subagent_type: "renpy-dev:test-agent",
+  prompt: `
+## 任务
+为 [AI-N] {任务描述} 编写测试
+
+## 设计上下文
+{从 requirements.md, architecture.md, design.md 中提取的关于此任务的设计约束}
+
+## 目标行为
+{此任务应该实现什么行为}
+
+## 测试文件位置
+{根据 plan.md 的测试策略段确定输出路径}
+
+## 测试层
+{structure / behavior / visual — 根据 plan.md 测试策略段}
+
+## 约束
+1. 必须遵循 renpy-dev:test skill 中的测试方法论
+2. 测试断言的是目标行为（不是当前行为）
+3. 测试预期失败（因为功能尚未实现）
+4. 不写任何实现代码
+5. 使用 test_framework helper API
+6. 新 screen 的测试如果用 visual 层，需要 widget 有 id — 如果没有 id，在测试文件注释中提醒 HUMAN 任务
+
+## 当前 plan 文档
+{plan.md 中与本任务相关的段}
+  `
+})
+```
+
+#### 7c. 评估 RED 结果
+
+检查点：
+1. 测试文件已创建/修改？
+2. 测试断言的是目标行为（从设计文档确认）？
+3. 测试语法有效？（运行 `python tools/test.py structure`）
+4. 测试命名符合规范（`test_b_*` / `test_v_*`）？
+
+不合格 → 反馈具体问题，重新 spawn test agent（不消耗重试计数）。
+合格 → 进入 GREEN。
+
+#### 7d. GREEN — spawn coding agent
+
+```
+Agent({
+  subagent_type: "renpy-dev:coding",
+  prompt: `
+## 任务
+[AI-N] {任务描述}
+
+## 设计文档上下文
+{从所有设计文档中提取的关于此任务的关键设计决策和约束}
+
+## 需要通过的测试
+{7b 中 test agent 写的测试代码}
+
+## 实现文件
+{plan.md 中标注的输出文件路径}
+
+## 约束
+1. 只修改使测试通过所需的最少代码
+2. 不修改任何测试代码（game/tests/ 下的文件）（绝对禁止）
+3. 不修改 game/libs/、game/tl/ 等第三方代码
+4. 不写空代码或假代码（pass、TODO、NotImplementedError）
+5. 新增 screen 时必须给关键交互 widget 添加 id 属性
+6. 确保代码语法正确（renpy 可加载）
+7. 不得修改 plan.md 中未列出的文件
+8. 实现必须基于设计文档中的设计，不得自行偏离
+
+## 可用资源
+- 测试方法论文档: plugins/renpy-dev/skills/test/SKILL.md
+- 测试 helper API: game/tests/_framework.rpy
+  `
+})
+```
+
+#### 7e. VERIFY — 运行测试
+
+使用 `python tools/test.py` 运行对应层的测试。
+
+**验证原则（不可妥协）：**
+
+任务完成的判定必须基于**真实的运行时输出** — 从 `tools/test.py` 的 stdout/stderr、`.last_results.json` 中获取的**实际文本**。绝不能凭代码逻辑推测"应该通过"。
+
+1. 运行 `python tools/test.py behavior`（或 visual/structure）
+2. 读取 `game/tests/.last_results.json` 获取测试结果
+3. 对比期待值和实际值：
+
+```
+验证 [AI-N]:
+  测试: test_b_character_select
+  结果: ✅ PASS
+  测试: test_v_character_select
+  结果: ✅ PASS (baseline created)
+  结论: ✅ 全部通过
+```
+
+**失败处理：**
+
+1. 读取 `.last_results.json` 中的失败详情
+2. 对比 expected vs actual，定位具体差异
+3. 分析根因（不是猜测，基于失败事实推导）
+4. 携带**实际输出 + 根因分析**重新 spawn coding agent
+5. 重复直到验证通过
+
+**如果连续 5 轮同一个错误没有进展：**
+- 重新审视测试本身是否合理
+- 检查依赖的前置任务是否有隐含 bug
+- 简化实现方案再逐步扩展
+- 向用户报告当前卡点和已尝试的方案，请求指导
+
+#### 7f. REFACTOR — 主会话审查
+
+调用 `renpy-dev:review` skill 审查代码变更：
+
+1. coding agent 的实现是否符合设计文档？
+2. 是否修改了测试代码？（零容忍）
+3. 是否有超出 plan.md 范围的改动？
+4. 新增 screen 的关键 widget 是否有 `id`？
+5. 跨文件 `jump/call` 目标是否存在？
+6. `OWN_MANIFEST.json` 是否已更新？
+
+合格 → 标记任务完成。
+不合格 → 反馈具体问题，重新 spawn coding agent。
+
+#### 7g. 标记完成
+
+更新 `progress.json`：
+```json
+{..., "tasks": {..., "AI-N": {"status": "done", "completed_at": "..."}}}
+```
+
+输出：
+```
+✅ [AI-N] {任务描述}
+   测试: {通过的测试数量/总数}
+   文件: {创建/修改的文件列表}
+```
+
+### 8. 提醒人工任务
+
+所有 AI 任务完成后，汇总 `[HUMAN]` 任务：
+
+```
+## 待人工完成
+
+- [ ] {HUMAN 任务 1}
+- [ ] {HUMAN 任务 2}
+
+完成人工任务后，运行 /renpy-dev:review 进行最终审查。
+```
+
+### 9. 最终验证
+
+1. 运行 `python tools/test.py`（全部三层）检查回归
+2. 输出完成摘要
+
+---
+
+## 断点续跑
+
+当 exec 在新 session 中被调用时：
+
+1. 读取 `progress.json`
+2. 跳过 `done` 的任务
+3. 找到第一个非 `done` 任务，从那里继续
+4. `in_progress` 的任务被视为中断，重新执行（不信任中间状态）
+
+---
+
+## Completion Gate
+
+永远不要声称任务完成，除非：
+
+1. 所有 `[AI-N]` 任务在 `progress.json` 中标记为 `done`
+2. `python tools/test.py` 全部三层通过
+3. 输出下面的完成报告：
+
+```
+## 执行完成
+
+**任务：** {done_count}/{total_count} 完成
+**测试：** structure ✅ behavior ✅ visual ✅
+**创建/修改文件：**
+  - {file1}
+  - {file2}
+
+**待人工完成：**
+- [ ] {HUMAN 任务列表}
+```

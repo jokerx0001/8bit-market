@@ -55,6 +55,18 @@
       },
       "tags": ["unity", "game-dev", "ai-safe"],
       "keywords": ["unity", "game-development", "tdd", "ai-safe", "csharp"]
+    },
+    {
+      "name": "renpy-dev",
+      "description": "Ren'Py AI 开发插件 — plan 设计文档 + exec TDD 执行 + review 审查，自主循环完成 Ren'Py 视觉小说开发",
+      "version": "0.1.0",
+      "source": "./plugins/renpy-dev",
+      "category": "development",
+      "author": {
+        "name": "jokerx001"
+      },
+      "tags": ["renpy", "visual-novel", "game-dev", "tdd"],
+      "keywords": ["renpy", "visual-novel", "game-development", "tdd", "orchestration"]
     }
   ]
 }
