@@ -82,19 +82,48 @@ grep -r "^namespace " --include="*.cs" --max-count=5 | head -10
 
 输出前对照 `plan-format.md` 中的"格式校验清单"逐项确认。
 
-### 7. 保存计划
+### 7. 创建任务目录
 
-写入位置：
+调用 `unity-dev:artifact-manager` skill 创建任务目录：
+
 ```
-.claude/unity-dev/plans/{feature-name}.md
+调用 unity-dev:artifact-manager：
+- 操作: create_task
+- kind: feat
 ```
 
-目录不存在则创建。
+记录返回的 `feat-{N}` 编号。当前任务的所有文档都存储于 `.unity-dev/feat-{N}/` 下。
 
-### 8. 输出摘要
+### 8. 保存计划文档
+
+调用 `unity-dev:artifact-manager` skill 保存计划：
+
+```
+调用 unity-dev:artifact-manager：
+- 操作: save_document
+- task: feat-{N}
+- doc_type: plan
+- content: <生成的计划内容（完整 Markdown）>
+```
+
+然后更新阶段：
+
+```
+调用 unity-dev:artifact-manager：
+- 操作: update_state
+- phase: plan_generated
+```
+
+### 9. 审批确认
+
+**必须等待用户确认后才能继续，不能自动推进到 exec。**
+
+输出计划摘要并请求审批：
 
 ```
 ## Plan: {feature-name}
+
+**存储位置：** `.unity-dev/feat-{N}/plan.md`
 
 **渲染管线：** {URP/HDRP/Built-in}
 **新建 Systems：** N 个
@@ -102,11 +131,39 @@ grep -r "^namespace " --include="*.cs" --max-count=5 | head -10
 **新建 Entities：** N 个
 **人工任务：** N 个
 
-# Completion Gate
+**AI 任务概览：**
+{逐条列出 [AI-N] 任务简述}
 
-Never claim a task is complete unless:
+---
+
+### 审批确认
+
+请审阅以上计划：
+- 回复 **"approve"**（或 **"yes"**）批准计划并进入可执行状态
+- 回复 **具体修改意见**，将据此修改计划后重新提交审批
+- 回复 **"cancel"** 放弃此计划
+```
+
+**收到用户回复后：**
+
+- **approve / yes：**
+  ```
+  调用 unity-dev:artifact-manager：
+  - 操作: update_state
+  - phase: plan_approved
+  ```
+  输出：`Plan approved. 运行 /unity-dev:exec 开始 TDD 实现。`
+
+- **修改意见：** 根据用户反馈修改 plan 内容，回到步骤 8 重新保存（覆盖），再次等待审批。
+
+- **cancel：** 不更新状态，输出 `Plan cancelled. 可运行 /unity-dev:plan 重新开始。`
+
+### 10. Completion Gate
+
+Never claim the plan step is complete unless:
 
 1. 执行了工作流的所有步骤
-2. 输出了所有需要的文档并输出路径，提交人类确认
-3. 输出需要人类执行的结果，必须来自于文档中，指出具体文档目录
+2. plan.md 成功保存到 `.unity-dev/feat-{N}/plan.md`
+3. 用户已回复 "approve" 且 state 已更新为 `plan_approved`
+4. 向用户输出了确认信息和下一步指令（/unity-dev:exec）
 

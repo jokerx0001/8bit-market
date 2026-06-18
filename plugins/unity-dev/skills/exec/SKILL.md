@@ -27,13 +27,43 @@ argument-hint: [plan file path]
 
 ### 1. 加载计划
 
-如果参数提供了计划文件路径，直接读取。否则查找最近的计划：
+**方式 A：参数提供了计划文件路径**
 
-```bash
-ls -t .claude/unity-dev/plans/*.md 2>/dev/null | head -5
+直接读取指定文件。
+
+**方式 B：自动发现已审批的计划**
+
+调用 `unity-dev:artifact-manager` skill：
+
+```
+调用 unity-dev:artifact-manager：
+- 操作: get_active_plan
 ```
 
-多个计划则让用户选择，只有一个则直接使用。
+**结果处理：**
+
+- **返回了 plan 路径：** 直接读取该 plan，继续执行。
+- **返回 null 且 phase 为 `plan_generated`：**
+  ```
+  No approved plan found.
+  
+  发现 .unity-dev/feat-{N}/plan.md 已生成但尚未审批。
+  请先审阅该计划并回复 "approve" 批准，或运行 /unity-dev:plan 重新规划。
+  ```
+  **停止执行。**
+- **返回 null 且无任何计划：**
+  ```
+  No plan found. 请先运行 /unity-dev:plan <功能描述> 生成计划。
+  ```
+  **停止执行。**
+
+**方式 C：手动选择（降级）**
+
+如果状态文件不存在但存在 `.unity-dev/feat-*/plan.md` 文件，列出所有可用计划让用户选择：
+```bash
+ls -t .unity-dev/feat-*/plan.md 2>/dev/null | head -5
+```
+用户选择后，以选中的 plan 继续执行（降级模式，不依赖状态文件）。
 
 ### 2. 加载参考文件
 
@@ -220,10 +250,20 @@ Debug.Log($"[VERIFY] {SystemName} received event, state={currentState}");
 1. 运行全量测试套件检查回归
 2. 输出完成摘要
 
-### 7. 提醒人工任务
+### 7. 更新执行状态并提醒人工任务
+
+所有 AI 任务完成后，更新阶段：
+
+```
+调用 unity-dev:artifact-manager：
+- 操作: update_state
+- phase: execution_complete
+```
+
+### 8. 输出完成报告
 
 ### Never claim a task is complete unless:
-1. 输出下面的完成报告
+1. 输出了下面的完成报告
 
 ```
 ## 执行完成
