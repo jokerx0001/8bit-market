@@ -152,41 +152,73 @@ transform xxx:
 | persistent.xxx | bool | False | ... |
 ```
 
-### 8. 执行计划
+### 8. 编写 plan.md
 
-调用 `Skill` 工具加载 `superpowers:writing-plans`，基于设计文档生成**自包含的 plan.md**（关键决策提炼进去，不引用 .work/ 文件）。
+**自己编写，不委托外部 skill。** 外部 skill 不知道 Ren'Py 测试铁律、`[AI-N]` 任务格式和测试策略表约定，会产生偏离。
 
-如果在 step 2 读取了 impact.md，plan.md 必须在修改范围、排除范围、已有测试保护、风险应对上遵守 impact.md 的约束。
+基于 `.work/` 下的所有设计文档和 plan-format.md 格式规范，直接编写 `{task_dir}/plan.md`。
 
-**传递给 writing-plans 的约束：**
-- 每个 AI 任务必须有 `[AI-N]` 编号 + 输出文件路径 + 依赖标注
-- 测试任务必须标注对应的测试层（structure/behavior/visual）
-- `[HUMAN]` 任务标注具体操作步骤
-- 按 `plugins/renpy-dev/references/plan-format.md` 格式输出
-- **测试策略只声明测什么文件、覆盖什么功能**：不需要写 screen 名、变量名、断言规格。test agent 自己读 `.work/design.md` 获取这些细节
+**结构：**
 
-保存到 `{task_dir}/plan.md`。
-
-**任务拆分原则：**
-- 先建数据/配置，再建 screen，最后写跳转逻辑
-- 每个 `[AI-N]` 有对应的测试任务
-- 测试任务依赖实现任务（先有 screen 才能测 screen）
-
-示例：
 ```markdown
-- `[AI-0]` 安装测试基础设施（如缺失） → 从 plugins/renpy-dev/assets/test-infra/ 复制，编辑 OWN_MANIFEST.json
-- `[AI-1]` 创建 CharacterData 持久化变量 → `game/character_data.rpy`
-- `[AI-2]` 创建 CharacterSelectScreen → `game/character_select.rpy` (依赖: AI-1)
-- `[AI-3]` 创建 CharacterSelect behavior 测试 → `game/tests/test_character_select.rpy` (依赖: AI-2)
-- `[AI-4]` 创建 CharacterSelect visual 测试 → `game/tests/test_character_select.rpy` (依赖: AI-2)
-- `[HUMAN]` 为 CharacterSelectScreen 的按钮添加 id 属性（coding agent 应在实现时自动添加 id，此为最终确认）
+# Plan: {feature-name}
+
+## 概述
+{从 requirements.md + architecture.md 提炼：功能目标、项目环境、OWN_MANIFEST 路径、测试基础设施状态}
+
+## 设计摘要
+{从 architecture.md + design.md 提炼关键决策 — screen 结构、数据流、关键交互}
+{自包含，不写"详见 design.md"}
+
+## 影响范围
+| 类型 | 文件 | 操作 |
+|------|------|------|
+| ... | ... | ... |
+
+## 任务列表
+
+### [AI] 任务
+- `[AI-N]` ... → `输出路径` (依赖: ...)
+
+### [HUMAN] 任务
+- `[HUMAN]` ...
+
+## 测试策略
+| 测试文件 | 覆盖 |
+|---------|------|
+| ... | behavior: ...; visual: ... |
 ```
 
-**验证手段始终为 `python tools/test.py`（structure + behavior + visual），绝不使用"人工启动目视"。**
+**硬约束：**
+
+- 如果在 step 2 读取了 impact.md，修改范围、排除范围、已有测试保护、风险应对必须遵守其约束
+- 每个 `[AI-N]` 有唯一编号 + `→` 输出文件路径 + 依赖标注
+- 测试任务依赖实现任务（先有 screen 才能测 screen）
+- 测试策略只声明测什么文件、覆盖什么功能 — test agent 自己读 `.work/design.md` 获取细节
+- 先建数据/配置，再建 screen，最后写跳转逻辑
+
+**禁止写入 plan.md 的内容：**
+
+以下短语及其变体**绝对不能**出现在 plan.md 中：
+
+- "lint 代替测试" / "lint 验证" / "Ren'Py Lint"
+- "人工启动目视" / "人工验证" / "手动测试"
+- "测试基础设施缺失不阻塞" / "测试暂缓" / "跳过测试"
+- 任何将 `python tools/test.py` 之外的验证手段作为替代方案的描述
+
+**验证手段始终且唯一为 `python tools/test.py`（structure + behavior + visual）。** 若测试基础设施缺失，`[AI-0]` bootstrap 任务是强制的，不是可选的。测试基础设施从未"缺失不阻塞"——它阻塞一切。
 
 ### 9. 格式自检
 
 输出前对照 `plan-format.md` 的"格式校验清单"逐项确认。
+
+**额外扫描 plan.md 中的禁止短语。** 用以下 grep 检查：
+
+```bash
+grep -iE '(lint.*(代替|验证|替代)|人工.*(启动|验证|目视)|手动.*(测试|验证)|(测试.*)?缺失.*不阻塞|测试.*暂缓|跳过.*测试|Ren.Py Lint)' {task_dir}/plan.md
+```
+
+**命中任何禁止短语 → 拒绝输出，修改 plan.md 直到零命中。**
 
 ### 10. 输出摘要
 
