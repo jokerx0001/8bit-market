@@ -44,7 +44,7 @@ ls -d .renpy-dev/feat-*/ 2>/dev/null | sort -V | tail -5
 }
 ```
 
-### 4. 解析任务列表
+### 4. 解析任务列表和测试策略
 
 按 `plan-format.md` 的解析规则提取 `[AI-N]` 任务：
 
@@ -53,6 +53,8 @@ ls -d .renpy-dev/feat-*/ 2>/dev/null | sort -V | tail -5
 3. 匹配 `(依赖: (.+))` 确定执行顺序
 4. 按依赖拓扑排序，无依赖的优先执行
 5. `[HUMAN]` 任务收集但不执行
+
+**同时解析测试策略表** — 提取每行（测试文件、覆盖内容），按测试文件路径与 `[AI-N]` 输出路径匹配。RED phase 传测试文件路径和覆盖内容给 test agent，test agent 自行读 `.work/design.md` 获取细节。
 
 对每个任务，检查 `progress.json`：
 - `done` → 跳过，输出 `⏭️ [AI-N] 已完成，跳过`
@@ -80,35 +82,40 @@ ls tools/test.py 2>/dev/null && echo "READY" || echo "MISSING"
 
 #### 7b. RED — spawn test agent
 
+test agent 自己读文件获取写测试所需的一切信息。主会话只传任务目标和文件路径。
+
 ```
 Agent({
   subagent_type: "renpy-dev:test-agent",
   prompt: `
 ## 任务
-为 [AI-N] {任务描述} 编写测试
+为 [AI-N] {任务描述} 编写测试。
 
-## 设计上下文
-{从 plan.md 的"概述"和"设计摘要"段提取的关于此任务的设计约束}
+## 测试目标
+{从 plan.md 测试策略表提取的本行覆盖内容，如 "behavior: 角色选择交互（选中/取消/确认）"}
 
-## 目标行为
-{此任务应该实现什么行为}
+## 测试文件
+{从 plan.md 测试策略表提取的本行测试文件路径}
 
-## 测试文件位置
-{根据 plan.md 的"测试策略"段确定输出路径}
+## 需要读取的文件
+- .renpy-dev/{kind}-{N}/.work/design.md  — 获取 widget 树、变量定义、交互流程
+- .renpy-dev/{kind}-{N}/plan.md 的"设计摘要"段  — 获取 screen 结构、数据流设计
+- game/tests/_framework.rpy  — 获取可用的 test_framework helper API
+- game/tests/test_*.rpy（已有测试文件） — 了解命名惯例和代码风格
+- game/ 下相关的 .rpy 源文件 — 了解已有代码模式和约定
 
-## 测试层
-{structure / behavior / visual — 根据 plan.md 测试策略段}
+## 编写要求
+1. 从 design.md 提取变量名、screen 名、widget ID 写入测试 — 不凭空编造
+2. 测试断言的是目标行为（design.md 中设计的交互结果），不是当前行为
+3. 测试预期失败（因为功能尚未实现）
+4. 只写 game/tests/ 下的测试代码，不写 game/ 下的业务代码
+5. 使用 test_framework helper API
+6. behavior 测试：验证"给定输入 → 产生正确状态/输出"，不检查 widget ID 是否存在
+7. visual 测试：从 design.md 获取 widget ID，对 screen 截图做像素 diff
 
 ## 约束
-1. 必须遵循 renpy-dev:test skill 中的测试方法论
-2. 测试断言的是目标行为（不是当前行为）
-3. 测试预期失败（因为功能尚未实现）
-4. 不写任何实现代码
-5. 使用 test_framework helper API
-6. 新 screen 的测试如果用 visual 层，需要 widget 有 id — 如果没有 id，在测试文件注释中提醒 HUMAN 任务
-
-## plan 文档相关段
-{plan.md 中与本任务相关的"影响范围"和"测试策略"段}
+- 不允许 mock、假代码、硬编码预期值来让测试通过
+- 只执行逻辑，比对结果
   `
 })
 ```
@@ -117,9 +124,11 @@ Agent({
 
 检查点：
 1. 测试文件已创建/修改？
-2. 测试断言的是目标行为（从设计文档确认）？
-3. 测试语法有效？（运行 `python tools/test.py structure`）
-4. 测试命名符合规范（`test_b_*` / `test_v_*`）？
+2. 测试覆盖了 prompt 中"测试目标"列出的功能？
+3. 测试中引用的变量名、screen 名与 `.work/design.md` 一致（不是凭空编造的）？
+4. 没有 mock、假代码、硬编码预期值？
+5. 测试语法有效？（运行 `python tools/test.py structure`）
+6. 测试命名符合规范（`test_b_*` / `test_v_*`）？
 
 不合格 → 反馈具体问题，重新 spawn test agent（不消耗重试计数）。
 合格 → 进入 GREEN。

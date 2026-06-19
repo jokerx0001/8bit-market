@@ -38,8 +38,9 @@ mkdir -p .renpy-dev/refactor-{N}
 1. 读取受影响的 `.rpy` 文件
 2. 使用 Glob/Grep 发现关联文件（共享 screen、共用 label、数据依赖）
 3. 识别当前实现模式
-4. 查找已有测试文件
-5. 评估级联影响和风险
+4. 查找已有测试文件（`game/tests/test_*.rpy`）
+5. 检查测试基础设施状态（`tools/test.py` + `game/tests/OWN_MANIFEST.json`）
+6. 评估级联影响和风险
 
 ### 第二步：写入 impact.md
 
@@ -47,6 +48,7 @@ mkdir -p .renpy-dev/refactor-{N}
 - 修改范围（硬约束，plan 不得超出）
 - 排除范围（plan 不得触碰）
 - 已有测试（plan 必须在测试策略中保护）
+- **测试基础设施状态**（如缺失，plan 必须添加 `[AI-0]` bootstrap 任务）
 - 风险点（plan 必须在设计摘要中应对）
 - 特殊约束（用户指定的限制）
 

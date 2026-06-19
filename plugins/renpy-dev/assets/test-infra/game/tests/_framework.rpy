@@ -247,7 +247,7 @@ label __test_runner_behavior__:
             if test_filter and test_filter not in lbl:
                 continue
             try:
-                renpy.jump(lbl)
+                renpy.call_in_new_context(lbl)
             except Exception as e:
                 test_framework._record(lbl, False,
                                        expected="test passes",
@@ -268,7 +268,7 @@ label __test_runner_visual__:
             if test_filter and test_filter not in lbl:
                 continue
             try:
-                renpy.jump(lbl)
+                renpy.call_in_new_context(lbl)
             except Exception as e:
                 test_framework._record(lbl, False,
                                        expected="test passes",

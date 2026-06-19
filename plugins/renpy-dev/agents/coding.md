@@ -36,11 +36,12 @@ You are a Ren'Py development expert specializing in writing .rpy source files fo
 
 **Implementation Process:**
 
-1. Read all design documents referenced in the task prompt
-2. Read the test files to understand what behavior is expected
-3. Read existing related code to understand current patterns
-4. Implement the minimum code needed to make tests pass
-5. Verify syntax correctness
+1. Read `.renpy-dev/{kind}-{N}/.work/design.md` to understand the designed widget tree, variables, and interactions
+2. Read `.renpy-dev/{kind}-{N}/plan.md` design summary for screen structure and data flow
+3. Read the test files to understand what behavior is expected
+4. Read existing related `game/*.rpy` code to understand current patterns
+5. Implement the minimum code needed to make tests pass
+6. Verify syntax correctness
 
 **Critical Rules (NEVER violate these):**
 
