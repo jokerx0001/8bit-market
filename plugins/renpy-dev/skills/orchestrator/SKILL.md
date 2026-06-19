@@ -58,12 +58,18 @@ plan → 直接进入 exec → review → 完成
 
 ### 阶段 1：Plan — 设计阶段
 
-1. 加载 `renpy-dev:plan` skill
-2. 执行设计全流程：
-   - 创建 `.renpy-dev/feat-{N}/.work/` 目录
+1. 确定 N：
+   - 读取 `.renpy-dev/current-state.json`
+   - **文件不存在** → 初始化 `{"current_task": "", "current_kind": "", "counters": {"feat": 0, "refactor": 0, "fix": 0}}`
+   - **旧格式**（有 `current_feat` 无 `counters`）→ 按 `counters = {"feat": N, "refactor": 0, "fix": 0}` 转换
+   - 从 `counters.feat` 取值，+1 得到 N
+2. 加载 `renpy-dev:plan` skill，传入 `task_dir = .renpy-dev/feat-{N}`
+3. 执行设计全流程：
+   - 创建 `{task_dir}/.work/` 目录
    - 中间产物 → `.work/`（requirements, architecture, design）
    - 自包含计划 → `plan.md`（人类审查此文件）
-3. 输出 plan.md 路径
+4. 写回 `current-state.json`，`counters.feat = N`
+5. 输出 plan.md 路径
 
 **正常模式：** 暂停，等待用户审查 plan.md。
 **全自动模式：** 直接进入阶段 2。
@@ -71,9 +77,15 @@ plan → 直接进入 exec → review → 完成
 状态记录：
 ```json
 {
-  "current_feat": "feat-1",
+  "current_task": "feat-1",
+  "current_kind": "feat",
   "phase": "plan",
   "mode": "manual",
+  "counters": {
+    "feat": 1,
+    "refactor": 0,
+    "fix": 0
+  },
   "started_at": "..."
 }
 ```
@@ -86,9 +98,12 @@ plan → 直接进入 exec → review → 完成
 - 全自动模式：plan 完成后直接进入
 - 正常模式：用户明确批准后进入（如 "审查通过，开始实现"）
 
-1. 加载 `renpy-dev:exec` skill
-2. 读取 `.renpy-dev/feat-{N}/plan.md`
-3. 按 TDD 循环逐任务执行：
+1. 确定 `task_dir` = `.renpy-dev/feat-{N}`（N 从 current-state.json 的 counters.feat 获取）
+2. 加载 `renpy-dev:exec` skill，传入参数：
+   ```
+   Skill({skill: "renpy-dev:exec", args: "--mode feat --task-dir .renpy-dev/feat-{N}"})
+   ```
+3. exec 按 TDD 循环逐任务执行：
    - RED: spawn test agent
    - GREEN: spawn coding agent
    - VERIFY: 运行 `tools/test.py`
@@ -126,12 +141,20 @@ plan → 直接进入 exec → review → 完成
 
 ```json
 {
-  "current_feat": "feat-1",
+  "current_task": "feat-1",
+  "current_kind": "feat",
   "phase": "exec",
   "mode": "manual",
+  "counters": {
+    "feat": 1,
+    "refactor": 0,
+    "fix": 0
+  },
   "started_at": "2026-06-18T10:00:00Z"
 }
 ```
+
+> **向后兼容**：旧版使用 `current_feat` 字段。读取时如发现旧字段而无 `current_task`/`counters`，按 `current_task = current_feat`、`current_kind = "feat"`、`counters = {"feat": N, "refactor": 0, "fix": 0}` 转换。
 
 ## 错误处理
 

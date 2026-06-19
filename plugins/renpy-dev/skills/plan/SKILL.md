@@ -13,12 +13,16 @@ description: "Plan Ren'Py feature development. Use when asked to 'design a featu
 
 ## 工作流
 
-### 1. 创建任务目录
+### 1. 确定任务目录
 
-确定下一个可用的序号 N，创建目录：
+`task_dir` 由调用者（conductor）传入。如果未传入，从 `.renpy-dev/current-state.json` 读取 `current_task`。
+
+`kind` 从 `task_dir` 路径推断：`.renpy-dev/feat-1` → `kind=feat`。
+
+确保 `.work/` 子目录存在：
 
 ```bash
-mkdir -p .renpy-dev/feat-{N}/.work
+mkdir -p {task_dir}/.work
 ```
 
 ### 2. 读取影响范围约束（仅 refactor）
@@ -60,7 +64,7 @@ ls tools/test.py 2>/dev/null && echo "TEST_RUNNER_OK" || echo "TEST_RUNNER_MISSI
 
 ### 5. 收集需求
 
-解析用户的任务描述，生成需求摘要。保存到 `.renpy-dev/feat-{N}/.work/requirements.md`：
+解析用户的任务描述，生成需求摘要。保存到 `{task_dir}/.work/requirements.md`：
 
 ```markdown
 # 需求摘要
@@ -91,7 +95,7 @@ ls tools/test.py 2>/dev/null && echo "TEST_RUNNER_OK" || echo "TEST_RUNNER_MISSI
 - 数据流（label 间传递什么数据、持久化什么数据）
 - Screen 间交互约定
 
-生成 Mermaid 架构图。保存到 `.renpy-dev/feat-{N}/.work/architecture.md`：
+生成 Mermaid 架构图。保存到 `{task_dir}/.work/architecture.md`：
 
 ```markdown
 # 架构设计
@@ -122,7 +126,7 @@ ls tools/test.py 2>/dev/null && echo "TEST_RUNNER_OK" || echo "TEST_RUNNER_MISSI
 - Transform/transition 设计
 - 持久化数据设计（persistent / save）
 
-保存到 `.renpy-dev/feat-{N}/.work/design.md`：
+保存到 `{task_dir}/.work/design.md`：
 
 ```markdown
 # 详细设计
@@ -161,7 +165,7 @@ transform xxx:
 - 按 `plugins/renpy-dev/references/plan-format.md` 格式输出
 - **测试策略只声明测什么文件、覆盖什么功能**：不需要写 screen 名、变量名、断言规格。test agent 自己读 `.work/design.md` 获取这些细节
 
-保存到 `.renpy-dev/feat-{N}/plan.md`。
+保存到 `{task_dir}/plan.md`。
 
 **任务拆分原则：**
 - 先建数据/配置，再建 screen，最后写跳转逻辑
@@ -189,8 +193,8 @@ transform xxx:
 ```
 ## Plan: {feature-name}
 
-**审查文件：** .renpy-dev/feat-{N}/plan.md
-**中间产物：** .renpy-dev/feat-{N}/.work/
+**审查文件：** {task_dir}/plan.md
+**中间产物：** {task_dir}/.work/
 
 **AI 任务：** N 个
 **人工任务：** N 个
@@ -208,6 +212,6 @@ exec 只读 plan.md，不读 .work/。
 永远不要声称任务完成，除非：
 
 1. 执行了工作流的所有步骤
-2. 中间产物已写入 `.renpy-dev/feat-{N}/.work/`，plan.md 已写入 `.renpy-dev/feat-{N}/`
+2. 中间产物已写入 `{task_dir}/.work/`，plan.md 已写入 `{task_dir}/`
 3. plan.md 通过格式校验清单所有项目
 4. 输出了所有文档路径供人类确认

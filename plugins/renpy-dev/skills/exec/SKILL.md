@@ -17,15 +17,29 @@ description: "Execute a Ren'Py implementation plan with TDD. Use when asked to '
 
 ## 工作流
 
-### 1. 定位任务目录
+### 1. 定位任务目录和模式
 
-如果参数提供了 plan 文件路径，使用对应目录。否则查找最近的计划：
+从 args 解析 `--task-dir` 和 `--mode`：
 
-```bash
-ls -d .renpy-dev/feat-*/ 2>/dev/null | sort -V | tail -5
+```
+--task-dir 已传   → task_dir = 传入值（如 .renpy-dev/feat-1/）
+--mode 已传       → mode = 传入值（feat | refactor | fix）
 ```
 
-确定 `task_dir`（如 `.renpy-dev/feat-1/`）。
+**自动发现（仅当 --task-dir 未传时）：**
+
+```bash
+# 如果 --mode 已传，只搜该 kind：
+ls -d .renpy-dev/${mode}-*/ 2>/dev/null | sort -V | tail -1
+
+# 如果都没传，搜全部 kind 取最新：
+ls -d .renpy-dev/*/ 2>/dev/null | sort -V | tail -1
+# 从路径推断 mode：.renpy-dev/fix-1 → mode=fix
+```
+
+**优先级：** 显式 `--task-dir` > 显式 `--mode` + 自动发现 > 全自动发现。
+
+确定 `task_dir`（如 `.renpy-dev/fix-1/`）和 `mode`（如 `fix`）。
 
 ### 2. 加载 plan.md
 
@@ -37,7 +51,8 @@ ls -d .renpy-dev/feat-*/ 2>/dev/null | sort -V | tail -5
 
 ```json
 {
-  "task_dir": ".renpy-dev/feat-1",
+  "task_dir": "{task_dir}",
+  "mode": "{mode}",
   "started_at": "{ISO timestamp}",
   "last_updated": "{ISO timestamp}",
   "tasks": {}
@@ -84,6 +99,16 @@ ls tools/test.py 2>/dev/null && echo "READY" || echo "MISSING"
 
 test agent 自己读文件获取写测试所需的一切信息。主会话只传任务目标和文件路径。
 
+**主会话根据 mode 组装文档列表，填入 spawn prompt。子代理拿到的全部是已解析的具体路径。**
+
+Mode → 文档列表映射：
+
+| mode | 文档路径（基于 task_dir 拼接） |
+|------|------------------------------|
+| feat | `{task_dir}/plan.md`（设计摘要段）, `{task_dir}/.work/design.md` |
+| refactor | `{task_dir}/plan.md`（设计摘要段）, `{task_dir}/.work/design.md`, `{task_dir}/impact.md` |
+| fix | `{task_dir}/plan.md`（根因分析 + 修复方案）, `{task_dir}/.work/debug-analysis.md` |
+
 ```
 Agent({
   subagent_type: "renpy-dev:test-agent",
@@ -98,20 +123,24 @@ Agent({
 {从 plan.md 测试策略表提取的本行测试文件路径}
 
 ## 需要读取的文件
-- .renpy-dev/{kind}-{N}/.work/design.md  — 获取 widget 树、变量定义、交互流程
-- .renpy-dev/{kind}-{N}/plan.md 的"设计摘要"段  — 获取 screen 结构、数据流设计
+{主会话根据 mode 从上述映射表组装，填入已解析的具体路径。例如 mode=fix, task_dir=.renpy-dev/fix-1:}
+- {task_dir}/plan.md  — {mode=feat/refactor: 设计摘要段; mode=fix: 根因分析 + 修复方案}
+- {task_dir}/.work/design.md  — widget 树、变量定义、交互流程（仅 feat/refactor 模式）
+- {task_dir}/impact.md  — 修改范围约束、已有测试保护（仅 refactor 模式）
+- {task_dir}/.work/debug-analysis.md  — 详细调试分析（仅 fix 模式）
 - game/tests/_framework.rpy  — 获取可用的 test_framework helper API
 - game/tests/test_*.rpy（已有测试文件） — 了解命名惯例和代码风格
 - game/ 下相关的 .rpy 源文件 — 了解已有代码模式和约定
 
 ## 编写要求
-1. 从 design.md 提取变量名、screen 名、widget ID 写入测试 — 不凭空编造
-2. 测试断言的是目标行为（design.md 中设计的交互结果），不是当前行为
-3. 测试预期失败（因为功能尚未实现）
+1. 从上述设计文档中提取变量名、screen 名、widget ID 写入测试 — 不凭空编造
+2. 测试断言的是目标行为（设计文档中描述的行为），不是当前行为
+3. 测试预期失败（因为功能尚未实现/修复尚未应用）
 4. 只写 game/tests/ 下的测试代码，不写 game/ 下的业务代码
 5. 使用 test_framework helper API
 6. behavior 测试：验证"给定输入 → 产生正确状态/输出"，不检查 widget ID 是否存在
-7. visual 测试：从 design.md 获取 widget ID，对 screen 截图做像素 diff
+7. visual 测试：从设计文档获取 widget ID，对 screen 截图做像素 diff
+8. fix 模式：必须包含回归测试，覆盖原 BUG 场景
 
 ## 约束
 - 不允许 mock、假代码、硬编码预期值来让测试通过
@@ -135,6 +164,8 @@ Agent({
 
 #### 7d. GREEN — spawn coding agent
 
+**主会话根据 mode 组装文档列表（同 7b 映射表），填入 spawn prompt。**
+
 ```
 Agent({
   subagent_type: "renpy-dev:coding",
@@ -144,6 +175,9 @@ Agent({
 
 ## 设计上下文
 {从 plan.md 的"概述"和"设计摘要"段提取的关于此任务的关键设计决策和约束}
+
+## 需要读取的文件
+{主会话根据 mode 从映射表组装，填入已解析的具体路径。与 7b 相同的规则。}
 
 ## 需要通过的测试
 {7b 中 test agent 写的测试代码}
@@ -160,10 +194,7 @@ Agent({
 6. 确保代码语法正确（renpy 可加载）
 7. 不得修改 plan.md 中未列出的文件
 8. 实现必须基于设计文档中的设计，不得自行偏离
-
-## 可用资源
-- 测试方法论文档: plugins/renpy-dev/skills/test/SKILL.md
-- 测试 helper API: game/tests/_framework.rpy
+9. refactor 模式：所有已有测试必须继续通过；fix 模式：回归测试必须通过
   `
 })
 ```

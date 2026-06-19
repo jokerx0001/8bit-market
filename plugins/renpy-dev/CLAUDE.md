@@ -4,7 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-This is a Claude Code plugin (`renpy-dev`) that provides an autonomous Plan → Exec → Review development workflow for Ren'Py visual novel projects. It orchestrates design, TDD implementation, and compliance review through a state-machine architecture.
+This is a Claude Code plugin (`renpy-dev`) that provides autonomous Plan → Exec → Review development workflows for Ren'Py visual novel projects. It supports three task types (feat, refactor, fix) through mode-aware state machines, TDD implementation, and compliance review.
+
+Each workflow uses a different analysis methodology:
+- **feat**: brainstorming → design
+- **refactor**: code analysis → impact assessment → constrained design
+- **fix**: systematic-debugging → root cause verification → fix plan
 
 ## Commands
 
@@ -27,15 +32,15 @@ python tools/test.py --filter <name>    # filter by test name
 
 ## Architecture
 
-The plugin has **two workflow state machines** for different task types:
+The plugin has **three workflow state machines** for different task types:
 
-### New Feature: `orchestrator` → `plan` → `exec` → `review`
+### New Feature: `orchestrator` → `plan` → `exec --mode feat` → `review`
 
 ```
 idle → plan → [human_review] → exec → review → completed
 ```
 
-### Refactoring: `refactor-conductor` → analyze → `plan` → `exec` → `review`
+### Refactoring: `refactor-conductor` → analyze → `plan` → `exec --mode refactor` → `review`
 
 The refactor workflow has one additional step: **analyze existing code and write `impact.md`** before calling `plan`. The plan skill reads impact.md as hard constraints on scope, exclusions, and existing test protection.
 
@@ -43,9 +48,37 @@ The refactor workflow has one additional step: **analyze existing code and write
 analyze → write impact.md → plan (reads impact constraints) → [review] → exec → review
 ```
 
+### Bug Fix: `fix-conductor` → systematic-debugging → debug-analysis.md → `plan` → `exec --mode fix` → `review`
+
+The fix workflow uses `superpowers:systematic-debugging` instead of brainstorming. Includes a verification gate (up to 3 rounds) to confirm root cause before writing plan.md.
+
+```
+systematic-debugging → verify root cause → debug-analysis.md → plan → [review] → exec → review
+```
+
 - `/renpy-dev:start <task> [--auto]` — new feature entry point
 - `/renpy-dev:refactor <target> [--auto]` — refactoring entry point
+- `/renpy-dev:fix <bug description> [--auto]` — bug fix entry point
 - `--auto` skips human review checkpoints
+
+### Mode System
+
+Exec accepts `--mode` and `--task-dir` parameters. Conductors pass these explicitly. Manual invocation also supported:
+
+```
+/renpy-dev:exec --mode feat --task-dir .renpy-dev/feat-1
+/renpy-dev:exec --mode fix --task-dir .renpy-dev/fix-3
+```
+
+Exec uses mode to determine which documents subagents should read:
+
+| mode | Documents |
+|------|----------|
+| feat | plan.md, .work/design.md |
+| refactor | plan.md, .work/design.md, impact.md |
+| fix | plan.md, .work/debug-analysis.md |
+
+Subagents no longer hardcode document paths — they read the concrete paths from exec's spawn prompt.
 
 ### TDD Loop (exec phase)
 
@@ -80,7 +113,7 @@ Each `[AI-N]` task follows a strict RED→GREEN→REFACTOR cycle:
 
 ```
 commands/           # Slash command entry points (thin wrappers that invoke skills)
-skills/             # Core skill definitions (orchestrator, plan, exec, review, test, refactor-conductor)
+skills/             # Core skill definitions (orchestrator, plan, exec, review, test, refactor-conductor, fix-conductor)
 agents/             # Subagent definitions (coding, test-agent)
 references/         # Format contracts read by skills at runtime
   plan-format.md    #   plan.md → exec parsing contract
@@ -96,13 +129,14 @@ All design documents and progress tracking go under `.renpy-dev/`:
 
 ```
 .renpy-dev/{kind}-{N}/
-├── plan.md           # Self-contained design doc (the only file exec reads)
-├── progress.json     # Task progress for resume support
-└── .work/            # Intermediate artifacts (not read by exec; for traceability)
+├── plan.md              # Self-contained design doc (the only file exec reads)
+├── progress.json        # Task progress for resume support
+├── impact.md            # (refactor only) Modification scope constraints
+└── .work/               # Intermediate artifacts (not read by exec; for traceability)
     ├── requirements.md
     ├── architecture.md
     ├── design.md
-    └── (refactor-only: impact.md)
+    └── debug-analysis.md  # (fix only) Root cause analysis
 ```
 
-State tracking across sessions is in `.renpy-dev/current-state.json`.
+State tracking across sessions is in `.renpy-dev/current-state.json` with independent counters per kind.

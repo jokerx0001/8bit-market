@@ -27,11 +27,22 @@ description: |
 
 ### 第一步：Analyze & Impact — 分析影响范围
 
-确定序号 N，创建目录：
+确定 N 并创建目录：
 
-```bash
-mkdir -p .renpy-dev/refactor-{N}
-```
+1. 读取 `.renpy-dev/current-state.json`
+   - **文件不存在** → 初始化为 `{"current_task": "", "current_kind": "", "counters": {"feat": 0, "refactor": 0, "fix": 0}}`
+   - **旧格式**（有 `current_feat` 无 `counters`）→ 按 `counters = {"feat": N, "refactor": 0, "fix": 0}` 转换
+2. 从 `counters.refactor` 取值，+1 得到 N
+3. 创建目录：`mkdir -p .renpy-dev/refactor-{N}/.work`
+4. 写回 `current-state.json`：
+   ```json
+   {
+     "current_task": "refactor-{N}",
+     "current_kind": "refactor",
+     "phase": "analyze",
+     "counters": { "...", "refactor": N }
+   }
+   ```
 
 充分阅读现有代码：
 
@@ -66,7 +77,13 @@ mkdir -p .renpy-dev/refactor-{N}
 
 ### 第五步：Exec — TDD 重构循环
 
-调用 `renpy-dev:exec` skill。**重构额外约束：**
+调用 `renpy-dev:exec` skill，传入参数：
+
+```
+Skill({skill: "renpy-dev:exec", args: "--mode refactor --task-dir .renpy-dev/refactor-{N}"})
+```
+
+**重构额外约束：**
 - coding agent 必须保证所有已有测试继续通过
 - 已有测试被破坏 → 立即反馈修复，最高优先级
 
