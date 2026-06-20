@@ -1,6 +1,0 @@
-{
-  "_comment": "Single source of truth for what code we own. The test runner only scans what is listed here.",
-  "screens": [],
-  "scripts": [],
-  "exclude_dirs": ["libs/", "tl/", "cache/"]
-}

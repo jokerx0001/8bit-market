@@ -34,21 +34,19 @@ orchestrator (新功能)        refactor-conductor (重构)        fix-conductor
                                                                └── review (合规审查)
 ```
 
-## 测试基础设施
+## 测试
 
-插件提供三层自测体系（`assets/test-infra/`）：
+使用 Ren'Py 原生 `testcase` / `testsuite` 框架。完整参考见 `references/renpy-testing.md`。
 
-- **Structure** — renpy lint + AST 检查 (< 5s)
-- **Behavior** — headless SDK 运行 test_b_* labels (~30s)
-- **Visual** — 截图 diff baselines (~60s)
-
-单入口：`python tools/test.py`
+```bash
+renpy.sh <project> test                  # 运行全部测试
+renpy.sh <project> test <testcase_name>  # 运行单个测试
+renpy.sh <project> test --report-detailed
+```
 
 ## 前置要求
 
 - Ren'Py SDK（通过 `RENPY_SDK` 环境变量配置）
-- Python 3.x（用于 `tools/test.py`）
-- PIL/Pillow + NumPy（用于 Layer 3 visual diff）
 
 ## 设计文档
 

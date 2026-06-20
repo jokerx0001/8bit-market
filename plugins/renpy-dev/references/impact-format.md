@@ -63,8 +63,9 @@ plan skill 在设计时需注意：
 
 ## 测试基础设施
 
-- 状态: {已就绪 / 需安装}
-- 如缺失: plan 必须添加 `[AI-0]` bootstrap 任务，从 `plugins/renpy-dev/assets/test-infra/` 安装
+- 状态: {已就绪 / 需初始化}
+- `RENPY_SDK` 必须指向可执行的 Ren'Py SDK
+- 如 `game/tests/` 缺失: plan 必须添加 `[AI-0]` bootstrap 任务创建目录和 `testsuite global: teardown: exit`
 
 ## 特殊约束
 

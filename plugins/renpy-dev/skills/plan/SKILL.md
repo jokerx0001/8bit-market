@@ -44,23 +44,24 @@ ls game/*.rpy 2>/dev/null | head -10
 grep -i "renpy" game/options.rpy 2>/dev/null | head -3
 ```
 
-**测试基础设施检测与决策：**
+**测试基础设施检测：**
 
 ```bash
-# 检查 OWN_MANIFEST.json 是否存在
-ls game/tests/OWN_MANIFEST.json 2>/dev/null && echo "MANIFEST_OK" || echo "MANIFEST_MISSING"
-# 检查 tools/test.py 是否存在
-ls tools/test.py 2>/dev/null && echo "TEST_RUNNER_OK" || echo "TEST_RUNNER_MISSING"
+# 检查 RENPY_SDK 环境变量
+echo $RENPY_SDK && test -x "$RENPY_SDK" && echo "SDK_OK" || echo "SDK_MISSING"
+# 检查 game/tests/ 目录
+ls game/tests/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 ```
 
-**检测后的强制分支：**
+**检测后的强制行为：**
 
 | 检测结果 | 强制行为 |
 |---------|---------|
-| 测试基础设施完整（MANIFEST_OK + TEST_RUNNER_OK） | 所有验证使用 `python tools/test.py`（structure/behavior/visual） |
-| 测试基础设施缺失 | **必须**在任务列表最前面添加 `[AI-0]` bootstrap 任务：从 `plugins/renpy-dev/assets/test-infra/` 复制到项目根目录，编辑 `OWN_MANIFEST.json`，运行 `python tools/test.py scaffold` |
+| SDK_OK + TESTS_OK | 测试文件写入 `game/tests/`，验证使用 `renpy.sh project test` |
+| SDK_MISSING | **阻断** — `RENPY_SDK` 环境变量必须指向可执行的 Ren'Py SDK |
+| TESTS_MISSING | **必须**在任务列表最前面添加 `[AI-0]` bootstrap 任务：创建 `game/tests/` 目录和 `__init__.py`，写入 `testsuite global: teardown: exit` |
 
-**铁律：绝不使用"人工启动目视"作为验证手段。** Ren'Py 项目支持全自动化三层测试（structure/behavior/visual），所有 feature 都可以自动化验证。如果测试基础设施缺失，第一个 AI 任务就是安装它。
+**铁律：绝不使用"人工启动目视"作为验证手段。** 所有功能通过 `renpy.sh project test` 自动化验证。
 
 ### 5. 收集需求
 
@@ -80,7 +81,7 @@ ls tools/test.py 2>/dev/null && echo "TEST_RUNNER_OK" || echo "TEST_RUNNER_MISSI
 
 ## 技术栈
 - Ren'Py 版本: {检测到的版本}
-- 测试: tools/test.py (structure + behavior + visual)
+- 测试: renpy.sh project test
 
 ## 测试基础设施
 - 状态: {已就绪 / 需安装 — 见 [AI-0] bootstrap 任务}
@@ -164,7 +165,7 @@ transform xxx:
 # Plan: {feature-name}
 
 ## 概述
-{从 requirements.md + architecture.md 提炼：功能目标、项目环境、OWN_MANIFEST 路径、测试基础设施状态}
+{从 requirements.md + architecture.md 提炼：功能目标、项目环境、RENPY_SDK 状态、game/tests/ 状态}
 
 ## 设计摘要
 {从 architecture.md + design.md 提炼关键决策 — screen 结构、数据流、关键交互}
@@ -204,9 +205,9 @@ transform xxx:
 - "lint 代替测试" / "lint 验证" / "Ren'Py Lint"
 - "人工启动目视" / "人工验证" / "手动测试"
 - "测试基础设施缺失不阻塞" / "测试暂缓" / "跳过测试"
-- 任何将 `python tools/test.py` 之外的验证手段作为替代方案的描述
+- 任何将 `renpy.sh project test` 之外的验证手段作为替代方案的描述
 
-**验证手段始终且唯一为 `python tools/test.py`（structure + behavior + visual）。** 若测试基础设施缺失，`[AI-0]` bootstrap 任务是强制的，不是可选的。测试基础设施从未"缺失不阻塞"——它阻塞一切。
+**验证手段始终且唯一为 `renpy.sh project test`。** 若 game/tests/ 目录缺失，`[AI-0]` bootstrap 任务是强制的，不是可选的。测试基础设施从未"缺失不阻塞"——它阻塞一切。
 
 ### 9. 格式自检
 
@@ -230,7 +231,7 @@ grep -iE '(lint.*(代替|验证|替代)|人工.*(启动|验证|目视)|手动.*(
 
 **AI 任务：** N 个
 **人工任务：** N 个
-**测试覆盖：** structure / behavior / visual
+**测试覆盖：** `renpy.sh project test`
 
 ---
 人类审查 plan.md 通过后进入 exec。

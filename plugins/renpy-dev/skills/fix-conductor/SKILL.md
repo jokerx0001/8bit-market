@@ -28,8 +28,8 @@ description: |
 ## 工作流
 
 ```
-systematic-debugging → 验证门 → debug-analysis.md → writing-plans → plan.md → [审查] → exec --mode fix → review
-    ↑ 最多 3 轮       ↑ 根因确认     ↑ 根因分析           ↑ 含根因+方案     ↑ 修复计划              ↑ TDD 修复
+systematic-debugging → 验证门 → debug-analysis.md → 编写 plan.md → [审查] → exec --mode fix → review
+    ↑ 最多 3 轮       ↑ 根因确认     ↑ 根因分析       ↑ 含根因+方案   ↑ 修复计划        ↑ TDD 修复
 ```
 
 与另外两个 conductor 的区别：
@@ -117,16 +117,16 @@ systematic-debugging → 验证门 → debug-analysis.md → writing-plans → p
 {修复方案的概要描述，一两句话}
 ```
 
-### 阶段 5：Writing Plans — 生成修复计划
+### 阶段 5：编写 plan.md
 
-调用 `Skill` 工具加载 `superpowers:writing-plans`，基于 debug-analysis.md 生成**自包含的 plan.md**。
+基于 debug-analysis.md，参照 `plugins/renpy-dev/references/plan-format.md` 格式，自己直接编写 `plan.md`。
 
-**传递给 writing-plans 的约束：**
+**硬约束：**
 - plan.md 的"概述"段必须包含根因摘要
 - plan.md 的"设计摘要"段必须包含修复方案
 - 每个 AI 任务有 `[AI-N]` 编号 + 输出文件路径 + 依赖标注
 - 必须包含**回归测试**任务（确保 BUG 不再复现）
-- 按 `plugins/renpy-dev/references/plan-format.md` 格式输出
+- 测试验证手段唯一：`renpy.sh project test`
 
 保存到 `.renpy-dev/fix-{N}/plan.md`。
 

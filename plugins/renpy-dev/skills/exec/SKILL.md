@@ -79,10 +79,13 @@ ls -d .renpy-dev/*/ 2>/dev/null | sort -V | tail -1
 ### 5. 确认测试可用性
 
 ```bash
-ls tools/test.py 2>/dev/null && echo "READY" || echo "MISSING"
+# 检查 Ren'Py SDK
+echo $RENPY_SDK && test -x "$RENPY_SDK" && echo "READY" || echo "NEED_SDK"
+# 检查 game/tests/ 目录
+ls game/tests/ 2>/dev/null && echo "TESTS_DIR_OK" || echo "TESTS_DIR_MISSING"
 ```
 
-如果 `tools/test.py` 不存在，提示用户从 `assets/test-infra/` 安装测试基础设施。
+**硬门：** `RENPY_SDK` 必须指向可执行的 Ren'Py SDK。`game/tests/` 目录必须存在（不存在则创建）。没有其他条件是测试继续进行的替代方案。
 
 ### 6. TDD 循环执行每个任务
 
@@ -123,24 +126,23 @@ Agent({
 {从 plan.md 测试策略表提取的本行测试文件路径}
 
 ## 需要读取的文件
-{主会话根据 mode 从上述映射表组装，填入已解析的具体路径。例如 mode=fix, task_dir=.renpy-dev/fix-1:}
+{主会话根据 mode 从上述映射表组装，填入已解析的具体路径。例如 mode=feat, task_dir=.renpy-dev/feat-1:}
 - {task_dir}/plan.md  — {mode=feat/refactor: 设计摘要段; mode=fix: 根因分析 + 修复方案}
 - {task_dir}/.work/design.md  — widget 树、变量定义、交互流程（仅 feat/refactor 模式）
 - {task_dir}/impact.md  — 修改范围约束、已有测试保护（仅 refactor 模式）
 - {task_dir}/.work/debug-analysis.md  — 详细调试分析（仅 fix 模式）
-- game/tests/_framework.rpy  — 获取可用的 test_framework helper API
+- plugins/renpy-dev/references/renpy-testing.md  — Ren'Py 原生 testcase/testsuite 完整 API
 - game/tests/test_*.rpy（已有测试文件） — 了解命名惯例和代码风格
-- game/ 下相关的 .rpy 源文件 — 了解已有代码模式和约定
+- game/ 下相关的 .rpy 源文件 — 了解已有 screen 名、widget id、变量名
 
 ## 编写要求
-1. 从上述设计文档中提取变量名、screen 名、widget ID 写入测试 — 不凭空编造
-2. 测试断言的是目标行为（设计文档中描述的行为），不是当前行为
-3. 测试预期失败（因为功能尚未实现/修复尚未应用）
-4. 只写 game/tests/ 下的测试代码，不写 game/ 下的业务代码
-5. 使用 test_framework helper API
-6. behavior 测试：验证"给定输入 → 产生正确状态/输出"，不检查 widget ID 是否存在
-7. visual 测试：从设计文档获取 widget ID，对 screen 截图做像素 diff
-8. fix 模式：必须包含回归测试，覆盖原 BUG 场景
+1. 使用 Ren'Py 原生 testcase / testsuite 框架，不自定义 helper
+2. 从设计文档中提取 screen 名、widget id、变量名写入测试 — 不凭空编造
+3. 测试断言目标行为（设计文档中描述的行为），不是当前行为
+4. 测试预期失败（因为功能尚未实现/修复尚未应用）
+5. 只写 game/tests/ 下的测试文件，不写 game/ 下的业务代码
+6. 用 click / advance until screen / assert eval / assert label / screenshot 等原生语句
+7. fix 模式：必须包含回归测试，覆盖原 BUG 场景
 
 ## 约束
 - 不允许 mock、假代码、硬编码预期值来让测试通过
@@ -154,10 +156,10 @@ Agent({
 检查点：
 1. 测试文件已创建/修改？
 2. 测试覆盖了 prompt 中"测试目标"列出的功能？
-3. 测试中引用的变量名、screen 名与 `.work/design.md` 一致（不是凭空编造的）？
+3. 测试中引用的 screen 名、widget id、变量名与 `.work/design.md` 一致（不是凭空编造的）？
 4. 没有 mock、假代码、硬编码预期值？
-5. 测试语法有效？（运行 `python tools/test.py structure`）
-6. 测试命名符合规范（`test_b_*` / `test_v_*`）？
+5. 测试语法有效？（`renpy.sh project lint` 或检查 testcase/testsuite 块结构）
+6. 使用原生 `testcase` / `testsuite` 框架（非自定义 helper）？
 
 不合格 → 反馈具体问题，重新 spawn test agent（不消耗重试计数）。
 合格 → 进入 GREEN。
@@ -201,28 +203,28 @@ Agent({
 
 #### 7e. VERIFY — 运行测试
 
-使用 `python tools/test.py` 运行对应层的测试。
+使用 `renpy.sh` 运行对应 testcase。
 
 **验证原则（不可妥协）：**
 
-任务完成的判定必须基于**真实的运行时输出** — 从 `tools/test.py` 的 stdout/stderr、`.last_results.json` 中获取的**实际文本**。绝不能凭代码逻辑推测"应该通过"。
+任务完成的判定必须基于**真实的运行时输出** — 从 `renpy.sh project test` 的 stdout/stderr 获取的**实际文本**。绝不能凭代码逻辑推测"应该通过"。
 
-1. 运行 `python tools/test.py behavior`（或 visual/structure）
-2. 读取 `game/tests/.last_results.json` 获取测试结果
+1. 运行 `$RENPY_SDK <project> test <testcase_name> --report-detailed`
+2. 读取 stdout/stderr 获取测试结果
 3. 对比期待值和实际值：
 
 ```
 验证 [AI-N]:
-  测试: test_b_character_select
-  结果: ✅ PASS
-  测试: test_v_character_select
-  结果: ✅ PASS (baseline created)
+  测试: select_character
+  结果: ✅ Passed
+  测试: cancel_selection
+  结果: ✅ Passed
   结论: ✅ 全部通过
 ```
 
 **失败处理：**
 
-1. 读取 `.last_results.json` 中的失败详情
+1. 从 `renpy.sh test --report-detailed` 输出中读取失败详情
 2. 对比 expected vs actual，定位具体差异
 3. 分析根因（不是猜测，基于失败事实推导）
 4. 携带**实际输出 + 根因分析**重新 spawn coding agent
@@ -243,7 +245,6 @@ Agent({
 3. 是否有超出 plan.md 影响范围的改动？
 4. 新增 screen 的关键 widget 是否有 `id`？
 5. 跨文件 `jump/call` 目标是否存在？
-6. `OWN_MANIFEST.json` 是否已更新？
 
 合格 → 标记任务完成。
 不合格 → 反馈具体问题，重新 spawn coding agent。
@@ -277,7 +278,7 @@ Agent({
 
 ### 8. 最终验证
 
-1. 运行 `python tools/test.py`（全部三层）检查回归
+1. 运行 `$RENPY_SDK <project> test --report-detailed` 检查全部测试
 2. 输出完成摘要
 
 ---
@@ -298,14 +299,14 @@ Agent({
 永远不要声称任务完成，除非：
 
 1. 所有 `[AI-N]` 任务在 `progress.json` 中标记为 `done`
-2. `python tools/test.py` 全部三层通过
+2. `$RENPY_SDK <project> test` 全部测试通过
 3. 输出下面的完成报告：
 
 ```
 ## 执行完成
 
 **任务：** {done_count}/{total_count} 完成
-**测试：** structure ✅ behavior ✅ visual ✅
+**测试：** ✅ 全部通过
 **创建/修改文件：**
   - {file1}
   - {file2}

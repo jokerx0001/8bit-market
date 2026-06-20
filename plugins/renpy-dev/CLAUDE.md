@@ -18,17 +18,13 @@ Each workflow uses a different analysis methodology:
 # Validate plugin structure
 ls .claude-plugin/plugin.json && echo "valid"
 
-# Run tests for a Ren'Py project that has installed this plugin's test infra:
-python tools/test.py                    # all three layers
-python tools/test.py structure          # lint + AST checks (< 5s)
-python tools/test.py behavior           # headless SDK test_b_* labels (~30s)
-python tools/test.py visual             # headless SDK test_v_* labels, screenshot diff (~60s)
-python tools/test.py scaffold           # generate test_v_<screen> skeletons
-python tools/test.py --update-baselines # regenerate baseline images
-python tools/test.py --filter <name>    # filter by test name
+# Run tests for a Ren'Py project:
+renpy.sh <project> test                  # all tests in global suite
+renpy.sh <project> test <testcase_name>  # single testcase
+renpy.sh <project> test --report-detailed  # detailed output
 ```
 
-`RENPY_SDK` env var must point to the Ren'Py SDK executable (defaults checked: Windows/Unix common paths).
+`RENPY_SDK` env var must point to the Ren'Py SDK executable.
 
 ## Architecture
 
@@ -84,16 +80,16 @@ Subagents no longer hardcode document paths — they read the concrete paths fro
 
 Each `[AI-N]` task follows a strict RED→GREEN→REFACTOR cycle:
 
-1. **RED**: spawn `renpy-dev:test-agent` to write failing tests
+1. **RED**: spawn `renpy-dev:test-agent` to write failing tests using Ren'Py's native `testcase`/`testsuite` framework
 2. **GREEN**: spawn `renpy-dev:coding` to write minimal implementation
-3. **VERIFY**: run `python tools/test.py` and read `.last_results.json` — **must use actual runtime output**, never infer "should pass" from code reading
+3. **VERIFY**: run `renpy.sh project test` — **must use actual runtime output**, never infer "should pass" from code reading
 4. **REFACTOR**: main session runs `renpy-dev:review` compliance check
 
 ### Agent Isolation Rules
 
 | Agent | Writes to | Must never touch |
 |-------|-----------|-----------------|
-| `renpy-dev:test-agent` | `game/tests/` | any source code |
+| `renpy-dev:test-agent` | `game/tests/` | any source code in `game/` |
 | `renpy-dev:coding` | `game/` (not `tests/`) | `game/tests/`, `game/libs/`, `game/tl/` |
 
 ### Progress & Resume
@@ -104,22 +100,21 @@ Each `[AI-N]` task follows a strict RED→GREEN→REFACTOR cycle:
 
 - **plan.md is self-contained**: exec reads ONLY plan.md, never `.work/` intermediate files. plan.md must absorb all key design decisions — no cross-references like "see design.md".
 - **Impact analysis is the refactor differentiator**: refactor-conductor writes `impact.md` before calling plan; plan reads it as hard constraints (modification scope, exclusions, existing test protection, risk handling).
-- **Test baseline discipline**: never commit baseline updates in the same commit as source changes. At minimum: `feat: ...` then `chore: baseline update`.
-- **OWN_MANIFEST.json** is the single source of truth for what code we own — the test runner only scans what's listed there.
-- **New screens must have widget `id` attributes** on interactive elements — this is required for Layer 3 visual tests.
-- **`config.test=True`** gates all test code from release builds (via `_guard.rpy` at init offset=-100).
+- **Test baseline discipline**: never commit screenshot baseline updates in the same commit as source changes. At minimum: `feat: ...` then `chore: baseline update`.
+- **New screens must have widget `id` attributes** on interactive elements — this is required for `click id "..."` and `assert id "..."` in tests.
+- **Ren'Py SDK** (`RENPY_SDK` env var) is required for running `renpy.sh project test`.
 
 ## File Organization
 
 ```
 commands/           # Slash command entry points (thin wrappers that invoke skills)
-skills/             # Core skill definitions (orchestrator, plan, exec, review, test, refactor-conductor, fix-conductor)
+skills/             # Core skill definitions (orchestrator, plan, exec, review, refactor-conductor, fix-conductor)
 agents/             # Subagent definitions (coding, test-agent)
 references/         # Format contracts read by skills at runtime
   plan-format.md    #   plan.md → exec parsing contract
   impact-format.md  #   impact.md → plan constraints contract
   renpy-docs.md     #   Ren'Py doc URLs and query conventions
-assets/test-infra/  # Three-layer test framework installed into Ren'Py projects
+  renpy-testing.md  #   Ren'Py native testcase/testsuite complete reference
 .claude-plugin/     # Plugin manifest (plugin.json)
 ```
 

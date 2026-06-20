@@ -106,7 +106,7 @@ plan → 直接进入 exec → review → 完成
 3. exec 按 TDD 循环逐任务执行：
    - RED: spawn test agent
    - GREEN: spawn coding agent
-   - VERIFY: 运行 `tools/test.py`
+   - VERIFY: 运行 `renpy.sh project test`
    - REFACTOR: 主会话审查
 4. 支持断点续跑（读取 progress.json）
 5. 全部 AI 任务完成后输出完成报告
@@ -129,7 +129,7 @@ plan → 直接进入 exec → review → 完成
 **设计文档：** .renpy-dev/feat-{N}/plan.md
 **中间产物：** .renpy-dev/feat-{N}/.work/
 **任务完成：** {done}/{total}
-**测试：** structure ✅ behavior ✅ visual ✅
+**测试：** ✅ 全部通过
 **人工任务：** {count} 项待完成
 ```
 

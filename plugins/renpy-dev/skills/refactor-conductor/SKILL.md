@@ -50,7 +50,7 @@ description: |
 2. 使用 Glob/Grep 发现关联文件（共享 screen、共用 label、数据依赖）
 3. 识别当前实现模式
 4. 查找已有测试文件（`game/tests/test_*.rpy`）
-5. 检查测试基础设施状态（`tools/test.py` + `game/tests/OWN_MANIFEST.json`）
+5. 检查测试基础设施状态（`game/tests/` 目录是否存在，`RENPY_SDK` 是否设置）
 6. 评估级联影响和风险
 
 ### 第二步：写入 impact.md
@@ -68,7 +68,7 @@ description: |
 调用 `renpy-dev:plan` skill。plan 会：
 1. 读取 `impact.md` 获取约束
 2. 在约束范围内用 `superpowers:brainstorming` 分析+设计
-3. 用 `superpowers:writing-plans` 生成自包含的 `plan.md`
+3. 自己编写自包含的 `plan.md`
 
 ### 第四步：审查
 
@@ -100,7 +100,7 @@ Skill({skill: "renpy-dev:exec", args: "--mode refactor --task-dir .renpy-dev/ref
 | | orchestrator | refactor-conductor |
 |--|:--:|:--:|
 | 分析影响范围 | — | ✅ 写 impact.md |
-| plan (brainstorming + writing-plans) | ✅ | ✅ 读 impact.md 约束 |
+| plan (brainstorming → 写 plan.md) | ✅ | ✅ 读 impact.md 约束 |
 | 审查 plan.md | ✅ | ✅ |
 | exec | ✅ | ✅ + 已有测试保护 |
 | review | ✅ | ✅ + 回归检查 |
