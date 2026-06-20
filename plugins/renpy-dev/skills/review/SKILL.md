@@ -1,112 +1,76 @@
 ---
 name: renpy-dev:review
-description: "Review Ren'Py code against plan documents and boundary rules. Use when asked to 'review code', 'check compliance', 'audit changes'. Checks that implementation follows the plan, not a safety audit."
+description: "Review Ren'Py code for boundary violations. Use when asked to 'review code', 'check compliance', 'audit changes'. Checks hard boundaries: test file isolation, widget ids, jump/call targets. Does NOT review code quality — that's REFACTOR's job."
 ---
 
-# Ren'Py AI 开发 — 合规审查
+# Ren'Py AI 开发 — 边界审查
 
-审查 agent 产出是否遵守 plan.md 约定和边界规则。只读审计，不修改代码。
+审查 coding-agent 是否违反了硬边界。不审查代码质量（REFACTOR 是 coding-agent 的职责）。
 
 ---
 
 ## 工作流
 
-### 1. 加载 plan.md
+### 1. 确定审查范围
 
-只读取 `{task_dir}/plan.md`。审查基准是 plan.md 中的设计摘要、影响范围和测试策略。
-
-### 2. 确定审查范围
-
-获取最近变更的文件列表：
 ```bash
 git diff --name-only HEAD
 ```
 
 如果没有 git 变更，检查 `progress.json` 中最近完成的任务涉及的文件。
 
-### 3. 审查维度
+### 2. 审查
 
-#### 审查 A：test agent 合规性
+#### 审查 A：测试文件隔离（零容忍）
 
-对每个新增/修改的测试文件（`game/tests/` 下）：
-
-| 检查项 | 方法 |
-|--------|------|
-| 测试是否覆盖了 plan.md 中的测试策略？ | 对比 plan.md 测试策略段与实际测试 label |
-| 测试是否断言目标行为？ | 检查 `assert eval(...)` 中的值是否匹配设计文档 |
-| 是否使用 Ren'Py 原生 testcase/testsuite？ | 检查文件是否包含 `testcase` / `testsuite` 块 |
+coding-agent 绝对不能修改测试文件。
 
 ```bash
-# 提取 testcase 名称
-grep -E "^[[:space:]]*testcase " game/tests/test_*.rpy
+git diff --name-only HEAD | grep "game/tests/" && echo "❌ VIOLATION: test files modified"
 ```
 
-#### 审查 B：coding agent 合规性
+#### 审查 B：widget id 检查
 
-对每个新增/修改的源码文件（`game/` 下，排除 `game/tests/`）：
-
-| 检查项 | 方法 |
-|--------|------|
-| 实现范围是否在 plan.md 的任务列表中？ | 对比变更文件与 plan.md `[AI-N]` 输出路径 |
-| 是否修改了测试代码？ | 检查 game/tests/ 下的变更 — 零容忍 |
-| 是否写了空代码/假代码？ | grep `pass`、`TODO`、`NotImplementedError` |
-| 实现是否遵循 plan.md 设计摘要？ | 对比 screen 结构、widget tree、数据流是否匹配 plan.md 设计摘要段 |
+新增 screen 中的交互 widget 必须有 `id` 属性。
 
 ```bash
-# 检查空代码
-grep -rn "pass\|# TODO\|NotImplemented" game/ --include="*.rpy" | grep -v "game/tests/"
-# 检查是否修改了测试文件（零容忍）
-git diff --name-only HEAD | grep "game/tests/" && echo "❌ 测试文件被修改"
+# 找到新增/修改的 screen 定义
+# 检查其中是否有关键交互 widget 缺少 id
 ```
 
-#### 审查 C：边界检查
+#### 审查 C：jump/call 目标
 
-| 检查项 | 方法 |
-|--------|------|
-| 新增 screen 的关键交互 widget 是否有 `id`？ | 检查 screens.rpy 中新增 screen 的 widget |
-| 跨文件 `jump/call` 目标是否存在？ | 提取所有 jump/call，验证目标 label 存在 |
+所有 jump/call 的目标 label 必须存在。
 
 ```bash
 # 提取 jump/call 目标
-grep -roh "\(jump\|call\) [a-z_][a-z0-9_]*" game/ --include="*.rpy" | sort -u
+grep -roh "\(jump\|call\) [a-z_][a-z0-9_]*" game/ --include="*.rpy" | sort -u > /tmp/jump_targets.txt
 # 提取已定义的 label
-grep -roh "^label [a-z_][a-z0-9_]*" game/ --include="*.rpy" | sort -u
+grep -roh "^label [a-z_][a-z0-9_]*" game/ --include="*.rpy" | sort -u > /tmp/defined_labels.txt
 # 交叉验证
+comm -23 /tmp/jump_targets.txt /tmp/defined_labels.txt
 ```
 
-### 4. 输出审查报告
+#### 审查 D：空代码/假代码
 
-```markdown
-## 合规审查
+```bash
+grep -rn "pass\|# TODO\|NotImplemented" game/ --include="*.rpy" | grep -v "game/tests/"
+```
 
-### test agent 审查
-- ✅ / ❌ {具体检查项}
+### 3. 输出
 
-### coding agent 审查
-- ✅ / ❌ {具体检查项}
+零违规：
+```
+## 边界审查：通过 ✅
+所有硬边界检查通过。
+```
 
-### 边界检查
-- ✅ / ❌ 新增 screen widget id
-- ✅ / ❌ jump/call 目标
+有违规：
+```
+## 边界审查：❌ N 项违规
 
-### 违规详情
-
-#### ❌ {file}:{line} — {违规描述}
-**预期：** {plan 文档中的约定}
-**实际：** {代码中的实际情况}
+### ❌ {file}:{line} — {违规描述}
 **修复：** {具体修复建议}
-
-### 汇总
-- test agent 违规: N
-- coding agent 违规: N
-- 边界违规: N
-```
-
-零违规时输出：
-```
-## 合规审查：通过 ✅
-
-所有 agent 产出符合 plan 文档约定和边界规则。
 ```
 
 ---
@@ -115,4 +79,4 @@ grep -roh "^label [a-z_][a-z0-9_]*" game/ --include="*.rpy" | sort -u
 
 - **🔴 严重**：修改了测试代码、超出 plan.md 范围修改无关文件
 - **🟡 警告**：新增 screen 缺少 widget id
-- **🟢 建议**：命名改进、代码风格
+- **🟢 建议**：命名改进（不阻塞）
