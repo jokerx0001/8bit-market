@@ -1,6 +1,6 @@
 {
   "name": "renpy-dev",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Ren'Py AI 开发插件 — plan 设计文档 + exec TDD 执行 + review 审查，自主循环完成 Ren'Py 视觉小说开发",
   "author": {
     "name": "jokerx001"
