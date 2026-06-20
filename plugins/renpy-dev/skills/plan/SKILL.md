@@ -63,7 +63,7 @@ ls game/tests/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 
 **铁律：绝不使用"人工启动目视"作为验证手段。** 所有功能通过 `renpy.sh project test` 自动化验证。
 
-### 5. 收集需求
+### 5. 收集需求并确认行为
 
 解析用户的任务描述，生成需求摘要。保存到 `{task_dir}/.work/requirements.md`：
 
@@ -86,6 +86,26 @@ ls game/tests/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 ## 测试基础设施
 - 状态: {已就绪 / 需安装 — 见 [AI-0] bootstrap 任务}
 ```
+
+**确认行为清单（强制门）：** 在进入架构设计之前，从需求中提取**玩家可见的行为列表**，向用户确认：
+
+```
+## 确认以下行为是否准确
+
+这些是玩家能看到和操作的，每条对应一个 testcase：
+
+1. 玩家进入主菜单 → 看到 character_select screen（截图基线）
+2. 玩家点击第 2 个角色卡片 → 卡片视觉高亮
+3. 玩家选中角色后点击"确认" → 跳转到 start_game
+4. 玩家未选中角色点击"确认" → 停留在当前 screen，无事发生
+5. ...
+
+是否有遗漏或不需要的行为？
+```
+
+**为什么这样做：** 确认行为比确认设计文档更精确。设计文档描述的是方案（screen 结构、widget 树），行为描述的是需求（玩家看到什么、做什么、结果是什么）。方案可以有多种，行为只有一种。test-agent 和 coding-agent 都以行为为基准——测试断言行为，实现产出行。
+
+用户确认后，保存行为清单到 `{task_dir}/.work/requirements.md`。
 
 ### 6. 架构设计
 
@@ -152,6 +172,50 @@ transform xxx:
 |------|------|--------|------|
 | persistent.xxx | bool | False | ... |
 ```
+
+### 7b. 产出设计基线（UI 功能必须）
+
+**只有 UI 功能（涉及新 screen 或 screen 布局变更）才执行此步骤。** 纯逻辑功能（如 save/load、数据迁移）跳过。
+
+设计基线是 test-agent 截图对比的基准。步骤：
+
+**1. 生成 HTML 布局稿**
+
+为每个关键 screen 生成一个 HTML 文件，展示其布局：
+- Widget 的位置、大小、间距
+- 文字内容和字体大小
+- 颜色、边框、背景
+- 与设计文档中的 widget 树一致
+
+保存到 `{task_dir}/.work/layouts/`。
+
+**2. 用户确认**
+
+```
+## 请确认以下 UI 布局
+
+布局文件在 {task_dir}/.work/layouts/，请用浏览器打开查看：
+
+- character_select.html — 角色选择界面布局
+- shop.html — 商店界面布局
+
+确认布局符合预期后，回复"OK"继续。如需调整，请描述具体改动。
+```
+
+**3. 截图保存为 baseline**
+
+用户确认后，用 bash 将 HTML 截图保存为 baseline：
+
+```bash
+# 使用 mmx-cli 或浏览器截图工具
+# 输出到 game/tests/screenshots/ 目录
+```
+
+baseline 文件命名约定：`screens/{screen_name}_{state}.png`
+- `screens/character_select_default.png` — 默认状态
+- `screens/character_select_highlighted.png` — 选中高亮状态
+
+这些文件就是 test-agent 的 `screenshot` 语句的目标路径。第一次 `renpy.sh test` 运行时，Ren'Py 发现文件已存在，自动进入对比模式——游戏实际渲染的画面必须与设计 baseline 一致。
 
 ### 8. 编写 plan.md
 

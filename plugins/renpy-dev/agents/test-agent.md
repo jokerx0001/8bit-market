@@ -73,30 +73,77 @@ grep -rn "^label [a-z_]" game/ --include="*.rpy"
 
 For NEW features (screen doesn't exist yet): extract identifiers from design.md. Define reasonable ids and document assumptions in comments.
 
-### Step 2: Write tests
+### Test Philosophy: Integration-First, Public Interface
 
-Write `testcase`/`testsuite` blocks in `game/tests/test_*.rpy`. Follow the conventions in `plugins/renpy-dev/references/renpy-testing.md`.
+**Test what the PLAYER sees and does, not what the code looks like inside.** The player sees screens, clicks buttons, reads text. They never see variable names or function calls. Your tests must reflect this.
 
-**One testcase per interaction scenario.** Do not chain unrelated assertions.
+| Good (public interface) | Bad (implementation detail) |
+|--------------------------|----------------------------|
+| `click "确认"` → `assert label start_game` | `assert eval (renpy.get_screen("s").scope["_internal_state"] == 3)` |
+| `screenshot "screens/shop.png"` | `assert eval (player.inventory._items[0].id == "sword")` |
+| `click id "char_2"` → screenshot to verify highlight | `assert eval (selection_manager._highlighted_index == 2)` |
 
-**For visual/UI tests**, include screenshot assertions:
+When you MUST check internal state (e.g., variable tracking), prefer checking it through visible effects first. A screenshot that shows the second card highlighted proves `selected_index == 2` better than an `assert eval` on the variable.
+
+### Step 2a: Tracer Bullet — prove the path works first
+
+**Before writing any interaction tests, write ONE test that proves the screen can be reached and rendered:**
+
 ```renpy
-testcase default_layout:
-    advance until screen "character_select"
-    screenshot "screens/character_select_default.png" max_pixel_difference 0.02
+testcase reach_xxx_screen:
+    description "Verify the xxx screen can be reached and renders"
+    advance until screen "xxx"
+    screenshot "screens/xxx_default.png" max_pixel_difference 0.02
 ```
 
-**For interaction tests**, use text selectors when widget ids are uncertain:
+This is your tracer bullet. It proves:
+- The navigation path works (Jump to label → screen appears)
+- The screen exists and renders something
+- A visual baseline is captured
+
+**Run this test first.** If it can't even reach the screen, there's no point writing interaction tests. Fix the navigation (Jump target, screen name) before continuing. If the screen doesn't exist yet, this test FAILS correctly — the path is blocked by missing implementation, which is what you want.
+
+Only after the tracer bullet test fails for the right reason (screen not found / not reachable), proceed to Step 2b.
+
+### Step 2b: Incremental Tests — one user-visible behavior at a time
+
+**Write tests ONE BY ONE, each capturing a single player-visible behavior.** After writing each testcase, ask: "What does the player see or do differently because of this behavior?"
+
 ```renpy
+# Test 2: Character selection changes highlight
+testcase select_second_character:
+    description "Clicking the second character card highlights it visually"
+    advance until screen "character_select"
+    click id "char_2"
+    screenshot "screens/character_select_highlighted.png" max_pixel_difference 0.02
+
+# Test 3: Confirm button navigates forward
 testcase confirm_selection:
+    description "Clicking confirm after selecting a character proceeds to the game"
     advance until screen "character_select"
-    click "确认"              # text-based fallback
+    click id "char_1"
+    click "确认"
     assert label start_game
+
+# Test 4: Edge case — can't confirm without selection
+testcase confirm_without_selection:
+    description "Clicking confirm without selecting does nothing"
+    advance until screen "character_select"
+    click "确认"
+    assert screen "character_select"  # still on same screen
 ```
+
+**Build from simple to complex:**
+1. Screen exists → tracer bullet (screenshot)
+2. One click → one visual change (screenshot)
+3. One click → one navigation change (assert label)
+4. Edge cases and error states
+
+**Use the design doc's visual baseline for screenshot expectations.** The design phase produced baseline screenshots — your `screenshot` statements point to those paths. The coding agent's job is to make the actual game render match the baseline.
 
 ### Step 3: Run tests and confirm they fail CORRECTLY
 
-This is mandatory. Run the tests and verify:
+**Run the tracer bullet first.** If it has a syntax error or wrong screen name, fix it before writing more tests. A broken tracer bullet means all subsequent tests are unreliable.
 
 ```bash
 # Run the specific testcase

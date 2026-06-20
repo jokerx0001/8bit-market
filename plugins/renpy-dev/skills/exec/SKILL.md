@@ -13,6 +13,7 @@ exec 是 TDD 循环的**纯编排器**。它不跑测试、不分析失败、不
 - **coding-agent 永远不能接触测试源码。** exec 在 spawn coding-agent 时绝不传递测试代码、测试文件路径、测试运行命令。
 - **设计文档是唯一的共享真相。** 两个 agent 都读设计文档。
 - **反馈循环闭合在 test-agent 内部。** 写测试的人验证测试。
+- **垂直切片，不是水平切片。** 不允许"写完全部测试再写完全部实现"。每个行为是一条从测试→实现→验证的完整垂直线。对游戏 UI 尤其重要：你必须先看到一个 screen 渲染出来，才知道下一个交互测试应该怎么写。
 
 ```
 exec 只做:
@@ -73,6 +74,25 @@ ls game/tests/ 2>/dev/null && echo "TESTS_DIR_OK" || echo "TESTS_DIR_MISSING"
 ### 6. TDD 循环 — 对每个 [AI-N] 任务
 
 每个任务走完整 RED → GREEN → VERIFY → REFACTOR → VERIFY 循环。
+
+**垂直切片原则：** 一个任务的 TDD 不是"写完全部测试 → 写完全部实现"。test-agent 使用 tracer bullet 模式——先写一个测试证明路径通（screen 可到达 + 截图基线），跑通后再增量加交互测试。coding-agent 响应每个可验证的行为失败。这样每轮 RED→GREEN 处理的都是一个具体的、可见的玩家行为，不是一整个文件。
+
+```
+WRONG (水平切片):
+  RED:   test-agent 一次写 5 个 testcase
+  GREEN: coding-agent 一次实现整个 screen
+
+RIGHT (垂直切片):
+  RED:   test-agent 写 tracer bullet (screen 可到达 + 截图)
+  → GREEN → VERIFY → 路径通了，看到画面了
+  RED:   test-agent 加一个交互 testcase (点击高亮)
+  → GREEN → VERIFY → 高亮行为对了
+  RED:   test-agent 加一个交互 testcase (确认跳转)
+  → GREEN → VERIFY → 跳转行为对了
+  ...直到该 screen 的全部行为覆盖完
+```
+
+**exec 如何支持垂直切片：** test-agent 的 RED mode 已内置 tracer bullet 逻辑——它会先写一个 testcase 验证 screen 可到达，再逐个添加交互 testcase。exec 在每次 test-agent 报告"tracer bullet 失败原因正确"后，让 coding-agent 先实现 tracer bullet 所需的最小代码（screen 骨架 + 基础布局），VERIFY 通过后再让 test-agent 添加下一个 testcase。这样每一步都是可验证的。
 
 #### 6a. 标记开始
 
