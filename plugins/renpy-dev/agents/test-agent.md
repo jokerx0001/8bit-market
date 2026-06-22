@@ -87,19 +87,17 @@ When you MUST check internal state (e.g., variable tracking), prefer checking it
 
 ### Step 2a: Tracer Bullet — prove the path works first
 
-**Before writing any interaction tests, write ONE test that proves the screen can be reached and rendered:**
+**Before writing any interaction tests, write ONE test that proves the screen can be reached:**
 
 ```renpy
 testcase reach_xxx_screen:
-    description "Verify the xxx screen can be reached and renders"
+    description "Verify the xxx screen can be reached"
     advance until screen "xxx"
-    screenshot "screens/xxx_default.png" max_pixel_difference 0.02
 ```
 
 This is your tracer bullet. It proves:
 - The navigation path works (Jump to label → screen appears)
-- The screen exists and renders something
-- A visual baseline is captured
+- The screen exists
 
 **Run this test first.** If it can't even reach the screen, there's no point writing interaction tests. Fix the navigation (Jump target, screen name) before continuing. If the screen doesn't exist yet, this test FAILS correctly — the path is blocked by missing implementation, which is what you want.
 
@@ -107,15 +105,15 @@ Only after the tracer bullet test fails for the right reason (screen not found /
 
 ### Step 2b: Incremental Tests — one user-visible behavior at a time
 
-**Write tests ONE BY ONE, each capturing a single player-visible behavior.** After writing each testcase, ask: "What does the player see or do differently because of this behavior?"
+**Write tests ONE BY ONE, each capturing a single player-visible behavior.** After writing each testcase, ask: "What does the player see or do because of this behavior?"
 
 ```renpy
-# Test 2: Character selection changes highlight
+# Test 2: Character selection updates state
 testcase select_second_character:
-    description "Clicking the second character card highlights it visually"
+    description "Clicking the second character card selects it"
     advance until screen "character_select"
     click id "char_2"
-    screenshot "screens/character_select_highlighted.png" max_pixel_difference 0.02
+    assert eval "selected_index == 2"
 
 # Test 3: Confirm button navigates forward
 testcase confirm_selection:
@@ -134,12 +132,12 @@ testcase confirm_without_selection:
 ```
 
 **Build from simple to complex:**
-1. Screen exists → tracer bullet (screenshot)
-2. One click → one visual change (screenshot)
-3. One click → one navigation change (assert label)
+1. Screen exists → tracer bullet (`advance until screen`)
+2. One click → one state change (`assert eval` or `assert screen`)
+3. One click → one navigation change (`assert label`)
 4. Edge cases and error states
 
-**Use the design doc's visual baseline for screenshot expectations.** The design phase produced baseline screenshots — your `screenshot` statements point to those paths. The coding agent's job is to make the actual game render match the baseline.
+**No screenshot comparison for UI correctness.** Pixel-perfect visual comparison is unreliable via automated testing. Visual correctness is verified by a human comparing Ren'Py output to the HTML standard file. Your tests verify behavior, not pixels.
 
 ### Step 3: Run tests and confirm they fail CORRECTLY
 
@@ -225,7 +223,7 @@ Collect the full stdout/stderr output.
 
 ### Step 3: If any fail — analyze and describe
 
-**For behavioral test failures** (assert eval, assert label, etc.):
+**For test failures** (assert eval, assert label, assert screen, etc.):
 Read the Ren'Py error output. It typically includes line numbers and expected vs actual values. Translate into a behavior-level description:
 
 ```
@@ -233,27 +231,6 @@ Read the Ren'Py error output. It typically includes line numbers and expected vs
    Failure: assert label start_game failed
    Meaning: After clicking "确认", the game did not jump to label 'start_game'.
    Likely cause: The confirm button's action is missing or has the wrong Jump target.
-```
-
-**For screenshot test failures** (screenshot comparison):
-Use `mmx vision describe` to compare the baseline and actual screenshots:
-
-```bash
-mmx vision describe \
-  game/tests/screenshots/xxx_baseline.png \
-  game/tests/screenshots/xxx_actual.png \
-  --prompt "Compare these two Ren'Py game screenshots in detail. Describe specific differences: widget positions (with pixel offsets if possible), color differences, missing or extra elements, text content differences, layout differences. Focus on concrete, actionable differences that a developer could fix."
-```
-
-If mmx is not available, fall back to describing the pixel difference percentage from the test output.
-
-Translate the vision analysis into actionable feedback:
-```
-❌ testcase: default_layout
-   Failure: screenshot pixel difference 0.15 exceeds max 0.02
-   Visual analysis: The confirm button (text "确认") is positioned at y=300 
-   but should be at y=400 based on the baseline. The character name text is 
-   using font size 18 instead of 24.
 ```
 
 ### Step 4: Report
@@ -287,8 +264,9 @@ Translate the vision analysis into actionable feedback:
 
 1. **Only `game/tests/`.** Never write to `game/` source code.
 2. **RED: tests MUST fail for the right reason.** Syntax errors and wrong identifiers don't count as RED.
-3. **GREEN: describe WHAT is wrong, not HOW to fix it.** Say "button is at wrong position" not "change y to 400".
-4. **Use native test statements only.** `click`, `advance until`, `assert eval`, `run Jump`, `screenshot`. No custom helpers.
+3. **GREEN: describe WHAT is wrong, not HOW to fix it.** Say "confirm button action is missing Jump" not "add Jump('start_game') to line 42".
+4. **Use native test statements only.** `click`, `advance until`, `assert eval`, `assert screen`, `assert label`, `run Jump`. No custom helpers.
 5. **One scenario per testcase.**
 6. **No mock, no fake.** Every assertion checks real game state.
 7. **Self-correct before reporting.** RED mode: fix syntax/identifier errors yourself. GREEN mode: re-run to confirm analysis.
+8. **No pixel comparison.** Do NOT use `screenshot ... max_pixel_difference`. Visual correctness is verified by human against the HTML standard file, not by automated pixel comparison. `screenshot` without comparison may be used for debugging.

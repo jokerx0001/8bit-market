@@ -57,6 +57,36 @@ comm -23 /tmp/jump_targets.txt /tmp/defined_labels.txt
 grep -rn "pass\|# TODO\|NotImplemented" game/ --include="*.rpy" | grep -v "game/tests/"
 ```
 
+#### 审查 E：UI 原则合规（type: ui 任务必查）
+
+当当前任务列表包含 `type: ui` 任务时，额外检查 UI 编码原则（参见 `plugins/renpy-dev/references/renpy-ui-principles.md`）：
+
+**E1. 样式重复定义检查：**
+```bash
+# 同一 screen 文件中同一属性的多次出现
+grep -n "background\|color\|size\|xalign\|yalign" {modified_screen_file} | sort -t: -k2
+```
+
+**E2. 互斥属性检查：**
+```bash
+# xalign 与 xpos 不能同时出现
+grep -l "xalign" {modified_screen_file} | xargs grep -l "xpos" && echo "⚠️ 互斥属性: xalign + xpos"
+# xsize 与 xfill 不能同时出现
+grep -l "xsize" {modified_screen_file} | xargs grep -l "xfill" && echo "⚠️ 互斥属性: xsize + xfill"
+```
+
+**E3. textbutton 外嵌套 frame：**
+```bash
+# frame 内嵌 textbutton 是无意义冗余（textbutton 自带 window 属性）
+grep -A2 "frame:" {modified_screen_file} | grep "textbutton" && echo "⚠️ 冗余嵌套: frame 包 textbutton"
+```
+
+**E4. 布局容器零样式：**
+```bash
+# vbox/hbox 不应有 background/xpadding 等视觉属性
+grep -B1 -A5 "^[[:space:]]*vbox:" {modified_screen_file} | grep "background\|xpadding\|ypadding\|foreground" && echo "⚠️ 布局容器被视觉属性污染"
+```
+
 ### 3. 输出
 
 零违规：
@@ -78,5 +108,5 @@ grep -rn "pass\|# TODO\|NotImplemented" game/ --include="*.rpy" | grep -v "game/
 ## 严重级别
 
 - **🔴 严重**：修改了测试代码、超出 plan.md 范围修改无关文件
-- **🟡 警告**：新增 screen 缺少 widget id
-- **🟢 建议**：命名改进（不阻塞）
+- **🟡 警告**：新增 screen 缺少 widget id、互斥属性同时出现、textbutton 外嵌 frame
+- **🟢 建议**：样式重复定义、布局容器被视觉属性污染、命名改进（不阻塞）

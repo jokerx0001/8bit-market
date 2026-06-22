@@ -173,49 +173,66 @@ transform xxx:
 | persistent.xxx | bool | False | ... |
 ```
 
-### 7b. 产出设计基线（UI 功能必须）
+### 7b. 产出 UI 标准文件（UI 功能必须）
 
-**只有 UI 功能（涉及新 screen 或 screen 布局变更）才执行此步骤。** 纯逻辑功能（如 save/load、数据迁移）跳过。
+**触发条件：** 需求涉及用户可见的视觉界面（新 screen 或 screen 视觉重设计）。纯逻辑功能（如 save/load、数据迁移、后端通信）跳过。
 
-设计基线是 test-agent 截图对比的基准。步骤：
+**粒度：** 一个逻辑屏幕一个 HTML 文件。例如 "角色选择画面" → 一个 HTML，"剧情对话画面" → 一个 HTML。
 
-**1. 生成 HTML 布局稿**
+**HTML 内容要求：**
 
-为每个关键 screen 生成一个 HTML 文件，展示其布局：
-- Widget 的位置、大小、间距
-- 文字内容和字体大小
-- 颜色、边框、背景
+- 包含该逻辑屏幕的**所有交互状态**（默认态、hover、选中、禁用、过渡动画等）
+- 使用 CSS 伪类（`:hover`、`:active`、`:disabled`）和过渡（`transition`）表达动态效果
+- 单文件自包含（内联 CSS，浏览器可直接打开）
+- 颜色、字体、间距、背景等视觉属性精确设置
 - 与设计文档中的 widget 树一致
 
-保存到 `{task_dir}/.work/layouts/`。
+**步骤：**
+
+**1. 生成 HTML**
+
+为每个涉及视觉设计的逻辑屏幕生成 HTML，保存到 `{task_dir}/.work/layouts/`：
+
+```
+{task_dir}/.work/layouts/
+├── character_select.html
+├── dialogue.html
+└── shop.html
+```
 
 **2. 用户确认**
 
 ```
-## 请确认以下 UI 布局
+## UI 标准确认
 
-布局文件在 {task_dir}/.work/layouts/，请用浏览器打开查看：
+以下 HTML 文件定义了各画面的视觉标准，请用浏览器打开查看：
 
-- character_select.html — 角色选择界面布局
-- shop.html — 商店界面布局
+- character_select.html — 角色选择画面（含默认态、hover、选中态）
+- dialogue.html — 剧情对话画面
 
-确认布局符合预期后，回复"OK"继续。如需调整，请描述具体改动。
+这些文件将成为 coding-agent 的视觉真相 — 后续 Ren'Py 代码的布局/颜色/字体/间距以此为准。
+
+确认后回复"OK"继续。如需调整，请描述具体改动。
 ```
 
-**3. 截图保存为 baseline**
+**3. 确认后保存**
 
-用户确认后，用 bash 将 HTML 截图保存为 baseline：
+用户确认后，HTML 文件即为最终视觉标准，后续不可随意修改。
 
-```bash
-# 使用 mmx-cli 或浏览器截图工具
-# 输出到 game/tests/screenshots/ 目录
-```
+### 7c. 任务分类与排序
 
-baseline 文件命名约定：`screens/{screen_name}_{state}.png`
-- `screens/character_select_default.png` — 默认状态
-- `screens/character_select_highlighted.png` — 选中高亮状态
+在生成任务列表后（step 8），按以下规则分类和排序：
 
-这些文件就是 test-agent 的 `screenshot` 语句的目标路径。第一次 `renpy.sh test` 运行时，Ren'Py 发现文件已存在，自动进入对比模式——游戏实际渲染的画面必须与设计 baseline 一致。
+**分类定义：**
+
+| 类型 | 定义 | 可以写 |
+|------|------|--------|
+| `logic` | 基础 screen 骨架（widget 树/交互逻辑）、label 跳转、变量/数据逻辑 | 完整 widget 树、基础 layout（vbox/hbox/fixed 结构）、action 逻辑、条件控制 |
+| `ui` | 需要匹配 HTML 设计稿的视觉还原 | 颜色、背景、字体大小、间距精调、状态样式（hover/selected/insensitive）、自定义 style 定义 |
+
+**排序：** 所有 `logic` 任务排在 `ui` 任务前面。`ui` 任务依赖同 screen 的最后一个 `logic` 任务。
+
+**UI 任务标记：** 编写 plan.md 时，`ui` 任务必须标注对应的 HTML 文件：`(type: ui, html: .work/layouts/{name}.html)`
 
 ### 8. 编写 plan.md
 
@@ -243,7 +260,8 @@ baseline 文件命名约定：`screens/{screen_name}_{state}.png`
 ## 任务列表
 
 ### [AI] 任务
-- `[AI-N]` ... → `输出路径` (依赖: ...)
+- `[AI-N]` (type: logic) 描述 → `输出路径` (依赖: ...)
+- `[AI-N]` (type: ui, html: .work/layouts/xxx.html) 描述 → `输出路径` (依赖: ...)
 
 ### [HUMAN] 任务
 - `[HUMAN]` ...
@@ -251,13 +269,15 @@ baseline 文件命名约定：`screens/{screen_name}_{state}.png`
 ## 测试策略
 | 测试文件 | 覆盖 |
 |---------|------|
-| ... | behavior: ...; visual: ... |
+| ... | behavior: ... |
 ```
 
 **硬约束：**
 
 - 如果在 step 2 读取了 impact.md，修改范围、排除范围、已有测试保护、风险应对必须遵守其约束
-- 每个 `[AI-N]` 有唯一编号 + `→` 输出文件路径 + 依赖标注
+- 每个 `[AI-N]` 有唯一编号 + 类型标注 + `→` 输出文件路径 + 依赖标注
+- `ui` 任务必须有 `html:` 标注对应的 HTML 标准文件
+- 所有 `logic` 任务排在 `ui` 任务前面
 - 测试任务依赖实现任务（先有 screen 才能测 screen）
 - 测试策略只声明测什么文件、覆盖什么功能 — test agent 自己读 `.work/design.md` 获取细节
 - 先建数据/配置，再建 screen，最后写跳转逻辑
@@ -276,6 +296,14 @@ baseline 文件命名约定：`screens/{screen_name}_{state}.png`
 ### 9. 格式自检
 
 输出前对照 `plan-format.md` 的"格式校验清单"逐项确认。
+
+**额外扫描 plan.md 中的类型和 HTML 引用：**
+
+```bash
+# 检查所有 UI 任务都有 html: 标注
+grep -n '(type: ui' {task_dir}/plan.md | grep -v 'html:'
+# 有输出 → UI 任务缺少 html:，拒绝输出，补齐后再扫
+```
 
 **额外扫描 plan.md 中的禁止短语。** 用以下 grep 检查：
 

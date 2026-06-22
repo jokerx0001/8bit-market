@@ -2,6 +2,8 @@
 
 Ren'Py 内置一等公民的自动化测试框架（`testcase` / `testsuite`），提供输入模拟、条件断言、视觉回归、参数化等完整能力。CLI: `renpy.sh <basedir> test [<testcase>]`。
 
+> **工作流约定：** `screenshot ... max_pixel_difference` 像素对比在本工作流中不使用。视觉正确性由人类对照 HTML 标准文件确认，不由自动化测试验证。`screenshot` 无参形式仅用于调试。
+
 ---
 
 ## 快速入门
@@ -218,13 +220,14 @@ assert eval (persistent.unlocked_characters >= 3 and screen "gallery")
 ### 截图/视觉回归
 
 ```renpy
-screenshot "screens/main_menu.png"
-screenshot "screens/inventory" max_pixel_difference 0.01
-screenshot "button.png" crop (10, 10, 100, 50)
+screenshot "screens/main_menu.png"               # 仅截图，不做对比
+screenshot "screens/inventory" max_pixel_difference 0.01  # 像素对比（本工作流不使用）
+screenshot "button.png" crop (10, 10, 100, 50)   # 裁剪区域
 ```
 
 - 仅 `.png`。文件已存在时对比差异，超过 `max_pixel_difference`（整数=像素数，小数=比例）则失败
 - `--overwrite_screenshots` 重写基线
+- **本工作流约定：** 不使用 `max_pixel_difference`。`screenshot` 无参形式仅用于调试确认 screen 可渲染。视觉验证由人工对照 HTML 标准完成。
 
 ### 参数化测试
 

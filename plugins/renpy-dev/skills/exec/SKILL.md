@@ -58,7 +58,7 @@ ls -d .renpy-dev/*/ 2>/dev/null | sort -V | tail -1
 
 ### 4. 解析任务列表
 
-按 `plan-format.md` 的解析规则提取 `[AI-N]` 任务，按依赖拓扑排序。`[HUMAN]` 任务收集但不执行。
+按 `plan-format.md` 的解析规则提取 `[AI-N]` 任务，识别任务类型（`logic` / `ui`）和 HTML 标准路径（ui 任务），按依赖拓扑排序。logic 任务优先于 ui 任务。`[HUMAN]` 任务收集但不执行。
 
 ### 5. 确认测试环境
 
@@ -126,6 +126,7 @@ RED
 - {task_dir}/impact.md  — 修改范围约束（仅 refactor 模式）
 - {task_dir}/.work/debug-analysis.md  — 根因分析（仅 fix 模式）
 - plugins/renpy-dev/references/renpy-testing.md  — Ren'Py testcase/testsuite 完整 API
+- https://www.renpy.org/doc/html/testcases.html  — 官方测试文档（WebFetch 查询）
 - game/ 下相关的 .rpy 源文件 — 了解已有 screen 名、widget id、变量名
 
 ## 约束
@@ -170,6 +171,7 @@ GREEN
 
 ## 实现文件
 {plan.md 中标注的输出文件路径}
+{若 plan.md 中任务标记为 type: ui，在此插入 UI 任务标记块}
 
 ## 需要读取的文件
 - {task_dir}/plan.md  — 设计摘要、影响范围
@@ -185,6 +187,21 @@ GREEN
   `
 })
 ```
+
+**UI 任务标记块的格式（仅当 plan.md 中任务类型为 `ui` 时插入）：**
+
+```
+## UI 任务
+html: {task_dir}/{html_path}
+```
+
+示例：
+```
+## UI 任务
+html: .renpy-dev/feat-1/.work/layouts/character_select.html
+```
+
+coding-agent 检测到 `## UI 任务` + `html:` 后自动进入 UI 翻译模式（内置能力），无需 exec 传递参考文件路径。
 
 **关键：coding-agent 的 prompt 中不出现测试源码。** 只出现行为描述。
 

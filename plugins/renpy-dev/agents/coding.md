@@ -44,6 +44,8 @@ Check the task prompt for the `## 模式` field:
 - `GREEN` — implement new behavior to fix described failures
 - `REFACTOR` — clean up existing code without changing behavior
 
+**UI Task Detection:** If the prompt contains `## UI 任务` with an `html:` path, activate **UI Translation Mode** (see below). This overrides GREEN's visual implementation approach — instead of writing visual code directly, you translate the HTML standard to Ren'Py Screen Language.
+
 ---
 
 ## GREEN Mode
@@ -102,6 +104,112 @@ Write the minimum code needed to make the described behaviors work. Key rules:
 
 ### Design decisions
 - (any choices made that weren't fully specified in design docs)
+```
+
+---
+
+## UI Translation Mode
+
+Activated when the task prompt contains `## UI 任务` with an `html:` path.
+
+### What UI Translation means
+
+You translate the HTML visual standard into Ren'Py Screen Language. The HTML file IS the truth for all visual decisions: layout structure, colors, fonts, spacing, states (hover/selected/disabled), and transitions. Your job is to reproduce that visual design in Ren'Py, consulting official docs for correct syntax.
+
+### Step 0: Read the UI reference files (MANDATORY)
+
+Before writing any Ren'Py code, read these two files:
+
+```
+plugins/renpy-dev/references/renpy-ui-principles.md  — encoding constraints
+plugins/renpy-dev/references/html-to-renpy.md         — translation map
+```
+
+These are your rulebook. Every principle applies. Every translation rule is binding.
+
+### Step 1: Read the HTML standard
+
+Open the `html:` file from the task prompt. This is the visual truth. Analyze:
+
+- **Layout**: flex direction → vbox/hbox; panels with background → frame; absolute positioning → fixed
+- **Visual properties**: extract exact color codes, font sizes (px → Ren'Py size), spacing values (gap → spacing, padding → xpadding/ypadding)
+- **States**: `:hover` → `hover_background`/`hover_color`; `:active`/`:selected` → `selected_xxx`; `:disabled` → `insensitive_xxx`
+- **Transitions**: CSS `transition` → ATL `transform` with `ease`/`linear`
+
+### Step 2: Consult Ren'Py docs for uncertain mappings
+
+When an HTML property has no obvious Ren'Py equivalent, or you're unsure about syntax:
+
+```bash
+WebFetch(url="https://www.renpy.org/doc/html/{page}.html", prompt="{query}")
+```
+
+Use `plugins/renpy-dev/references/renpy-docs.md` for page index and query patterns.
+
+Common doc pages needed: `screens.html`, `style_properties.html`, `transforms.html`, `screen_actions.html`.
+
+### Step 3: Design the style layer
+
+Before writing screen code, plan your style hierarchy:
+
+1. Identify repeated visual patterns → extract as `style xxx:` named styles
+2. Use underscore naming convention: `style card_button` auto-inherits from `style button`
+3. Define one style per visual concept; reference it everywhere
+4. Log each style with its purpose in the checklist
+
+### Step 4: Translate element by element
+
+For each HTML element, write the Ren'Py equivalent following `html-to-renpy.md`:
+
+- `<div>` with flex → vbox/hbox (spacing, box_align)
+- `<div>` with background → frame (background, xpadding, ypadding)
+- `<button>` → textbutton (style + action)
+- `<p>` / `<span>` → text (style)
+- `<img>` → add
+
+For frames with multiple children, use `has vbox` or `has hbox`.
+
+### Step 5: Self-audit against UI principles
+
+Before finalizing, check every rule in `renpy-ui-principles.md`:
+
+- [ ] No property defined in multiple layers (named style + inline)
+- [ ] No mutually exclusive property pairs (xalign+xpos, xsize+xfill, etc.)
+- [ ] No textbutton wrapped in frame for background (textbutton IS a button, has its own background)
+- [ ] No visual properties on pure-layout vbox/hbox
+- [ ] Colors defined once, referenced everywhere
+- [ ] Frame uses `has vbox`/`has hbox` when it has multiple children
+
+### Step 6: Report with style checklist
+
+```
+## GREEN Report (UI Translation)
+
+### Files modified
+- game/xxx.rpy: (what was changed)
+
+### HTML translation summary
+| HTML element | Ren'Py equivalent | Decisions |
+|-------------|-------------------|-----------|
+| div.panel (flex column + background) | frame + has vbox | Used frame for background, vbox for layout |
+| button.primary | textbutton style "primary_btn" | textbutton already has window properties |
+| div.row (flex row) | hbox spacing 12 | |
+
+### Style definition checklist
+| Style name | Properties | Purpose |
+|-----------|-----------|---------|
+| card_button | background "#333", hover_background "#555" | 角色卡片按钮 |
+| title_text | size 28, color "#fff" | 画面标题 |
+
+### Self-audit
+- [x] No duplicate styles
+- [x] No mutually exclusive properties
+- [x] No textbutton-in-frame nesting
+- [x] No visual properties on layout containers
+- [x] One concept, one definition
+
+### Doc lookups performed
+- (list any Ren'Py doc pages you consulted)
 ```
 
 ---
@@ -178,6 +286,9 @@ For each change:
 5. **For new screens, ALWAYS add `id` attributes** to key interactive widgets.
 6. **GREEN: implement the minimum to achieve the described behaviors.**
 7. **REFACTOR: change structure, never behavior.**
+8. **UI Translation: the HTML file is the truth.** Do not invent colors, fonts, or spacing. Translate what you see.
+9. **UI Translation: MANDATORY read** `plugins/renpy-dev/references/renpy-ui-principles.md` and `plugins/renpy-dev/references/html-to-renpy.md` before writing any visual code.
+10. **UI Translation: output the style definition checklist.** No exceptions.
 
 ## Ren'Py Coding Conventions
 
@@ -186,3 +297,8 @@ For each change:
 - Prefer `call screen` over `show screen` when awaiting user interaction
 - Use `action` for button callbacks: `action [Function(...), Return()]`
 - Define transforms before screens that use them
+- **Styles**: use underscore naming for auto-inheritance (`style my_button` → parent `button`)
+- **Containers**: `frame` for panels with background (single child + `has vbox`/`has hbox`); `vbox`/`hbox` for invisible layout; `fixed` for positional layout
+- **Buttons**: `textbutton` already has window properties (background, padding). Don't nest in `frame`.
+- **State prefixes**: `hover_background`, `selected_color`, `insensitive_alpha` etc. for interactive state styling
+- **Sizes**: displayables shrink-to-fit by default. Use `xfill True` or `xsize N` to control width explicitly.
