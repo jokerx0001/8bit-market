@@ -1,6 +1,6 @@
 ---
 name: renpy-dev:exec
-description: "Execute a Ren'Py implementation plan with TDD. Use when asked to 'execute the plan', 'start implementation', 'build the feature'. Coordinates test-agent and coding-agent through RED→GREEN→VERIFY→REFACTOR→VERIFY cycle. Never runs tests or analyzes failures directly."
+description: "Execute a Ren'Py implementation plan with TDD. Use when asked to 'execute the plan', 'start implementation', 'build the feature'. Coordinates test-agent and coding-agent through RED→GREEN→VERIFY→REFACTOR→VERIFY cycle. coding-agent self-verifies, test-agent provides independent verification gates."
 ---
 
 # Ren'Py AI 开发 — 执行阶段
@@ -9,18 +9,21 @@ exec 是 TDD 循环的**纯编排器**。它不跑测试、不分析失败、不
 
 ## 核心原则
 
-- **test-agent 是唯一跑测试的实体。** exec 不碰 `renpy.sh test`。
-- **coding-agent 永远不能接触测试源码。** exec 在 spawn coding-agent 时绝不传递测试代码、测试文件路径、测试运行命令。
+- **coding-agent 不得读写 `game/tests/`。** 跑 `renpy.sh test` 不触犯这条规则 — 测试运行输出是运行时结果，不是测试源码。
 - **设计文档是唯一的共享真相。** 两个 agent 都读设计文档。
-- **反馈循环闭合在 test-agent 内部。** 写测试的人验证测试。
+- **coding-agent 自己闭环验证。** 实现 → 跑测试 → 看输出 → 修 → 直到全绿。不再 spawn test-agent 做中间验证。
 - **垂直切片，不是水平切片。** 不允许"写完全部测试再写完全部实现"。每个行为是一条从测试→实现→验证的完整垂直线。对游戏 UI 尤其重要：你必须先看到一个 screen 渲染出来，才知道下一个交互测试应该怎么写。
 
 ```
 exec 只做:
-  spawn → 收集结果 → 传给下一个 agent → spawn → 收集 → 传给下一个 → ...
+  RED:      spawn test-agent → 收集 RED report
+  GREEN:    spawn coding-agent → 收集 GREEN report（含自验证结果）
+  VERIFY:   spawn test-agent → 独立验证门（跑测试，不分析）
+  REFACTOR: spawn coding-agent → 收集 REFACTOR report（含自验证结果）
+  VERIFY:   spawn test-agent → 独立验证门
+  最终:     跑 renpy.sh test 做全局确认
 
 exec 不做:
-  ✗ 跑 renpy.sh test
   ✗ 分析测试失败原因
   ✗ 审查代码
   ✗ 读取 .work/ 下的中间文件
@@ -149,9 +152,9 @@ RED
 
 ---
 
-#### 6c. GREEN — spawn coding-agent
+#### 6c. GREEN — spawn coding-agent（含自验证）
 
-**exec 做的事：** 从 test-agent 的 RED report 中提取失败描述（行为语言），组装 spawn prompt。**绝不传递测试源码、测试文件路径、测试运行命令。**
+**exec 做的事：** 从 test-agent 的 RED report 中提取失败描述（行为语言），组装 spawn prompt。**不传测试源码、测试文件路径。**
 
 ```
 Agent({
@@ -166,10 +169,13 @@ GREEN
 ## 当前状态 — 以下行为尚未实现
 {从 test-agent RED report 中提取的失败描述，用行为语言}
 
-示例格式（不要传测试代码）:
+示例格式:
 - Screen "character_select" 不存在 — 需要创建
 - 点击角色卡片后 selected_index 变量没有更新 — 需要实现选中逻辑
 - 点击"确认"按钮后没有跳转到 start_game — 需要实现确认跳转
+
+## 项目
+{project 名称，用于运行 renpy.sh <project> test}
 
 ## 实现文件
 {plan.md 中标注的输出文件路径}
@@ -186,8 +192,22 @@ GREEN
 - 新增 screen 时必须给关键交互 widget 添加 id 属性
 - 不修改 game/tests/、game/libs/、game/tl/
 - 不写空代码或假代码
+
+## 验证
+- 实现完成后运行 renpy.sh <project> test
+- 全部通过 → 报告成功
+- 有失败 → 根据运行输出修复（不要读测试源码），重试最多 5 轮
+- 5 轮后仍失败 → 报告阻塞，附上运行输出
   `
 })
+```
+
+**exec 检查 GREEN 结果：**
+
+```
+├── ✅ 全部通过 → 进入 VERIFY（6d）
+├── ❌ 有失败（≤5 轮）→ coding-agent 已自行重试修复
+└── 🚫 阻塞（>5 轮）→ 向用户报告，附 coding-agent 的失败输出
 ```
 
 **UI 任务标记块的格式（仅当 plan.md 中任务类型为 `ui` 时插入）：**
@@ -197,19 +217,13 @@ GREEN
 html: {task_dir}/{html_path}
 ```
 
-示例：
-```
-## UI 任务
-html: .renpy-dev/feat-1/.work/layouts/character_select.html
-```
-
 coding-agent 检测到 `## UI 任务` + `html:` 后自动进入 UI 翻译模式（内置能力），无需 exec 传递参考文件路径。
-
-**关键：coding-agent 的 prompt 中不出现测试源码。** 只出现行为描述。
 
 ---
 
-#### 6d. VERIFY — spawn test-agent (GREEN mode)
+#### 6d. VERIFY — spawn test-agent（独立验证门）
+
+coding-agent 自验证通过后，由 test-agent 做独立确认。test-agent 是写测试的人，视角独立，没有确认偏误。
 
 ```
 Agent({
@@ -219,20 +233,18 @@ Agent({
 GREEN
 
 ## 任务
-验证测试是否通过。
+独立验证 — 跑测试确认 coding-agent 的实现全部通过。
 
 ## 测试文件
 {test-agent RED 阶段创建的测试文件路径}
 
-## 设计文档
-- {task_dir}/plan.md
-- {task_dir}/.work/design.md（仅 feat/refactor 模式）
+## 项目
+{project 名称}
 
 ## 要求
-- 运行测试
-- 如果全部通过 → 报告成功
-- 如果有失败 → 分析每个失败，产出行为级描述（不是代码行号）
-- 如果是截图对比失败 → 使用 mmx vision describe 对比 baseline 和 actual
+- 运行 renpy.sh <project> test
+- 全部通过 → 报告成功
+- 有失败 → 直接返回运行输出（不需要行为级翻译）
   `
 })
 ```
@@ -241,16 +253,15 @@ GREEN
 
 ```
 ├── ✅ 全部通过 → 进入 REFACTOR（6e）
-├── ❌ 有失败 → 提取失败分析，传给 coding-agent 重新 GREEN（回到 6c）
-│   └── 累计轮数 = 编码轮的次数（不限），但同一错误重复出现则标记
-└── 连续 5 轮同一错误无进展 → 向用户报告，请求指导
+└── ❌ 有失败 → 将 test-agent 返回的运行输出传给 coding-agent，回到 6c 再修
+                （同一错误反复出现则由 exec 向用户报告）
 ```
 
 ---
 
-#### 6e. REFACTOR — spawn coding-agent (REFACTOR mode)
+#### 6e. REFACTOR — spawn coding-agent（含自验证）
 
-**只有所有测试通过后才执行。**
+**只有 VERIFY 全部通过后才执行。**
 
 ```
 Agent({
@@ -261,6 +272,9 @@ REFACTOR
 
 ## 已完成的任务
 [AI-N] {任务描述} — 所有测试通过 ✅
+
+## 项目
+{project 名称，用于运行 renpy.sh <project> test}
 
 ## 要重构的文件
 {从 coding-agent GREEN 阶段收集的已修改文件列表}
@@ -279,20 +293,60 @@ REFACTOR
 - 不改行为 — 所有已有测试必须继续通过
 - 不添加新功能、新配置项
 - 不改范围外的文件
+
+## 验证
+- 重构完成后运行 renpy.sh <project> test
+- 全部通过 → 报告成功
+- 有失败 → 修复后重试，最多 5 轮
+- 5 轮后仍失败 → 报告阻塞，建议撤销重构
   `
 })
 ```
 
----
-
-#### 6f. VERIFY (post-REFACTOR)
-
-再次 spawn test-agent (GREEN mode) 验证全部测试仍通过。
+**exec 检查 REFACTOR 结果：**
 
 ```
-├── ✅ 全部通过 → 任务完成，标记 done
-├── ❌ 有失败 → 回到 6e（REFACTOR），最多 2 轮
-│   └── 2 轮仍失败 → 报告用户，建议撤销重构保持 GREEN 状态
+├── ✅ 全部通过 → 进入 VERIFY（6f）
+├── ❌ 有失败（≤5 轮）→ coding-agent 已自行修复
+└── 🚫 阻塞（>5 轮）→ 报告用户，建议撤销重构保持 GREEN 状态
+```
+
+---
+
+#### 6f. VERIFY — spawn test-agent（重构后独立验证门）
+
+REFACTOR 后再次由 test-agent 独立确认。
+
+```
+Agent({
+  subagent_type: "renpy-dev:test-agent",
+  prompt: `
+## 模式
+GREEN
+
+## 任务
+独立验证 — 跑测试确认重构后行为不变。
+
+## 测试文件
+{test-agent RED 阶段创建的测试文件路径}
+
+## 项目
+{project 名称}
+
+## 要求
+- 运行 renpy.sh <project> test
+- 全部通过 → 报告成功
+- 有失败 → 直接返回运行输出
+  `
+})
+```
+
+**exec 检查 VERIFY 结果：**
+
+```
+├── ✅ 全部通过 → 任务完成，标记 done（6g）
+└── ❌ 有失败 → 将运行输出传给 coding-agent，回到 6e 再修（最多 2 轮回退）
+    2 轮回退仍失败 → 报告用户，建议撤销重构
 ```
 
 ---
@@ -307,11 +361,11 @@ REFACTOR
 输出：
 ```
 ✅ [AI-N] {任务描述}
-   RED:     test-agent → N testcases, 失败原因正确
-   GREEN:   coding-agent → M files modified
-   VERIFY:  test-agent → all pass
-   REFACTOR: coding-agent → K improvements
-   VERIFY:  test-agent → all pass
+   RED:      test-agent → N testcases, 失败原因正确
+   GREEN:    coding-agent → M files modified, tests pass
+   VERIFY:   test-agent → all pass
+   REFACTOR: coding-agent → K improvements, tests pass
+   VERIFY:   test-agent → all pass
 ```
 
 ---
@@ -330,7 +384,7 @@ REFACTOR
 
 ### 8. 最终验证
 
-spawn test-agent (GREEN mode) 跑全部测试确认全局通过。
+exec 直接跑 `renpy.sh <project> test` 做全局确认。全部通过即完成。
 
 ---
 
@@ -338,9 +392,10 @@ spawn test-agent (GREEN mode) 跑全部测试确认全局通过。
 
 | 从 | 到 | 可以传 | 禁止传 |
 |----|----|--------|--------|
-| test-agent | coding-agent | 行为级失败描述、设计文档路径 | 测试源码、测试文件路径、运行命令 |
-| coding-agent | test-agent | 实现文件路径 | 实现源码 |
-| test-agent | coding-agent (REFACTOR) | 重构文件列表、设计文档路径 | 测试源码、测试文件路径 |
+| test-agent | coding-agent | 行为级失败描述、设计文档路径 | 测试源码、测试文件路径 |
+| coding-agent | coding-agent (REFACTOR) | 已修改文件列表、设计文档路径 | — |
+
+**coding-agent 可以跑 `renpy.sh test`，但绝不读写 `game/tests/`。** 测试运行输出是行为信息，不是测试源码。
 
 ---
 
@@ -357,5 +412,5 @@ spawn test-agent (GREEN mode) 跑全部测试确认全局通过。
 
 永远不要声称任务完成，除非：
 1. 所有 `[AI-N]` 任务标记为 `done`
-2. test-agent (GREEN) 确认全部测试通过
+2. `renpy.sh <project> test` 全局通过
 3. 输出完成报告
