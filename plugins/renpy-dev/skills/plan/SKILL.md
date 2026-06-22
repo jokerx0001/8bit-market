@@ -57,11 +57,17 @@ ls game/tests/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 
 | 检测结果 | 强制行为 |
 |---------|---------|
-| SDK_OK + TESTS_OK | 测试文件写入 `game/tests/`，验证使用 `renpy.sh project test` |
+| SDK_OK + TESTS_OK + EXIT_OK | 测试文件写入 `game/tests/`，验证使用 `renpy.sh project test` |
 | SDK_MISSING | **阻断** — `RENPY_SDK` 环境变量必须指向可执行的 Ren'Py SDK |
 | TESTS_MISSING | **必须**在任务列表最前面添加 `[AI-0]` bootstrap 任务：创建 `game/tests/` 目录和 `__init__.py`，写入 `testsuite global: teardown: exit` |
+| EXIT_MISSING | **必须**在任务列表最前面添加 `[AI-0.1]` 修复任务：在 `game/tests/` 中确保 `testsuite global: teardown: exit` 存在。缺失则写入 |
 
-**铁律：绝不使用"人工启动目视"作为验证手段。** 所有功能通过 `renpy.sh project test` 自动化验证。
+**EXIT_OK 检测方式：**
+```bash
+grep -rl "teardown:" game/tests/ 2>/dev/null | xargs grep -l "exit" 2>/dev/null && echo "EXIT_OK" || echo "EXIT_MISSING"
+```
+
+**为什么这很重要：** Ren'Py 测试跑完后不会自动退出进程。没有 `teardown: exit` 会导致 `renpy test` 进程永久挂起、bash 后台任务永远不返回、整个 TDD 循环卡死。
 
 ### 5. 收集需求并确认行为
 

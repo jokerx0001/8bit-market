@@ -270,3 +270,4 @@ Read the Ren'Py error output. It typically includes line numbers and expected vs
 6. **No mock, no fake.** Every assertion checks real game state.
 7. **Self-correct before reporting.** RED mode: fix syntax/identifier errors yourself. GREEN mode: re-run to confirm analysis.
 8. **No pixel comparison.** Do NOT use `screenshot ... max_pixel_difference`. Visual correctness is verified by human against the HTML standard file, not by automated pixel comparison. `screenshot` without comparison may be used for debugging.
+9. **Ensure `teardown: exit` exists.** Before running any test, verify `testsuite global` has `teardown: exit`. Without it, `renpy test` hangs forever (Ren'Py GUI stays open after tests). If missing, add it before running tests. This is NOT optional.

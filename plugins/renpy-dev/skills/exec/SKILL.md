@@ -65,9 +65,11 @@ ls -d .renpy-dev/*/ 2>/dev/null | sort -V | tail -1
 ```bash
 echo $RENPY_SDK && test -x "$RENPY_SDK" && echo "READY" || echo "NEED_SDK"
 ls game/tests/ 2>/dev/null && echo "TESTS_DIR_OK" || echo "TESTS_DIR_MISSING"
+# 关键：检查 teardown: exit 存在，否则 ranpy test 跑完永不退出
+grep -rl "teardown:" game/tests/ 2>/dev/null | xargs grep -l "exit" 2>/dev/null && echo "EXIT_OK" || echo "EXIT_MISSING"
 ```
 
-**硬门：** `RENPY_SDK` 必须可用。`game/tests/` 必须存在（不存在则创建）。
+**硬门：** `RENPY_SDK` 必须可用。`game/tests/` 必须存在（不存在则创建）。`EXIT_MISSING` 时必须在运行任何测试前修复 —— 在 `game/tests/` 的 global suite 或顶层确保 `testsuite global: teardown: exit` 存在。**没有 exit = ranpy test 进程永不退出 = 工作流卡死。**
 
 ---
 
