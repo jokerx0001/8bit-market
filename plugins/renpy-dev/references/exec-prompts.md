@@ -72,7 +72,7 @@ GREEN
 {project 名称，用于运行 renpy.sh <project> test}
 
 ## 实现文件
-{plan.md 中标注的输出文件路径}
+根据任务描述和设计文档自行确定需要修改的文件。
 {若 plan.md 中任务标记为 type: ui，在此插入 UI 任务标记块}
 
 ## 需要读取的文件
