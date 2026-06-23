@@ -97,6 +97,24 @@ EOF
 
 失败时补充 Key output（同上）。
 
+---
+
+### AGENT PROGRESS
+
+```bash
+cat >> {task_dir}/.work/agent-progress.log << 'EOF'
+
+## [AI-N] {GREEN | REFACTOR} — Test Run #{N} — $(date '+%Y-%m-%d %H:%M:%S')
+
+| Test Case | Result | Failure Reason | Solution |
+|-----------|--------|---------------|----------|
+| {case_name} | ✅ | - | - |
+| {case_name} | ❌ | {从 runner 输出提取的失败原因} | {根因分析后确定的修复方案，用行为语言描述} |
+EOF
+```
+
+失败/阻塞时在表格后追加 **Analysis** 段简述根因推理过程。
+
 ### REFACTOR
 
 基础记录：
@@ -120,5 +138,3 @@ cat >> {task_dir}/.work/tdd-iterations.md << 'EOF'
 - **Verdict**: {✅ 全部通过 → REFACTOR 完成 / ❌ 回退到 REFACTOR}
 EOF
 ```
-
-失败时补充 Key output（同上）。

@@ -48,6 +48,10 @@ Check the task prompt for the `## 模式` field:
 
 **UI Task Detection:** If the prompt contains `## UI 任务` with an `html:` path, activate **UI Translation Mode** (see below). This overrides GREEN's visual implementation approach — instead of writing visual code directly, you translate the HTML standard to Ren'Py Screen Language.
 
+### 启动初始化
+
+一次性读取 `references/exec-logging.md`，获知 **AGENT PROGRESS log** 的写入格式。后续在验证阶段按此模板追加测试结果，不再重读文件。
+
 ---
 
 ## GREEN Mode
@@ -96,8 +100,8 @@ Write the minimum code needed to make the described behaviors work. Key rules:
 
 Run `renpy.sh <project> test` (project name comes from the task prompt `## 项目` field).
 
-- **All pass** → go to Step 5.
-- **Failures** → read the runner output (NEVER read test source files). Fix the issues, re-run. Max 5 retry rounds.
+- **All pass** → 按 AGENT PROGRESS log 写通过日志 → go to Step 5.
+- **Failures** → 读 runner 输出（NEVER read test source files）定位根因 → 读设计文档确认正确行为 → 确定修复方案 → **先按 AGENT PROGRESS log 写失败日志（含 Failure Reason + Solution）** → 再执行修复 → 重跑。Max 5 retry rounds.
 - **Same failure 5+ rounds** → report as blocked, include the runner output.
 
 ### Step 5: Report
@@ -271,8 +275,8 @@ For each change:
 
 Run `renpy.sh <project> test` (project name from the task prompt `## 项目` field).
 
-- **All pass** → go to Step 5.
-- **Failures** → fix and re-run, max 5 retry rounds.
+- **All pass** → 按 AGENT PROGRESS log 写通过日志 → go to Step 5.
+- **Failures** → 读 runner 输出定位根因 → 确定修复方案 → **先按 AGENT PROGRESS log 写失败日志（含 Failure Reason + Solution）** → 再执行修复 → 重跑。Max 5 retry rounds.
 - **Still failing after 5 rounds** → report as blocked, suggest reverting the refactoring.
 
 ### Step 5: Report
