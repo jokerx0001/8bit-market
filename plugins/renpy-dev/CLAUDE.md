@@ -96,6 +96,8 @@ Each `[AI-N]` task follows a strict RED→GREEN→REFACTOR cycle:
 
 `progress.json` tracks each task's status (`pending` → `in_progress` → `done`). On restart, exec skips completed tasks and resumes from the first non-done task.
 
+`tdd-iterations.md` (in `.work/`) records every RED/GREEN/VERIFY/REFACTOR/VERIFY iteration with timestamps, test output, agent analysis, and retry counts. Append-only, human-readable — use it to diagnose stuck TDD loops.
+
 ## Key Design Rules (from the plugin's internal contracts)
 
 - **plan.md is self-contained**: exec reads ONLY plan.md, never `.work/` intermediate files. plan.md must absorb all key design decisions — no cross-references like "see design.md".
@@ -113,6 +115,8 @@ agents/             # Subagent definitions (coding, test-agent)
 references/         # Format contracts read by skills at runtime
   plan-format.md    #   plan.md → exec parsing contract
   impact-format.md  #   impact.md → plan constraints contract
+  exec-prompts.md   #   agent spawn prompt templates (RED/GREEN/VERIFY/REFACTOR)
+  exec-logging.md   #   TDD iteration log format and recording rules
   renpy-docs.md     #   Ren'Py doc URLs and query conventions
   renpy-testing.md  #   Ren'Py native testcase/testsuite complete reference
 .claude-plugin/     # Plugin manifest (plugin.json)
@@ -131,6 +135,7 @@ All design documents and progress tracking go under `.renpy-dev/`:
     ├── requirements.md
     ├── architecture.md
     ├── design.md
+    ├── tdd-iterations.md   # TDD iteration log — per-phase pass/fail/retry history
     └── debug-analysis.md  # (fix only) Root cause analysis
 ```
 

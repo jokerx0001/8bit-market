@@ -1,17 +1,17 @@
 ---
 name: renpy-dev:exec
-description: "Execute a Ren'Py implementation plan with TDD. Use when asked to 'execute the plan', 'start implementation', 'build the feature'. Coordinates test-agent and coding-agent through RED→GREEN→VERIFY→REFACTOR→VERIFY cycle. coding-agent self-verifies, test-agent provides independent verification gates."
+description: "Execute a Ren'Py implementation plan with TDD. Use when asked to 'execute the plan', 'start implementation', 'build the feature', or when a conductor spawns you for TDD execution. Also use when resuming an interrupted plan. Coordinates test-agent and coding-agent through RED→GREEN→VERIFY→REFACTOR→VERIFY cycle."
 ---
 
 # Ren'Py AI 开发 — 执行阶段
 
-exec 是 TDD 循环的**纯编排器**。它不跑测试、不分析失败、不审查代码。它只做一件事：**收 A 的输出，传给 B。**
+exec 是 TDD 循环的**纯编排器**。它不跑测试、不分析失败、不审查代码。它只做一件事：**收 agent 的输出，传给另一个 agent。**
 
 ## 核心原则
-
-- **coding-agent 不得读写 `game/tests/`。** 跑 `renpy.sh test` 不触犯这条规则 — 测试运行输出是运行时结果，不是测试源码。
 - **设计文档是唯一的共享真相。** 两个 agent 都读设计文档。
-- **coding-agent 自己闭环验证。** 实现 → 跑测试 → 看输出 → 修 → 直到全绿。不再 spawn test-agent 做中间验证。
+- **exec 不做判断，只做传递。** 测试失败让 coding-agent 自己看输出修，代码问题让 review 查。exec 在中间分析会引入确认偏误——你看的是 agent 报告，不是真实代码。
+- **coding-agent 不碰 `game/tests/`。** `renpy.sh test` 的输出是运行时结果，不是测试源码——跑测试不触犯这条规则。但绝不读写测试文件本身——那会破坏 RED/GREEN 的独立性。
+- **coding-agent 自己闭环验证。** 实现 → 跑测试 → 看输出 → 修 → 直到全绿。不再 spawn test-agent 做中间验证——那会引入不必要的往返延迟。
 - **垂直切片，不是水平切片。** 不允许"写完全部测试再写完全部实现"。每个行为是一条从测试→实现→验证的完整垂直线。对游戏 UI 尤其重要：你必须先看到一个 screen 渲染出来，才知道下一个交互测试应该怎么写。
 
 ```
@@ -24,332 +24,147 @@ exec 只做:
   最终:     跑 renpy.sh test 做全局确认
 
 exec 不做:
-  ✗ 分析测试失败原因
-  ✗ 审查代码
+  ✗ 分析测试失败原因（那是 coding-agent 的事）
+  ✗ 审查代码（那是 review 的事）
   ✗ 读取 .work/ 下的中间文件
   ✗ 在 agent 之间插入自己的判断
 ```
 
----
-
 ## 工作流
 
 ### 1. 定位任务目录和模式
-
-从 args 解析 `--task-dir` 和 `--mode`：
-
-```
---task-dir 已传   → task_dir = 传入值
---mode 已传       → mode = 传入值（feat | refactor | fix）
-```
-
-**自动发现（仅当 --task-dir 未传时）：**
-
+-从 args 解析 `--task-dir` 和 `--mode`：
 ```bash
-ls -d .renpy-dev/${mode}-*/ 2>/dev/null | sort -V | tail -1
-# 如果都没传，搜全部 kind 取最新：
+# --task-dir 已传 → 使用传入值
+# --mode 已传 → 使用传入值（feat | refactor | fix）
+# 均未传 → 自动发现最新任务目录：
 ls -d .renpy-dev/*/ 2>/dev/null | sort -V | tail -1
 ```
 
-### 2. 加载 plan.md
+### 2. 加载设计文档和进度
 
-**只读取 `{task_dir}/plan.md`。** 不读 `.work/` 下的任何文件。plan.md 是 exec 读取的唯一设计文档。
+**只读 `{task_dir}/plan.md`。** 不读 `.work/` 下的任何文件——plan.md 是 exec 读取的唯一设计文档。
 
-### 3. 加载进度追踪
+读取 `{task_dir}/progress.json`，不存在则创建。
 
-读取 `{task_dir}/progress.json`。如果不存在则创建。
+### 3. 解析任务列表
 
-### 4. 解析任务列表
+按 `references/plan-format.md` 的规则提取 `[AI-N]` 任务，识别类型（`logic` / `ui`），按依赖拓扑排序。logic 优先于 ui。`[HUMAN]` 任务收集但不执行。
 
-按 `plan-format.md` 的解析规则提取 `[AI-N]` 任务，识别任务类型（`logic` / `ui`）和 HTML 标准路径（ui 任务），按依赖拓扑排序。logic 任务优先于 ui 任务。`[HUMAN]` 任务收集但不执行。
-
-### 5. 确认测试环境
+### 4. 确认测试环境
 
 ```bash
 echo $RENPY_SDK && test -x "$RENPY_SDK" && echo "READY" || echo "NEED_SDK"
 ls game/tests/ 2>/dev/null && echo "TESTS_DIR_OK" || echo "TESTS_DIR_MISSING"
-# 关键：检查 teardown: exit 存在，否则 ranpy test 跑完永不退出
 grep -rl "teardown:" game/tests/ 2>/dev/null | xargs grep -l "exit" 2>/dev/null && echo "EXIT_OK" || echo "EXIT_MISSING"
 ```
 
-**硬门：** `RENPY_SDK` 必须可用。`game/tests/` 必须存在（不存在则创建）。`EXIT_MISSING` 时必须在运行任何测试前修复 —— 在 `game/tests/` 的 global suite 或顶层确保 `testsuite global: teardown: exit` 存在。**没有 exit = ranpy test 进程永不退出 = 工作流卡死。**
+**硬门：** `RENPY_SDK` 必须可用。`game/tests/` 必须存在。`EXIT_MISSING` 时先修复——在 global suite 确保 `testsuite global: teardown: exit`。**没有 exit = renpy test 进程永不退出 = 工作流卡死。**
+
+### 5. 信息隔离清单
+
+exec 在 agent 之间传递信息时必须遵守以下边界。破坏这些边界 = 破坏 TDD 的独立性。
+
+| 从 | 到 | 可以传 | 禁止传 |
+|----|----|--------|--------|
+| test-agent | coding-agent | 行为级失败描述、设计文档路径 | 测试源码、测试文件路径 |
+| coding-agent | coding-agent (REFACTOR) | 已修改文件列表、设计文档路径 | — |
+
+**为什么不能传测试源码给 coding-agent：** coding-agent 看到测试实现后会针对具体检查点写代码，而不是按设计文档实现行为。行为级描述（"screen X 不存在"）让 coding-agent 去读设计文档找答案，而不是去读测试找答案。
 
 ---
 
-### 6. TDD 循环 — 对每个 [AI-N] 任务
+### 6. TDD 循环
+
+**在开始循环前，一次性读取以下参考文件。后续 phase 用简称指代：**
+- `references/exec-prompts.md` — 简称 **{phase} prompt**（如 "RED prompt"、"GREEN prompt"）
+- `references/exec-logging.md` — 简称 **{phase} log**（如 "RED log"、"GREEN log"）
 
 每个任务走完整 RED → GREEN → VERIFY → REFACTOR → VERIFY 循环。
 
-**垂直切片原则：** 一个任务的 TDD 不是"写完全部测试 → 写完全部实现"。test-agent 使用 tracer bullet 模式——先写一个测试证明路径通（screen 可到达 + 截图基线），跑通后再增量加交互测试。coding-agent 响应每个可验证的行为失败。这样每轮 RED→GREEN 处理的都是一个具体的、可见的玩家行为，不是一整个文件。
+**垂直切片原则：** test-agent 使用 tracer bullet 模式——先写测试证明 screen 可到达，跑通后再增量加交互测试。coding-agent 响应每个可验证的行为失败。
 
 ```
 WRONG (水平切片):
-  RED:   test-agent 一次写 5 个 testcase
-  GREEN: coding-agent 一次实现整个 screen
+  RED:   一次写 5 个 testcase
+  GREEN: 一次实现整个 screen
 
 RIGHT (垂直切片):
-  RED:   test-agent 写 tracer bullet (screen 可到达 + 截图)
-  → GREEN → VERIFY → 路径通了，看到画面了
-  RED:   test-agent 加一个交互 testcase (点击高亮)
-  → GREEN → VERIFY → 高亮行为对了
-  RED:   test-agent 加一个交互 testcase (确认跳转)
-  → GREEN → VERIFY → 跳转行为对了
-  ...直到该 screen 的全部行为覆盖完
+  RED:   写 tracer bullet (screen 可到达)
+  → GREEN → VERIFY → 路径通了
+  RED:   加交互 testcase (点击高亮)
+  → GREEN → VERIFY → 高亮对了
+  RED:   加交互 testcase (确认跳转)
+  → GREEN → VERIFY → 跳转对了
+  ...直到该 screen 全部行为覆盖
 ```
-
-**exec 如何支持垂直切片：** test-agent 的 RED mode 已内置 tracer bullet 逻辑——它会先写一个 testcase 验证 screen 可到达，再逐个添加交互 testcase。exec 在每次 test-agent 报告"tracer bullet 失败原因正确"后，让 coding-agent 先实现 tracer bullet 所需的最小代码（screen 骨架 + 基础布局），VERIFY 通过后再让 test-agent 添加下一个 testcase。这样每一步都是可验证的。
 
 #### 6a. 标记开始
 
-更新 `progress.json`：状态 = `in_progress`。
-
----
+更新 `progress.json`：状态 → `in_progress`。初始化 TDD 迭代日志。
 
 #### 6b. RED — spawn test-agent
 
-**exec 做的事：** 组装 spawn prompt，传给 test-agent，收集结果。
+使用 **RED prompt**组装 spawn prompt。
 
-```
-Agent({
-  subagent_type: "renpy-dev:test-agent",
-  prompt: `
-## 模式
-RED
+**检查结果：**
+- 测试文件已创建？所有 testcase 都失败且原因正确？没有 mock/假代码？
+- 不合格 → 指出具体问题，重新 spawn（exec 不替 agent 修）
+- 合格 → 进入 GREEN
 
-## 任务
-为 [AI-N] {任务描述} 编写测试。
-
-## 要验证的行为
-{从 plan.md 测试策略表提取的覆盖内容}
-
-## 测试文件
-{从 plan.md 测试策略表提取的测试文件路径}
-
-## 需要读取的文件
-- {task_dir}/plan.md  — 设计摘要、影响范围
-- {task_dir}/.work/design.md  — widget 树、变量定义、交互流程（仅 feat/refactor 模式）
-- {task_dir}/impact.md  — 修改范围约束（仅 refactor 模式）
-- {task_dir}/.work/debug-analysis.md  — 根因分析（仅 fix 模式）
-- plugins/renpy-dev/references/renpy-testing.md  — Ren'Py testcase/testsuite 完整 API
-- https://www.renpy.org/doc/html/testcases.html  — 官方测试文档（WebFetch 查询）
-- game/ 下相关的 .rpy 源文件 — 了解已有 screen 名、widget id、变量名
-
-## 约束
-- 写完测试后必须自己跑测试确认失败原因正确
-- 语法错误/标识符错误必须自己修复后重跑（最多 3 轮）
-- 只写 game/tests/，不写 game/ 业务代码
-  `
-})
-```
-
-**exec 检查 RED 结果：**
-- 测试文件已创建？
-- RED report 中所有 testcase 都失败了且原因正确？
-- 没有 mock、假代码？
-
-不合格 → 指出具体问题，重新 spawn test-agent。
-合格 → 进入 GREEN。
-
----
+**记录日志**：按 **RED log** 追加。记录全部 test case 的预期失败原因。
 
 #### 6c. GREEN — spawn coding-agent（含自验证）
 
-**exec 做的事：** 从 test-agent 的 RED report 中提取失败描述（行为语言），组装 spawn prompt。**不传测试源码、测试文件路径。**
+使用 **GREEN prompt**组装 spawn prompt。从 test-agent 的 RED report 提取行为级失败描述——不传测试源码或测试文件路径。
 
 ```
-Agent({
-  subagent_type: "renpy-dev:coding",
-  prompt: `
-## 模式
-GREEN
-
-## 任务
-[AI-N] {任务描述}
-
-## 当前状态 — 以下行为尚未实现
-{从 test-agent RED report 中提取的失败描述，用行为语言}
-
-示例格式:
-- Screen "character_select" 不存在 — 需要创建
-- 点击角色卡片后 selected_index 变量没有更新 — 需要实现选中逻辑
-- 点击"确认"按钮后没有跳转到 start_game — 需要实现确认跳转
-
-## 项目
-{project 名称，用于运行 renpy.sh <project> test}
-
-## 实现文件
-{plan.md 中标注的输出文件路径}
-{若 plan.md 中任务标记为 type: ui，在此插入 UI 任务标记块}
-
-## 需要读取的文件
-- {task_dir}/plan.md  — 设计摘要、影响范围
-- {task_dir}/.work/design.md  — widget 树、变量定义、交互流程（仅 feat/refactor 模式）
-- {task_dir}/impact.md  — 修改范围约束（仅 refactor 模式）
-- game/ 下相关的 .rpy 源文件 — 了解已有代码模式
-
-## 约束
-- 按设计文档实现行为，不是按测试要求实现
-- 新增 screen 时必须给关键交互 widget 添加 id 属性
-- 不修改 game/tests/、game/libs/、game/tl/
-- 不写空代码或假代码
-
-## 验证
-- 实现完成后运行 renpy.sh <project> test
-- 全部通过 → 报告成功
-- 有失败 → 根据运行输出修复（不要读测试源码），重试最多 5 轮
-- 5 轮后仍失败 → 报告阻塞，附上运行输出
-  `
-})
-```
-
-**exec 检查 GREEN 结果：**
-
-```
+结果检查:
 ├── ✅ 全部通过 → 进入 VERIFY（6d）
 ├── ❌ 有失败（≤5 轮）→ coding-agent 已自行重试修复
 └── 🚫 阻塞（>5 轮）→ 向用户报告，附 coding-agent 的失败输出
 ```
 
-**UI 任务标记块的格式（仅当 plan.md 中任务类型为 `ui` 时插入）：**
-
-```
-## UI 任务
-html: {task_dir}/{html_path}
-```
-
-coding-agent 检测到 `## UI 任务` + `html:` 后自动进入 UI 翻译模式（内置能力），无需 exec 传递参考文件路径。
-
----
+**记录日志**：按 **GREEN log** 追加。通过时简洁；失败/阻塞时必须补充 Key output + Analysis。
 
 #### 6d. VERIFY — spawn test-agent（独立验证门）
 
-coding-agent 自验证通过后，由 test-agent 做独立确认。test-agent 是写测试的人，视角独立，没有确认偏误。
+使用 **VERIFY（实现后）prompt**。test-agent 是写测试的人，视角独立，没有确认偏误。
 
 ```
-Agent({
-  subagent_type: "renpy-dev:test-agent",
-  prompt: `
-## 模式
-GREEN
-
-## 任务
-独立验证 — 跑测试确认 coding-agent 的实现全部通过。
-
-## 测试文件
-{test-agent RED 阶段创建的测试文件路径}
-
-## 项目
-{project 名称}
-
-## 要求
-- 运行 renpy.sh <project> test
-- 全部通过 → 报告成功
-- 有失败 → 直接返回运行输出（不需要行为级翻译）
-  `
-})
-```
-
-**exec 检查 VERIFY 结果：**
-
-```
+结果检查:
 ├── ✅ 全部通过 → 进入 REFACTOR（6e）
-└── ❌ 有失败 → 将 test-agent 返回的运行输出传给 coding-agent，回到 6c 再修
-                （同一错误反复出现则由 exec 向用户报告）
+└── ❌ 有失败 → 将运行输出传给 coding-agent，回到 6c 再修
+    （同一错误反复出现则 exec 向用户报告）
 ```
 
----
+**记录日志**：按 **VERIFY log** 追加。
 
 #### 6e. REFACTOR — spawn coding-agent（含自验证）
 
-**只有 VERIFY 全部通过后才执行。**
+**只有 VERIFY 全部通过后才执行。** 使用 **REFACTOR prompt**。
 
 ```
-Agent({
-  subagent_type: "renpy-dev:coding",
-  prompt: `
-## 模式
-REFACTOR
-
-## 已完成的任务
-[AI-N] {任务描述} — 所有测试通过 ✅
-
-## 项目
-{project 名称，用于运行 renpy.sh <project> test}
-
-## 要重构的文件
-{从 coding-agent GREEN 阶段收集的已修改文件列表}
-
-## 重构目标
-- 消除重复代码/样式
-- 改善命名（变量、函数、label）
-- 提取可复用的公共逻辑
-- 保持行为完全不变
-
-## 需要读取的文件
-- {task_dir}/plan.md（设计摘要，了解设计意图）
-
-## 约束
-- 不改任何 game/tests/ 下的文件
-- 不改行为 — 所有已有测试必须继续通过
-- 不添加新功能、新配置项
-- 不改范围外的文件
-
-## 验证
-- 重构完成后运行 renpy.sh <project> test
-- 全部通过 → 报告成功
-- 有失败 → 修复后重试，最多 5 轮
-- 5 轮后仍失败 → 报告阻塞，建议撤销重构
-  `
-})
-```
-
-**exec 检查 REFACTOR 结果：**
-
-```
+结果检查:
 ├── ✅ 全部通过 → 进入 VERIFY（6f）
 ├── ❌ 有失败（≤5 轮）→ coding-agent 已自行修复
 └── 🚫 阻塞（>5 轮）→ 报告用户，建议撤销重构保持 GREEN 状态
 ```
 
----
+**记录日志**：按 **REFACTOR log** 追加。
 
 #### 6f. VERIFY — spawn test-agent（重构后独立验证门）
 
-REFACTOR 后再次由 test-agent 独立确认。
+使用 **VERIFY（重构后）prompt**。
 
 ```
-Agent({
-  subagent_type: "renpy-dev:test-agent",
-  prompt: `
-## 模式
-GREEN
-
-## 任务
-独立验证 — 跑测试确认重构后行为不变。
-
-## 测试文件
-{test-agent RED 阶段创建的测试文件路径}
-
-## 项目
-{project 名称}
-
-## 要求
-- 运行 renpy.sh <project> test
-- 全部通过 → 报告成功
-- 有失败 → 直接返回运行输出
-  `
-})
-```
-
-**exec 检查 VERIFY 结果：**
-
-```
-├── ✅ 全部通过 → 任务完成，标记 done（6g）
-└── ❌ 有失败 → 将运行输出传给 coding-agent，回到 6e 再修（最多 2 轮回退）
+结果检查:
+├── ✅ 全部通过 → 标记 done（6g）
+└── ❌ 有失败 → 运行输出传给 coding-agent，回到 6e 再修（最多 2 轮回退）
     2 轮回退仍失败 → 报告用户，建议撤销重构
 ```
 
----
+**记录日志**：按 **VERIFY log** 追加。
 
 #### 6g. 标记完成
 
@@ -358,11 +173,11 @@ GREEN
 {..., "tasks": {..., "AI-N": {"status": "done", "completed_at": "..."}}}
 ```
 
-输出：
+输出摘要：
 ```
 ✅ [AI-N] {任务描述}
    RED:      test-agent → N testcases, 失败原因正确
-   GREEN:    coding-agent → M files modified, tests pass
+   GREEN:    coding-agent → M files, tests pass
    VERIFY:   test-agent → all pass
    REFACTOR: coding-agent → K improvements, tests pass
    VERIFY:   test-agent → all pass
@@ -372,7 +187,7 @@ GREEN
 
 ### 7. 提醒人工任务
 
-所有 AI 任务完成后，汇总 `[HUMAN]` 任务：
+所有 AI 任务完成后汇总 `[HUMAN]` 任务：
 
 ```
 ## 待人工完成
@@ -380,37 +195,24 @@ GREEN
 - [ ] {HUMAN 任务 2}
 ```
 
----
-
 ### 8. 最终验证
 
-exec 直接跑 `renpy.sh <project> test` 做全局确认。全部通过即完成。
-
----
-
-## 信息隔离清单（exec 必须遵守）
-
-| 从 | 到 | 可以传 | 禁止传 |
-|----|----|--------|--------|
-| test-agent | coding-agent | 行为级失败描述、设计文档路径 | 测试源码、测试文件路径 |
-| coding-agent | coding-agent (REFACTOR) | 已修改文件列表、设计文档路径 | — |
-
-**coding-agent 可以跑 `renpy.sh test`，但绝不读写 `game/tests/`。** 测试运行输出是行为信息，不是测试源码。
+直接跑 `renpy.sh <project> test` 做全局确认。
 
 ---
 
 ## 断点续跑
 
 在新 session 中调用 exec 时：
-1. 读取 `progress.json`
+1. 读 `progress.json`
 2. 跳过 `done` 的任务
-3. `in_progress` 的任务重新执行（不信任中间状态，从 RED 重新开始）
+3. `in_progress` 的任务从 RED 重新开始（不信任中间状态）
 
 ---
 
 ## Completion Gate
 
-永远不要声称任务完成，除非：
-1. 所有 `[AI-N]` 任务标记为 `done`
+不要声称任务完成，除非：
+1. 所有 `[AI-N]` 标记 `done`
 2. `renpy.sh <project> test` 全局通过
 3. 输出完成报告
