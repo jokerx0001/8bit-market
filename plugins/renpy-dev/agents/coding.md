@@ -51,8 +51,8 @@ Check the task prompt for the `## 模式` field:
 ### 启动初始化
 
 一次性读取以下文件：
-- `references/exec-logging.md` — 获知 **AGENT PROGRESS** 日志的写入格式
-- `references/renpy-coding.md` — Ren'Py 编码最佳实践和已知陷阱
+- `plugins/renpy-dev/references/exec-logging.md` — 获知 **AGENT PROGRESS** 日志的写入格式和 `tdd-iterations.md` 追加命令
+- `plugins/renpy-dev/references/renpy-coding.md` — Ren'Py 编码最佳实践和已知陷阱
 
 后续不再重读这些文件。
 
@@ -109,8 +109,8 @@ Run each target testcase individually (names from `## 测试用例`, project fro
 renpy.sh <project> test <testcase_name>
 ```
 
-- **All pass** → write pass log → go to Step 5. 
-- **Failures** → run `renpy.sh <project> test --report-detailed` to get full output, extract "During testcase execution:" paragraphs to identify which specific testcases failed and the exact error lines. Read runner output (NEVER read test source files) to locate root cause → read design docs to confirm correct behavior → determine fix → **write failure log first (Failure Reason + Solution)** → implement fix → re-run. Max 5 retry rounds.
+- **All pass** → 按 exec-logging.md 的 AGENT PROGRESS 格式追加通过日志到 prompt 中 `## TDD 迭代日志` 段指定的 `tdd-iterations.md` 路径 → go to Step 5. 
+- **Failures** → run `renpy.sh <project> test --report-detailed` to get full output, extract "During testcase execution:" paragraphs to identify which specific testcases failed and the exact error lines. Read runner output (NEVER read test source files) to locate root cause → read design docs to confirm correct behavior → determine fix → **先按 AGENT PROGRESS 格式追加失败日志到 prompt 指定的 `tdd-iterations.md` 路径（含 Failure Reason + Solution）** → implement fix → re-run. Max 5 retry rounds.
 - **Failure reports must list each failed testcase by name with its error line.** Reporting only "N cases failed" without specifics is not acceptable — you need the details to fix the right thing.
 - **Same failure 5+ rounds** → report as blocked, include runner output with all "During testcase execution:" paragraphs.
 
@@ -285,8 +285,8 @@ For each change:
 
 Run `renpy.sh <project> test --report-detailed` (project name from the task prompt `## 项目` field).
 
-- **All pass** → 按 AGENT PROGRESS log 写通过日志 → go to Step 5.
-- **Failures** → 从输出中提取 "During testcase execution:" 段落获取具体失败 testcase 名称和错误信息 → 读 runner 输出定位根因 → 确定修复方案 → **先按 AGENT PROGRESS log 写失败日志（含 Failure Reason + Solution）** → 再执行修复 → 重跑。Max 5 retry rounds.
+- **All pass** → 按 AGENT PROGRESS 格式追加通过日志到 prompt 中 `## TDD 迭代日志` 段指定的 `tdd-iterations.md` 路径 → go to Step 5.
+- **Failures** → 从输出中提取 "During testcase execution:" 段落获取具体失败 testcase 名称和错误信息 → 读 runner 输出定位根因 → 确定修复方案 → **先按 AGENT PROGRESS 格式追加失败日志到 prompt 指定的 `tdd-iterations.md` 路径（含 Failure Reason + Solution）** → 再执行修复 → 重跑。Max 5 retry rounds.
 - **失败报告必须列出每个失败 testcase 的具体名称和错误行。**
 - **Still failing after 5 rounds** → report as blocked, suggest reverting the refactoring.
 

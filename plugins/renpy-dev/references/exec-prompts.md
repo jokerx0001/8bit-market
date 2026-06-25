@@ -83,7 +83,13 @@ GREEN
 - {task_dir}/impact.md  — 修改范围约束（仅 refactor 模式）
 - game/ 下相关的 .rpy 源文件 — 了解已有代码模式
 - plugins/renpy-dev/references/renpy-coding.md  — Ren'Py 编码最佳实践
-- references/exec-logging.md  — AGENT PROGRESS 节（自验证日志格式）
+- plugins/renpy-dev/references/exec-logging.md  — AGENT PROGRESS 节（自验证日志格式）
+
+## TDD 迭代日志
+每次运行测试后，将验证结果追加写入 `{task_dir}/.work/tdd-iterations.md`。
+格式参见 exec-logging.md 的 **AGENT PROGRESS** 节（表格：Test Case / Result / Failure Reason / Solution）。
+每轮测试写一条记录，标题 `## [AI-N] GREEN — Test Run #{N} — $(date '+%Y-%m-%d %H:%M:%S')`。
+失败时必须填写 Failure Reason + Solution 列；全部通过时所有 Result 填 ✅。
 
 ## 约束
 - 按设计文档实现行为，不是按测试要求实现
@@ -101,10 +107,10 @@ GREEN
   renpy.sh <project> test <testcase_name> --report-detailed
 - 禁止运行全量测试 — renpy.sh <project> test 不带 testcase 名和--report-detailed是错误的
 - 全量回归验证由后续 VERIFY phase 的 test-agent 负责，coding-agent 只跑目标用例
-- 全部通过 → 报告成功
-- 有失败 → 从输出中提取 `During testcase execution:` 段落获取具体失败 testcase 名称和错误信息，根据运行输出修复（不要读测试源码），重试最多 5 轮
+- 全部通过 → 追加通过日志到 tdd-iterations.md → 报告成功
+- 有失败 → 从输出中提取 `During testcase execution:` 段落获取具体失败 testcase 名称和错误信息 → 先追加失败日志到 tdd-iterations.md（含 Failure Reason + Solution）→ 再修复 → 重跑。重试最多 5 轮
 - 报告必须列出每个失败 testcase 的具体名称和对应错误行，禁止只说"N 个失败"
-- 5 轮后仍失败 → 报告阻塞，附上运行输出中所有 `During testcase execution:` 段落
+- 5 轮后仍失败 → 追加阻塞日志到 tdd-iterations.md → 报告阻塞，附上运行输出中所有 `During testcase execution:` 段落
   `
 })
 ```
@@ -199,7 +205,13 @@ REFACTOR
 ## 需要读取的文件
 - {task_dir}/plan.md（设计摘要，了解设计意图）
 - plugins/renpy-dev/references/renpy-coding.md  — Ren'Py 编码最佳实践
-- references/exec-logging.md  — AGENT PROGRESS 节（自验证日志格式）
+- plugins/renpy-dev/references/exec-logging.md  — AGENT PROGRESS 节（自验证日志格式）
+
+## TDD 迭代日志
+每次运行测试后，将验证结果追加写入 `{task_dir}/.work/tdd-iterations.md`。
+格式参见 exec-logging.md 的 **AGENT PROGRESS** 节（表格：Test Case / Result / Failure Reason / Solution）。
+每轮测试写一条记录，标题 `## [AI-N] REFACTOR — Test Run #{N} — $(date '+%Y-%m-%d %H:%M:%S')`。
+失败时必须填写 Failure Reason + Solution 列；全部通过时所有 Result 填 ✅。
 
 ## 约束
 - 不改任何 game/tests/ 下的文件
@@ -209,10 +221,10 @@ REFACTOR
 
 ## 验证
 - 重构完成后运行 renpy.sh <project> test --report-detailed
-- 全部通过 → 报告成功
-- 有失败 → 必须从输出中提取 `During testcase execution:` 段落获取具体失败 testcase 名称和错误信息 → 修复后重试，最多 5 轮
+- 全部通过 → 追加通过日志到 tdd-iterations.md → 报告成功
+- 有失败 → 必须从输出中提取 `During testcase execution:` 段落获取具体失败 testcase 名称和错误信息 → 先追加失败日志到 tdd-iterations.md（含 Failure Reason + Solution）→ 再修复 → 重跑。重试最多 5 轮
 - 报告必须列出每个失败 testcase 的具体名称和对应错误行
-- 5 轮后仍失败 → 报告阻塞，建议撤销重构
+- 5 轮后仍失败 → 追加阻塞日志到 tdd-iterations.md → 报告阻塞，建议撤销重构
   `
 })
 ```
