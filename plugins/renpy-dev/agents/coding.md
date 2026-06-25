@@ -106,7 +106,7 @@ Write the minimum code needed to make the described behaviors work. Key rules:
 Run each target testcase individually (names from `## 测试用例`, project from `## 项目`):
 
 ```bash
-renpy.sh <project> test <testcase_name>
+renpy.sh <project> test <testsuite>::<testcase>
 ```
 
 - **All pass** → 按 exec-logging.md 的 AGENT PROGRESS 格式追加通过日志到 prompt 中 `## TDD 迭代日志` 段指定的 `tdd-iterations.md` 路径 → go to Step 5. 

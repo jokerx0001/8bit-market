@@ -104,8 +104,8 @@ GREEN
 
 ## 验证
 - 逐个执行上面列出的 target testcase，每个单独跑一次：
-  renpy.sh <project> test <testcase_name> --report-detailed
-- 禁止运行全量测试 — renpy.sh <project> test 不带 testcase 名和--report-detailed是错误的
+  renpy.sh <project> test <testsuite>::<testcase> --report-detailed
+- 禁止运行全量测试 — renpy.sh <project> test 不带 testsuite::testcase 名是错误的
 - 全量回归验证由后续 VERIFY phase 的 test-agent 负责，coding-agent 只跑目标用例
 - 全部通过 → 追加通过日志到 tdd-iterations.md → 报告成功
 - 有失败 → 从输出中提取 `During testcase execution:` 段落获取具体失败 testcase 名称和错误信息 → 先追加失败日志到 tdd-iterations.md（含 Failure Reason + Solution）→ 再修复 → 重跑。重试最多 5 轮

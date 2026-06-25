@@ -39,9 +39,10 @@ orchestrator (新功能)        refactor-conductor (重构)        fix-conductor
 使用 Ren'Py 原生 `testcase` / `testsuite` 框架。完整参考见 `references/renpy-testing.md`。
 
 ```bash
-renpy.sh <project> test                  # 运行全部测试
-renpy.sh <project> test <testcase_name>  # 运行单个测试
-renpy.sh <project> test --report-detailed
+renpy.sh <project> test                           # 运行全部测试
+renpy.sh <project> test <testsuite_name>          # 运行指定 testsuite
+renpy.sh <project> test <testsuite>::<testcase>   # 运行单个 testcase
+renpy.sh <project> test --report-detailed         # 详细输出
 ```
 
 ## 前置要求

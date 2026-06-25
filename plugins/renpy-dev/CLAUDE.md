@@ -19,9 +19,10 @@ Each workflow uses a different analysis methodology:
 ls .claude-plugin/plugin.json && echo "valid"
 
 # Run tests for a Ren'Py project:
-renpy.sh <project> test                  # all tests in global suite
-renpy.sh <project> test <testcase_name>  # single testcase
-renpy.sh <project> test --report-detailed  # detailed output
+renpy.sh <project> test                           # all tests in global suite
+renpy.sh <project> test <testsuite_name>          # all testcases in a testsuite
+renpy.sh <project> test <testsuite>::<testcase>   # single testcase
+renpy.sh <project> test --report-detailed         # detailed output
 ```
 
 `RENPY_SDK` env var must point to the Ren'Py SDK executable.

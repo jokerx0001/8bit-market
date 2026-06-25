@@ -1,6 +1,6 @@
 # Ren'Py 自动化测试 — 原生框架完整参考
 
-Ren'Py 内置一等公民的自动化测试框架（`testcase` / `testsuite`），提供输入模拟、条件断言、视觉回归、参数化等完整能力。CLI: `renpy.sh <basedir> test [<testcase>]`。
+Ren'Py 内置一等公民的自动化测试框架（`testcase` / `testsuite`），提供输入模拟、条件断言、视觉回归、参数化等完整能力。
 
 > **工作流约定：** `screenshot ... max_pixel_difference` 像素对比在本工作流中不使用。视觉正确性由人类对照 HTML 标准文件确认，不由自动化测试验证。`screenshot` 无参形式仅用于调试。
 
@@ -49,14 +49,35 @@ testsuite character_select_suite:
 ## 运行测试
 
 ```bash
-renpy.sh /path/to/project test              # 运行 global suite
-renpy.sh /path/to/project test <testcase>   # 运行特定 testcase
+renpy.sh /path/to/project test                           # 运行 global suite（全部测试）
+renpy.sh /path/to/project test <testsuite>               # 运行指定 testsuite（含所有 testcase）
+renpy.sh /path/to/project test <testsuite>::<testcase>   # 运行单个 testcase
 
 # 常用选项
 renpy.sh project test --enable_all           # 运行所有测试（忽略 enabled=False）
 renpy.sh project test --report-detailed      # 显示每个测试的详细信息
 renpy.sh project test --report-detailed --report-skipped  # 包括跳过的测试
 renpy.sh project test --overwrite_screenshots  # 重写截图基线
+```
+
+### 命名规则
+
+Ren'Py **不支持按文件名筛选测试**，只能按 testsuite/testcase 名称筛选。所有 `.rpy` 文件中的测试在运行时自动被发现和注册。
+
+**命名层级（来自 Ren'Py 源码 `testast.py:220-224`）：**
+
+- **TestSuite** 层级用 `.` 分隔：`global.character_select`、`global.encyclopedia_data`
+- **TestCase** 用 `::` 分隔：`character_select::select_character`、`encyclopedia_data::entries_exist`
+- 顶层 testsuite 直接放在 `global` 根 testsuite 下
+
+**示例：**
+
+```bash
+# 运行 global.character_select testsuite 下的所有 testcase
+renpy.sh project test global.character_select
+
+# 运行单个 testcase
+renpy.sh project test global.character_select::select_character
 ```
 
 **退出码:** `0` = 全部通过 / xfailed，非零 = 有失败或 xpassed。
