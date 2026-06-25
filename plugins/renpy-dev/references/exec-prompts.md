@@ -35,6 +35,8 @@ RED
 - 写完测试后必须自己跑测试确认失败原因正确
 - 语法错误/标识符错误必须自己修复后重跑（最多 3 轮）
 - 只写 game/tests/，不写 game/ 业务代码
+- 跑测试必须用 `renpy.sh <project> test --report-detailed`
+- 报告结果时必须从输出中提取 `During testcase execution:` 段落，列出每个失败 testcase 的具体名称和错误信息，禁止只给 Summary 数字
   `
 })
 ```
@@ -69,7 +71,7 @@ GREEN
 - 点击"确认"按钮后没有跳转到 start_game — 需要实现确认跳转
 
 ## 项目
-{project 名称，用于运行 renpy.sh <project> test}
+{project 名称，用于运行 renpy.sh <project> test --report-detailed}
 
 ## 实现文件
 根据任务描述和设计文档自行确定需要修改的文件。
@@ -80,6 +82,7 @@ GREEN
 - {task_dir}/.work/design.md  — widget 树、变量定义、交互流程（仅 feat/refactor 模式）
 - {task_dir}/impact.md  — 修改范围约束（仅 refactor 模式）
 - game/ 下相关的 .rpy 源文件 — 了解已有代码模式
+- plugins/renpy-dev/references/renpy-coding.md  — Ren'Py 编码最佳实践
 - references/exec-logging.md  — AGENT PROGRESS 节（自验证日志格式）
 
 ## 约束
@@ -95,12 +98,13 @@ GREEN
 
 ## 验证
 - 逐个执行上面列出的 target testcase，每个单独跑一次：
-  renpy.sh <project> test <testcase_name>
-- 禁止运行全量测试 — renpy.sh <project> test 不带 testcase 名是错误的
+  renpy.sh <project> test <testcase_name> --report-detailed
+- 禁止运行全量测试 — renpy.sh <project> test 不带 testcase 名和--report-detailed是错误的
 - 全量回归验证由后续 VERIFY phase 的 test-agent 负责，coding-agent 只跑目标用例
 - 全部通过 → 报告成功
-- 有失败 → 根据运行输出修复（不要读测试源码），重试最多 5 轮
-- 5 轮后仍失败 → 报告阻塞，附上运行输出
+- 有失败 → 从输出中提取 `During testcase execution:` 段落获取具体失败 testcase 名称和错误信息，根据运行输出修复（不要读测试源码），重试最多 5 轮
+- 报告必须列出每个失败 testcase 的具体名称和对应错误行，禁止只说"N 个失败"
+- 5 轮后仍失败 → 报告阻塞，附上运行输出中所有 `During testcase execution:` 段落
   `
 })
 ```
@@ -145,9 +149,12 @@ GREEN
 {project 名称}
 
 ## 要求
-- 运行 renpy.sh <project> test
+- 运行 renpy.sh <project> test --report-detailed
 - 全部通过 → 报告成功
-- 有失败 → 直接返回运行输出（不需要行为级翻译）
+- 有失败 → 必须从完整运行输出中提取以下信息，禁止只给 Summary 数字：
+  1. 搜索 `During testcase execution:` 段落，列出每个失败的 testcase 名称
+  2. 每个失败 testcase 的具体 assert 失败行或异常信息
+  3. 粘贴相关 `During testcase execution:` 段落原文
   `
 })
 ```
@@ -156,8 +163,9 @@ GREEN
 
 ```
 ├── ✅ 全部通过 → 进入 REFACTOR
-└── ❌ 有失败 → 将 test-agent 返回的运行输出传给 coding-agent，回到 GREEN 再修
-                （同一错误反复出现则由 exec 向用户报告）
+├── ❌ 有失败 → 将 test-agent 返回的失败 testcase 清单 + 错误信息完整传给 coding-agent，回到 GREEN 再修
+│    exec 检查报告是否包含具体 testcase 名称和错误行——只有 Summary 数字则拒绝，重新要求提取
+└── 同一错误反复出现 → exec 向用户报告
 ```
 
 ---
@@ -177,7 +185,7 @@ REFACTOR
 [AI-N] {任务描述} — 所有测试通过 ✅
 
 ## 项目
-{project 名称，用于运行 renpy.sh <project> test}
+{project 名称，用于运行 renpy.sh <project> test --report-detailed}
 
 ## 要重构的文件
 {从 coding-agent GREEN 阶段收集的已修改文件列表}
@@ -190,6 +198,7 @@ REFACTOR
 
 ## 需要读取的文件
 - {task_dir}/plan.md（设计摘要，了解设计意图）
+- plugins/renpy-dev/references/renpy-coding.md  — Ren'Py 编码最佳实践
 - references/exec-logging.md  — AGENT PROGRESS 节（自验证日志格式）
 
 ## 约束
@@ -199,9 +208,10 @@ REFACTOR
 - 不改范围外的文件
 
 ## 验证
-- 重构完成后运行 renpy.sh <project> test
+- 重构完成后运行 renpy.sh <project> test --report-detailed
 - 全部通过 → 报告成功
-- 有失败 → 修复后重试，最多 5 轮
+- 有失败 → 必须从输出中提取 `During testcase execution:` 段落获取具体失败 testcase 名称和错误信息 → 修复后重试，最多 5 轮
+- 报告必须列出每个失败 testcase 的具体名称和对应错误行
 - 5 轮后仍失败 → 报告阻塞，建议撤销重构
   `
 })
@@ -236,9 +246,9 @@ GREEN
 {project 名称}
 
 ## 要求
-- 运行 renpy.sh <project> test
+- 运行 renpy.sh <project> test --report-detailed
 - 全部通过 → 报告成功
-- 有失败 → 直接返回运行输出
+- 有失败 → 必须从完整运行输出中提取失败 testcase 清单 + 具体错误信息（同实现后 VERIFY 的标准），禁止只给 Summary 数字
   `
 })
 ```
@@ -247,6 +257,7 @@ GREEN
 
 ```
 ├── ✅ 全部通过 → 任务完成，标记 done
-└── ❌ 有失败 → 将运行输出传给 coding-agent，回到 REFACTOR 再修（最多 2 轮回退）
-    2 轮回退仍失败 → 报告用户，建议撤销重构
+├── ❌ 有失败 → 将失败 testcase 清单 + 错误信息完整传给 coding-agent，回到 REFACTOR 再修（最多 2 轮回退）
+│    exec 检查报告是否包含具体 testcase 名称和错误行
+└── 2 轮回退仍失败 → 报告用户，建议撤销重构
 ```

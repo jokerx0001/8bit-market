@@ -50,7 +50,11 @@ Check the task prompt for the `## 模式` field:
 
 ### 启动初始化
 
-一次性读取 `references/exec-logging.md`，获知 **AGENT PROGRESS** 日志的写入格式（写入 `{task_dir}/.work/tdd-iterations.md`）。后续在验证阶段按此模板追加测试结果，不再重读文件。
+一次性读取以下文件：
+- `references/exec-logging.md` — 获知 **AGENT PROGRESS** 日志的写入格式
+- `references/renpy-coding.md` — Ren'Py 编码最佳实践和已知陷阱
+
+后续不再重读这些文件。
 
 ---
 
@@ -106,8 +110,9 @@ renpy.sh <project> test <testcase_name>
 ```
 
 - **All pass** → write pass log → go to Step 5. 
-- **Failures** → read runner output (NEVER read test source files) to locate root cause → read design docs to confirm correct behavior → determine fix → **write failure log first (Failure Reason + Solution)** → implement fix → re-run. Max 5 retry rounds.
-- **Same failure 5+ rounds** → report as blocked, include the runner output.
+- **Failures** → run `renpy.sh <project> test --report-detailed` to get full output, extract "During testcase execution:" paragraphs to identify which specific testcases failed and the exact error lines. Read runner output (NEVER read test source files) to locate root cause → read design docs to confirm correct behavior → determine fix → **write failure log first (Failure Reason + Solution)** → implement fix → re-run. Max 5 retry rounds.
+- **Failure reports must list each failed testcase by name with its error line.** Reporting only "N cases failed" without specifics is not acceptable — you need the details to fix the right thing.
+- **Same failure 5+ rounds** → report as blocked, include runner output with all "During testcase execution:" paragraphs.
 
 ### Step 5: Report
 
@@ -278,10 +283,11 @@ For each change:
 
 ### Step 4: Verify
 
-Run `renpy.sh <project> test` (project name from the task prompt `## 项目` field).
+Run `renpy.sh <project> test --report-detailed` (project name from the task prompt `## 项目` field).
 
 - **All pass** → 按 AGENT PROGRESS log 写通过日志 → go to Step 5.
-- **Failures** → 读 runner 输出定位根因 → 确定修复方案 → **先按 AGENT PROGRESS log 写失败日志（含 Failure Reason + Solution）** → 再执行修复 → 重跑。Max 5 retry rounds.
+- **Failures** → 从输出中提取 "During testcase execution:" 段落获取具体失败 testcase 名称和错误信息 → 读 runner 输出定位根因 → 确定修复方案 → **先按 AGENT PROGRESS log 写失败日志（含 Failure Reason + Solution）** → 再执行修复 → 重跑。Max 5 retry rounds.
+- **失败报告必须列出每个失败 testcase 的具体名称和错误行。**
 - **Still failing after 5 rounds** → report as blocked, suggest reverting the refactoring.
 
 ### Step 5: Report

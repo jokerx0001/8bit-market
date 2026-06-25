@@ -59,7 +59,7 @@
     {
       "name": "renpy-dev",
       "description": "Ren'Py AI 开发插件 — plan 设计文档 + exec TDD 执行 + review 审查，自主循环完成 Ren'Py 视觉小说开发",
-      "version": "0.16.1",
+      "version": "0.16.2",
       "source": "./plugins/renpy-dev",
       "category": "development",
       "author": {

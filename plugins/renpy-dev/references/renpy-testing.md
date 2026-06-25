@@ -219,6 +219,35 @@ assert eval (check_game_state("chapter_2"))
 assert eval (persistent.unlocked_characters >= 3 and screen "gallery")
 ```
 
+### Selector 已知限制
+
+**`assert "text"` 和 `click "text"` 对 insensitive button 无效。** 当 button 设置 `sensitive False` 后，其文本对测试框架的文本搜索器不可见，文本选择器无法匹配。
+
+```renpy
+# FAILS — button 有 sensitive False 时文本搜索器找不到
+textbutton "???" sensitive False
+assert "???"  # AssertionError
+
+# RIGHT — 用 widget id 替代文本选择器
+textbutton "???":
+    id "locked_entry_001"
+    sensitive False
+assert id "locked_entry_001"
+```
+
+**规则：可能处于 insensitive 状态的 widget 必须用 id 选择器（`click id "..."`、`assert id "..."`），不能用文本选择器。**
+
+更一般地说，id 选择器比文本选择器更可靠——它不受 widget 状态、翻译、字体渲染的影响。
+
+### 常见失败模式
+
+| 现象 | 可能原因 | 修复 |
+|------|---------|------|
+| `assert "text"` 失败但 screen 上可见 | widget `sensitive False` | 改用 `assert id "..."` |
+| `click "text"` 失败但 button 可点击 | 文本不匹配（翻译/字体） | 改用 `click id "..."` |
+| `assert screen "x"` false negative | screen 透明/offscreen | 检查 zorder、alpha、xpos/ypos |
+| 测试永久挂起 | 缺少 `teardown: exit` | 在 global suite 加 `exit` |
+
 ### 截图/视觉回归
 
 ```renpy

@@ -144,8 +144,8 @@ testcase confirm_without_selection:
 **Run the tracer bullet first.** If it has a syntax error or wrong screen name, fix it before writing more tests. A broken tracer bullet means all subsequent tests are unreliable.
 
 ```bash
-# Run the specific testcase
-renpy.sh <project> test <testcase_name> --report-detailed
+# Run all tests with detailed output
+renpy.sh <project> test --report-detailed
 ```
 
 Inspect the output. The tests MUST fail. If any test passes:
@@ -159,6 +159,8 @@ The failures MUST be for the right reason:
 - **Wrong screen name** → WRONG. Find the correct name in design docs or source code.
 
 **Self-correction loop:** If tests fail for the wrong reason (syntax errors, wrong identifiers), fix the test code and re-run. Do this up to 3 times before reporting.
+
+**RED report 中的失败信息要求：** 必须从输出的 `During testcase execution:` 段落提取每个失败 testcase 的具体名称和错误信息。禁止只报告"N 个 testcase 失败"而不列具体名称。
 
 ### Step 4: Report
 
@@ -208,10 +210,10 @@ Output a structured RED report:
 ### Step 1: Run tests
 
 ```bash
-renpy.sh <project> test <testcase_name> --report-detailed
+renpy.sh <project> test --report-detailed
 ```
 
-Collect the full stdout/stderr output.
+Always use `--report-detailed` — 确保输出包含 `During testcase execution:` 段落。Collect the full stdout/stderr output.
 
 ### Step 2: If all pass — report success
 
@@ -225,8 +227,10 @@ Collect the full stdout/stderr output.
 
 ### Step 3: If any fail — analyze and describe
 
+**必须先从输出中提取失败 testcase 清单。** 搜索 `During testcase execution:` 段落，列出每个失败 testcase 的具体名称和错误信息。禁止只给 Summary 数字（"4 failed, 43 passed" 无法定位问题）。
+
 **For test failures** (assert eval, assert label, assert screen, etc.):
-Read the Ren'Py error output. It typically includes line numbers and expected vs actual values. Translate into a behavior-level description:
+Read the Ren'Py error output from the `During testcase execution:` paragraphs. It typically includes line numbers and expected vs actual values. Translate into a behavior-level description:
 
 ```
 ❌ testcase: confirm_selection
@@ -259,6 +263,12 @@ Read the Ren'Py error output. It typically includes line numbers and expected vs
 - Selected character index is not being tracked — variable "selected_index" is missing
 - Confirm button y-position is ~100px too high
 ```
+
+---
+
+### 启动初始化
+
+一次性读取 `plugins/renpy-dev/references/renpy-testing.md` — Ren'Py testcase/testsuite 完整 API 和已知测试框架限制。
 
 ---
 

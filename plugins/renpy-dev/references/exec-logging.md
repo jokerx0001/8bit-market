@@ -25,7 +25,7 @@ EOF
 - **Attempt**: {X}/{max}
 - **Key output**:
   ```
-  {test run 关键行 — 失败的 case 名 + 错误信息}
+  {从 "During testcase execution:" 段落提取 — 失败 testcase 名称 + 具体错误行}
   ```
 - **Analysis**: {agent 的推论/修复动作，阻塞/失败时必填}
 - **Verdict**: ✅ / ❌ / 🚫
@@ -79,7 +79,7 @@ EOF
 cat >> {task_dir}/.work/tdd-iterations.md << 'EOF'
 - **Key output**:
   ```
-  {失败的 case 名 + 错误信息}
+  {从 "During testcase execution:" 段落提取 — 失败 testcase 名称 + 具体错误行}
   ```
 - **Analysis**: {coding-agent 的推论/修复方向}
 EOF
@@ -109,7 +109,7 @@ cat >> {task_dir}/.work/tdd-iterations.md << 'EOF'
 | Test Case | Result | Failure Reason | Solution |
 |-----------|--------|---------------|----------|
 | {case_name} | ✅ | - | - |
-| {case_name} | ❌ | {从 runner 输出提取的失败原因} | {根因分析后确定的修复方案，用行为语言描述} |
+| {case_name} | ❌ | {从 "During testcase execution:" 段落提取的失败原因} | {根因分析后确定的修复方案，用行为语言描述} |
 EOF
 ```
 
