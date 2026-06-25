@@ -88,13 +88,16 @@ GREEN
 - 不修改 game/tests/、game/libs/、game/tl/
 - 不写空代码或假代码
 
-## 测试用例
+## 测试用例 — 只验证以下用例，禁止运行全量测试
 {从 test-agent RED report 的 "### Testcases" 表格提取的 testcase 名称}
 - testcase_1
 - testcase_2
 
 ## 验证
-- 逐个运行目标测试：renpy.sh <project> test <testcase_name>
+- 逐个执行上面列出的 target testcase，每个单独跑一次：
+  renpy.sh <project> test <testcase_name>
+- 禁止运行全量测试 — renpy.sh <project> test 不带 testcase 名是错误的
+- 全量回归验证由后续 VERIFY phase 的 test-agent 负责，coding-agent 只跑目标用例
 - 全部通过 → 报告成功
 - 有失败 → 根据运行输出修复（不要读测试源码），重试最多 5 轮
 - 5 轮后仍失败 → 报告阻塞，附上运行输出

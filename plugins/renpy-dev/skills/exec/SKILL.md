@@ -118,6 +118,8 @@ RIGHT (垂直切片):
 
 使用 **GREEN prompt**组装 spawn prompt。从 test-agent 的 RED report 提取行为级失败描述和 testcase 名称——不传测试源码或测试文件路径。（testcase 名称是 agent 自己起的标识符，属于元数据，不是测试源码。）
 
+**关键：验证命令必须是 `renpy.sh <project> test <testcase_name>`（逐个运行目标用例），绝对不能是 `renpy.sh <project> test`（全量运行）。** 全量回归由后续 VERIFY phase 的 test-agent 负责。coding-agent 跑全量测试 = 浪费时间和算力，且不在 GREEN 的职责范围内。
+
 ```
 结果检查:
 ├── ✅ 目标测试全部通过 → 进入 VERIFY（6d，全量回归由 test-agent 执行）
