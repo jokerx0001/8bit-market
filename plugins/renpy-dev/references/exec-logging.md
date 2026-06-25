@@ -102,7 +102,7 @@ EOF
 ### AGENT PROGRESS
 
 ```bash
-cat >> {task_dir}/.work/agent-progress.log << 'EOF'
+cat >> {task_dir}/.work/tdd-iterations.md << 'EOF'
 
 ## [AI-N] {GREEN | REFACTOR} — Test Run #{N} — $(date '+%Y-%m-%d %H:%M:%S')
 

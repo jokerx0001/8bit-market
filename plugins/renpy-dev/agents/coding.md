@@ -50,7 +50,7 @@ Check the task prompt for the `## 模式` field:
 
 ### 启动初始化
 
-一次性读取 `references/exec-logging.md`，获知 **AGENT PROGRESS log** 的写入格式。后续在验证阶段按此模板追加测试结果，不再重读文件。
+一次性读取 `references/exec-logging.md`，获知 **AGENT PROGRESS** 日志的写入格式（写入 `{task_dir}/.work/tdd-iterations.md`）。后续在验证阶段按此模板追加测试结果，不再重读文件。
 
 ---
 
