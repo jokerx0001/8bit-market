@@ -88,8 +88,13 @@ GREEN
 - 不修改 game/tests/、game/libs/、game/tl/
 - 不写空代码或假代码
 
+## 测试用例
+{从 test-agent RED report 的 "### Testcases" 表格提取的 testcase 名称}
+- testcase_1
+- testcase_2
+
 ## 验证
-- 实现完成后运行 renpy.sh <project> test
+- 逐个运行目标测试：renpy.sh <project> test <testcase_name>
 - 全部通过 → 报告成功
 - 有失败 → 根据运行输出修复（不要读测试源码），重试最多 5 轮
 - 5 轮后仍失败 → 报告阻塞，附上运行输出

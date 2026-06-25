@@ -70,7 +70,7 @@ cat >> {task_dir}/.work/tdd-iterations.md << 'EOF'
 ### Iter {iter_N} — GREEN (coding-agent) — $(date '+%Y-%m-%d %H:%M:%S')
 - **Files modified**: {文件列表}
 - **Self-verification rounds**: {actual_rounds}/5
-- **Verdict**: {✅ 全部通过 → VERIFY / ❌ 重试中 / 🚫 阻塞}
+- **Verdict**: {✅ 目标测试全部通过 → VERIFY / ❌ 重试中 / 🚫 阻塞}
 EOF
 ```
 
