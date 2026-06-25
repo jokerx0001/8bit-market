@@ -226,9 +226,22 @@ renpy.sh <project> test --report-detailed
 
 ---
 
+### 9. 收集开发经验
+
+所有 `[AI-N]` 任务完成后，**必须**调用 `renpy-dev:collect-lessons` skill 收集本次 exec 的开发经验：
+
+```
+Skill("renpy-dev:collect-lessons")
+```
+
+这会回顾 `tdd-iterations.md` 和本次会话上下文，提取测试和编码经验，验证后写入 `.renpy-dev/test-lessons.md` 和 `.renpy-dev/coding-lessons.md`。
+
+---
+
 ## Completion Gate
 
 不要声称任务完成，除非：
 1. 所有 `[AI-N]` 标记 `done`
 2. `renpy.sh <project> test` 全局通过
-3. 输出完成报告
+3. `renpy-dev:collect-lessons` 已完成
+4. 输出完成报告
