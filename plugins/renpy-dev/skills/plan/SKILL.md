@@ -144,6 +144,23 @@ grep -rl "teardown:" game/tests/ 2>/dev/null | xargs grep -l "exit" 2>/dev/null 
 - Event 触发: action Function(...)
 ```
 
+### 6b. UI 设计稿（按需）
+
+分析用户需求，判断是否涉及 UI 视觉设计：
+
+- 是否产生了新画面/新 widget？
+- 用户明确要求出 HTML 设计稿？
+
+以上任一为真 → 调用 design-ui：
+
+```
+Skill({skill: "renpy-dev:design-ui", args: "--task-dir {task_dir}"})
+```
+
+design-ui 产出 HTML 设计稿到 `.work/layouts/`，确认后继续步骤 7。
+
+不涉及 UI → 跳过，直接进入步骤 7。
+
 ### 7. 详细设计
 
 继续使用 `superpowers:brainstorming` 分析：
