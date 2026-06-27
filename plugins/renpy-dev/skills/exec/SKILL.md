@@ -107,7 +107,21 @@ RIGHT (垂直切片):
 
 #### 6a. 标记开始
 
-更新 `progress.json`：状态 → `in_progress`。初始化 TDD 迭代日志。
+更新 `progress.json`：状态 → `in_progress`。初始化 TDD 迭代日志：
+
+```bash
+# 文件不存在则创建文件头
+test -f {task_dir}/.work/tdd-iterations.md || echo "# TDD Iteration Log" > {task_dir}/.work/tdd-iterations.md
+# 追加任务分隔符
+cat >> {task_dir}/.work/tdd-iterations.md << 'EOF'
+
+---
+
+## [AI-N] {任务描述} — 开始于 $(date '+%Y-%m-%d %H:%M:%S')
+EOF
+```
+
+**这一步必须在 spawn RED agent 之前执行**，确保 GREEN 阶段 coding-agent 的自验证日志有地方写入。
 
 #### 6b. RED — spawn renpy-dev:test-agent
 
