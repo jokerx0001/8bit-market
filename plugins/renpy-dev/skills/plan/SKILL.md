@@ -342,8 +342,21 @@ transform xxx:
 - `ui` 任务必须有 `html:` 标注对应的 HTML 标准文件
 - 所有 `logic` 任务排在 `ui` 任务前面
 - 测试在各功能模块的 TDD 循环中自然产出，不作为独立 AI 任务
-- 测试策略只声明测什么文件、覆盖什么功能 — test agent 自己读 `.work/design.md` 获取细节
 - 先建数据/配置，再建 screen，最后写跳转逻辑
+
+**测试策略"覆盖"列约束：**
+
+"覆盖"列**只能**写高层次的玩家可感知功能简述，**不能**写验证技术手段。test agent 自己读 `.work/design.md` 获取细节来设计具体测试。
+
+```
+✅ 正确: "角色选择交互（选中/取消/确认）; visual: 默认布局基线"
+✅ 正确: "数据层读写 + 状态机转换 + 按键捕获 + Return 值"
+❌ 错误: "数据层：default 变量初始化、qte_phase 初始 'waiting'"
+❌ 错误: "modal True 源码契约、zorder 200 源码契约、4 参数签名契约"
+❌ 错误: "源码中查找 screen qte_screen(keys, hit_window, x, y): 声明"
+```
+
+规则：如果"覆盖"列里出现了"源码"、"正则"、"查找"、"契约"、"default"、"声明"、"变量初始化"，那就是在指挥 test agent 怎么测——这是越界。test agent 有完整的测试哲学（`agents/test-agent.md`），不需要 plan 告诉它用什么技术手段。
 
 **禁止写入 plan.md 的内容：**
 
@@ -352,6 +365,8 @@ transform xxx:
 - "lint 代替测试" / "lint 验证" / "Ren'Py Lint"
 - "人工启动目视" / "人工验证" / "手动测试"
 - "测试基础设施缺失不阻塞" / "测试暂缓" / "跳过测试"
+- **"源码契约" / "签名契约" / "源码中查找"** — 测试策略不能指挥 test agent 用静态分析代替运行时验证
+- **"default xxx = yyy" / "变量初始化" / "正则匹配"** — 同上，这是测试实现细节
 - 任何将 `renpy.sh project test` 之外的验证手段作为替代方案的描述
 
 **验证手段始终且唯一为 `renpy.sh project test`。** 若 game/tests/ 目录缺失，`[AI-0]` bootstrap 任务是强制的，不是可选的。测试基础设施从未"缺失不阻塞"——它阻塞一切。
@@ -381,6 +396,12 @@ grep -nP '\[AI-\d+\].*\.rpy' {task_dir}/plan.md
 
 ```bash
 grep -iE '(lint.*(代替|验证|替代)|人工.*(启动|验证|目视)|手动.*(测试|验证)|(测试.*)?缺失.*不阻塞|测试.*暂缓|跳过.*测试|Ren.Py Lint)' {task_dir}/plan.md
+```
+
+**额外扫描测试策略中的静态分析语言。** 用以下 grep 检查：
+
+```bash
+grep -iE '(源码契约|签名契约|源码中查找|正则匹配|default\s+\w+\s*=\s*|变量初始化)' {task_dir}/plan.md
 ```
 
 **命中任何禁止短语 → 拒绝输出，修改 plan.md 直到零命中。**
