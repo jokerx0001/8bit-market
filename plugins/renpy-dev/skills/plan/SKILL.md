@@ -25,15 +25,33 @@ description: "Plan Ren'Py feature development. Use when asked to 'design a featu
 mkdir -p {task_dir}/.work
 ```
 
-### 2. 读取影响范围约束（仅 refactor）
+### 2. 读取模式约束
 
-如果 `{task_dir}/impact.md` 存在（refactor-conductor 写入），读取它。按 `plugins/renpy-dev/references/impact-format.md` 格式解析，其中的修改范围、排除范围、已有测试、风险点、特殊约束是 plan 的硬约束。
+根据 `kind` 读取对应的约束文件。三个 mode 互斥——只有一个约束文件会存在：
 
-### 3. 加载格式契约
+| kind | 约束文件 | 来源 | 提取内容 |
+|------|---------|------|---------|
+| feat | （无） | — | 无预约束，走完整 brainstorming 流程 |
+| refactor | `{task_dir}/impact.md` | refactor-conductor | 修改范围、排除范围、已有测试保护、风险点 |
+| fix | `{task_dir}/.work/debug-analysis.md` | fix-conductor | 根因、预期行为列表、影响范围、修复方向 |
+
+**refactor 约束：** 按 `plugins/renpy-dev/references/impact-format.md` 格式解析 impact.md，其中的修改范围、排除范围、已有测试、风险点、特殊约束是 plan 的硬约束。
+
+**fix 约束：** 从 debug-analysis.md 提取：
+- 根因 → plan.md 概述段必须包含
+- 预期行为列表 → plan.md 行为列表段逐条列出（用户已在 fix-conductor 阶段 2 确认，plan 不再重复询问）
+- 影响范围 → 约束 plan.md 的影响范围表
+- 修复方向 → 概要方案（一两句话），plan 负责展开为具体设计
+
+**重要：** debug-analysis.md 只包含根因和预期行为，**不包含测试实现细节**。如果出现 testcase 名称或 assertion 策略，那是调试过程中误写入的——忽略，只提取根因和预期行为。
+
+### 3. 加载格式契约 + 检测项目环境
 
 读取 `plugins/renpy-dev/references/plan-format.md`。所有输出必须遵守此格式规范，exec skill 依赖此格式解析。
 
-### 4. 检测项目环境
+同时检测项目环境：
+
+**Ren'Py 版本检测：**
 
 **Ren'Py 版本检测：**
 
@@ -69,7 +87,9 @@ grep -rl "teardown:" game/tests/ 2>/dev/null | xargs grep -l "exit" 2>/dev/null 
 
 **为什么这很重要：** Ren'Py 测试跑完后不会自动退出进程。没有 `teardown: exit` 会导致 `renpy test` 进程永久挂起、bash 后台任务永远不返回、整个 TDD 循环卡死。
 
-### 5. 收集需求并确认行为
+### 4. 收集需求并确认行为（feat / refactor）
+
+**fix mode 跳过此步骤** — 预期行为已在 fix-conductor 阶段 2 由用户确认，写入 debug-analysis.md，plan 在步骤 2 已读取。
 
 解析用户的任务描述，生成需求摘要。保存到 `{task_dir}/.work/requirements.md`：
 
@@ -113,7 +133,9 @@ grep -rl "teardown:" game/tests/ 2>/dev/null | xargs grep -l "exit" 2>/dev/null 
 
 用户确认后，保存行为清单到 `{task_dir}/.work/requirements.md`。
 
-### 6. 架构设计
+### 5. 架构设计（feat / refactor）
+
+**fix mode 跳过此步骤** — 根因和修复方向已在 debug-analysis.md 确认，不需要发散设计。
 
 调用 `Skill` 工具加载 `superpowers:brainstorming`，分析架构设计问题：
 
@@ -144,7 +166,7 @@ grep -rl "teardown:" game/tests/ 2>/dev/null | xargs grep -l "exit" 2>/dev/null 
 - Event 触发: action Function(...)
 ```
 
-### 6b. UI 设计稿（按需）
+### 5b. UI 设计稿（feat / refactor 按需）
 
 分析用户需求，判断是否涉及 UI 视觉设计：
 
@@ -161,7 +183,9 @@ design-ui 产出 HTML 设计稿到 `.work/layouts/`，确认后继续步骤 7。
 
 不涉及 UI → 跳过，直接进入步骤 7。
 
-### 7. 详细设计
+### 6. 详细设计（feat / refactor）
+
+**fix mode 跳过此步骤。**
 
 继续使用 `superpowers:brainstorming` 分析：
 
@@ -196,7 +220,7 @@ transform xxx:
 | persistent.xxx | bool | False | ... |
 ```
 
-### 7b. 产出 UI 标准文件（UI 功能必须）
+### 6b. 产出 UI 标准文件（feat / refactor，UI 功能必须）
 
 **触发条件：** 需求涉及用户可见的视觉界面（新 screen 或 screen 视觉重设计）。纯逻辑功能（如 save/load、数据迁移、后端通信）跳过。
 
@@ -242,7 +266,7 @@ transform xxx:
 
 用户确认后，HTML 文件即为最终视觉标准，后续不可随意修改。
 
-### 7c. 任务拆分、分类与排序
+### 7. 任务拆分、分类与排序
 
 **拆分原则：按功能模块拆分，不按文件/阶段拆分。**
 
@@ -301,7 +325,8 @@ transform xxx:
 
 **自己编写，不委托外部 skill。** 外部 skill 不知道 Ren'Py 测试铁律、`[AI-N]` 任务格式和测试策略表约定，会产生偏离。
 
-基于 `.work/` 下的所有设计文档和 plan-format.md 格式规范，直接编写 `{task_dir}/plan.md`。
+**fix mode：** 基于步骤 2 读取的 debug-analysis.md（根因 + 预期行为 + 修复方向）直接编写。跳过 .work/ 中间产物——fix 不需要 architecture.md / design.md。
+**feat / refactor：** 基于 `.work/` 下的设计文档（requirements.md / architecture.md / design.md）编写。
 
 **结构：**
 
@@ -404,7 +429,21 @@ grep -iE '(lint.*(代替|验证|替代)|人工.*(启动|验证|目视)|手动.*(
 grep -iE '(源码契约|签名契约|源码中查找|正则匹配|default\s+\w+\s*=\s*|变量初始化)' {task_dir}/plan.md
 ```
 
-**命中任何禁止短语 → 拒绝输出，修改 plan.md 直到零命中。**
+**额外扫描 agent 微指令。** plan 的职责是说清 WHAT（行为目标），HOW（TDD 步骤、文件操作）是 exec 和 agent 的领域。以下任何模式出现都说明 plan 越界了：
+
+```bash
+grep -nPi '(^\s*\d+\.\s*\*\*RED\*\*|^\s*\d+\.\s*\*\*GREEN\*\*|RED 验证|GREEN 验证|^###\s+\[AI-\d+\]|^\*\*输出文件\*\*|^\*\*任务步骤\*\*)' {task_dir}/plan.md
+# 有输出 → plan 在写 TDD 微脚本或文件操作指令。删除，只保留功能行为描述
+```
+
+**额外扫描代码级表达式。** `scope[`、`renpy.`、`assert` 等是实现细节——test-agent 自己决定用什么 API：
+
+```bash
+grep -nPi '(scope\[|renpy\.get_screen|renpy\.execute_default|monkey.patch|assert\s+len\(|assert\s+scope)' {task_dir}/plan.md
+# 有输出 → plan 在教 agent 怎么写代码。删除这些微指令
+```
+
+**命中任何禁止短语或模式 → 拒绝输出，修改 plan.md 直到全部零命中。**
 
 ### 10. 输出摘要
 

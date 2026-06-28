@@ -28,7 +28,7 @@ description: |
 ## 工作流
 
 ```
-行为澄清 → systematic-debugging → 验证门 → debug-analysis.md → 编写 plan.md → [审查] → exec --mode fix → review
+行为澄清 → systematic-debugging → 验证门 → debug-analysis.md → plan skill → [审查] → exec --mode fix → review
   ↑ 预期行为     ↑ 以预期行为为基准     ↑ 根因确认     ↑ 根因+预期行为    ↑ 含根因+方案   ↑ 修复计划        ↑ TDD 修复
 ```
 
@@ -184,18 +184,11 @@ BUG 描述：{用户报告的 BUG}
 {修复方案的概要描述，一两句话}
 ```
 
-### 阶段 6：编写 plan.md
+### 阶段 6：调用 plan skill
 
-基于 debug-analysis.md，参照 `plugins/renpy-dev/references/plan-format.md` 格式，自己直接编写 `plan.md`。
-
-**硬约束：**
-- plan.md 的"概述"段必须包含根因摘要 + 预期行为列表（从 debug-analysis.md 提取）
-- plan.md 的"设计摘要"段必须包含修复方案，修复方案以预期行为为准绳
-- 每个 AI 任务有 `[AI-N]` 编号 + 输出文件路径 + 依赖标注
-- 必须包含回归测试任务（确保 BUG 不再复现，且修复后的行为符合预期行为列表）
-- 测试验证手段唯一：`renpy.sh project test`
-
-保存到 `.renpy-dev/fix-{N}/plan.md`。
+```
+Skill({skill: "renpy-dev:plan", args: "--task-dir .renpy-dev/fix-{N}"})
+```
 
 ### 阶段 7：审查（仅正常模式）
 
