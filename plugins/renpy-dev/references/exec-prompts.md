@@ -81,6 +81,7 @@ GREEN
 - {task_dir}/plan.md  — 设计摘要、影响范围
 - {task_dir}/.work/design.md  — widget 树、变量定义、交互流程（仅 feat/refactor 模式）
 - {task_dir}/impact.md  — 修改范围约束（仅 refactor 模式）
+- {task_dir}/.work/debug-analysis.md  — 根因分析、预期行为（仅 fix 模式）
 - game/ 下相关的 .rpy 源文件 — 了解已有代码模式
 - plugins/renpy-dev/references/renpy-coding.md  — Ren'Py 编码最佳实践
 - plugins/renpy-dev/references/exec-logging.md  — AGENT PROGRESS 节（自验证日志格式）
