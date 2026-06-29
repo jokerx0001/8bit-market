@@ -28,7 +28,7 @@ description: |
 ## 工作流
 
 ```
-行为澄清 → systematic-debugging → 验证门 → debug-analysis.md → plan skill → [审查] → exec --mode fix → review
+行为澄清 → systematic-debugging → 验证门 → debug-analysis.md → plan-fix skill → [审查] → exec --mode fix → review
   ↑ 预期行为     ↑ 以预期行为为基准     ↑ 根因确认     ↑ 根因+预期行为    ↑ 含根因+方案   ↑ 修复计划        ↑ TDD 修复
 ```
 
@@ -184,10 +184,10 @@ BUG 描述：{用户报告的 BUG}
 {修复方案的概要描述，一两句话}
 ```
 
-### 阶段 6：调用 plan skill
+### 阶段 6：调用 plan-fix skill
 
 ```
-Skill({skill: "renpy-dev:plan", args: "--task-dir .renpy-dev/fix-{N}"})
+Skill({skill: "renpy-dev:plan-fix", args: "--task-dir .renpy-dev/fix-{N}"})
 ```
 
 ### 阶段 7：审查（仅正常模式）

@@ -107,61 +107,43 @@ RIGHT (垂直切片):
 
 #### 6a. 标记开始
 
-更新 `progress.json`：状态 → `in_progress`。初始化 TDD 迭代日志：
+更新 `progress.json`：状态 → `in_progress`。
 
-```bash
-# 文件不存在则创建文件头
-test -f {task_dir}/.work/tdd-iterations.md || echo "# TDD Iteration Log" > {task_dir}/.work/tdd-iterations.md
-# 追加任务分隔符
-cat >> {task_dir}/.work/tdd-iterations.md << 'EOF'
-
----
-
-## [AI-N] {任务描述} — 开始于 $(date '+%Y-%m-%d %H:%M:%S')
-EOF
-```
+按 **exec-logging.md** 的"初始化"节初始化 `{task_dir}/.work/tdd-iterations.md`。
 
 **这一步必须在 spawn RED agent 之前执行**，确保 GREEN 阶段 coding-agent 的自验证日志有地方写入。
 
 #### 6b. RED — spawn renpy-dev:test-agent
 
-使用 **RED prompt**组装 spawn prompt。
+使用 **RED prompt** 组装 spawn prompt。
 
-**检查结果：**
-- 测试文件已创建？所有 testcase 都失败且原因正确？没有 mock/假代码？
+**检查结果**：按 **exec-prompts.md RED 检查规则** 验收。
 - 不合格 → 指出具体问题，重新 spawn（exec 不替 agent 修）
-- 合格 → 进入 GREEN
+- 合格 → 进入 GREEN（6c）
 
-**记录日志**：按 **RED log** 追加。记录全部 test case 的预期失败原因。
+**记录日志**：按 **RED log** 追加。
 
 #### 6c. GREEN — spawn renpy-dev:coding（含自验证）
 
-使用 **GREEN prompt**组装 spawn prompt。从 renpy-dev:test-agent 的 RED report 提取行为级失败描述和 testcase 名称——不传测试源码或测试文件路径。（testcase 名称是 agent 自己起的标识符，属于元数据，不是测试源码。）
+使用 **GREEN prompt** 组装 spawn prompt。从 renpy-dev:test-agent 的 RED report 提取行为级失败描述和 testcase 名称——不传测试源码或测试文件路径。（testcase 名称是 agent 自己起的标识符，属于元数据，不是测试源码。）
 
-**关键：验证命令必须是 `renpy.sh <project> test <testsuite>::<testcase>`（逐个运行目标用例），绝对不能是 `renpy.sh <project> test`（全量运行）。** 全量回归由后续 VERIFY phase 的 renpy-dev:test-agent 负责。renpy-dev:coding 跑全量测试 = 浪费时间和算力，且不在 GREEN 的职责范围内。
+**关键：验证命令必须是 `renpy.sh <project> test <testsuite>::<testcase>`（逐个运行目标用例），绝对不能是 `renpy.sh <project> test`（全量运行）。** 全量回归由后续 VERIFY phase 的 renpy-dev:test-agent 负责。
 
-```
-结果检查:
-├── ✅ 目标测试全部通过 → 进入 VERIFY（6d，全量回归由 renpy-dev:test-agent 执行）
-├── ❌ 有失败（≤5 轮）→ renpy-dev:coding 已自行重试修复
-│    exec 检查：失败报告是否列出具体 testcase 名称 + 错误信息？只有 Summary 数字 → 不通过
-└── 🚫 阻塞（>5 轮）→ 向用户报告，附 renpy-dev:coding 的失败输出
-```
+**检查结果**：按 **exec-prompts.md GREEN 检查规则** 验收，额外检查：
+- 失败报告必须列出具体 testcase 名称 + 错误信息，只有 Summary 数字 → exec 拒绝接受
+- 阻塞（>5 轮）→ 向用户报告，附 renpy-dev:coding 的失败输出
+- 通过 → 进入 VERIFY（6d）
 
-**记录日志**：按 **GREEN log** 追加。通过时简洁；失败/阻塞时必须补充 Key output + Analysis。
+**记录日志**：按 **GREEN log** 追加。通过时简洁；失败/阻塞时补充 Key output + Analysis。
 
 #### 6d. VERIFY — spawn renpy-dev:test-agent（独立验证门）
 
 使用 **VERIFY（实现后）prompt**。renpy-dev:test-agent 是写测试的人，视角独立，没有确认偏误。
 
-```
-结果检查:
-├── ✅ 全部通过 → 进入 REFACTOR（6e）
-└── ❌ 有失败 → exec 检查 renpy-dev:test-agent 报告是否包含具体失败 testcase 名称 + "During testcase execution:" 原文
-    只有 Summary 数字 → exec 拒绝接受，重新要求提取
-    合格 → 将失败 testcase 清单 + 错误信息传给 renpy-dev:coding，回到 6c 再修
-    （同一错误反复出现则 exec 向用户报告）
-```
+**检查结果**：按 **exec-prompts.md VERIFY（实现后）检查规则** 验收，额外检查：
+- 失败报告必须包含具体 testcase 名称 + "During testcase execution:" 原文，只有 Summary 数字 → exec 拒绝接受，重新要求提取
+- 回退到 GREEN（6c）再修，同一错误反复出现 → exec 向用户报告
+- 全部通过 → 进入 REFACTOR（6e）
 
 **记录日志**：按 **VERIFY log** 追加。
 
@@ -169,12 +151,9 @@ EOF
 
 **只有 VERIFY 全部通过后才执行。** 使用 **REFACTOR prompt**。
 
-```
-结果检查:
-├── ✅ 全部通过 → 进入 VERIFY（6f）
-├── ❌ 有失败（≤5 轮）→ renpy-dev:coding 已自行修复
-└── 🚫 阻塞（>5 轮）→ 报告用户，建议撤销重构保持 GREEN 状态
-```
+**检查结果**：按 **exec-prompts.md REFACTOR 检查规则** 验收。
+- 阻塞（>5 轮）→ 报告用户，建议撤销重构保持 GREEN 状态
+- 全部通过 → 进入 VERIFY（6f）
 
 **记录日志**：按 **REFACTOR log** 追加。
 
@@ -182,13 +161,10 @@ EOF
 
 使用 **VERIFY（重构后）prompt**。
 
-```
-结果检查:
-├── ✅ 全部通过 → 标记 done（6g）
-└── ❌ 有失败 → exec 检查 renpy-dev:test-agent 报告是否包含具体失败 testcase 名称 + 错误信息
-    合格 → 传给 renpy-dev:coding，回到 6e 再修（最多 2 轮回退）
-    2 轮回退仍失败 → 报告用户，建议撤销重构
-```
+**检查结果**：按 **exec-prompts.md VERIFY（重构后）检查规则** 验收，额外检查：
+- 失败报告必须包含具体 testcase 名称 + 错误信息，只有 Summary 数字 → exec 拒绝接受
+- 回退到 REFACTOR（6e）再修，最多 2 轮回退；仍失败 → 报告用户，建议撤销重构
+- 全部通过 → 标记 done（6g）
 
 **记录日志**：按 **VERIFY log** 追加。
 

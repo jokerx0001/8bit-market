@@ -174,3 +174,60 @@ plan 输出前自检：
 - [ ] **任务列表不含文件路径**（`grep -nP '\[AI-\d+\].*\.rpy' plan.md` 零命中）
 - [ ] **不含 agent 微指令**（RED/GREEN 步骤、`### [AI-N]` 子章节、"输出文件/任务步骤"）——plan 说 WHAT，agent 决定 HOW
 - [ ] **不含代码级 API 调用**（`scope[`、`renpy.get_screen`、`assert len(` 等）——实现细节属于 agent 自主决策
+
+---
+
+## 禁止内容清单
+
+以下是 plan.md 中**绝对不能出现**的短语和模式。plan 和 plan-fix 输出前，必须用以下 grep 扫描 plan.md，**全部零命中**才可输出。
+
+### 禁止短语
+
+- "lint 代替测试" / "lint 验证" / "Ren'Py Lint"
+- "人工启动目视" / "人工验证" / "手动测试"
+- "测试基础设施缺失不阻塞" / "测试暂缓" / "跳过测试"
+- "源码契约" / "签名契约" / "源码中查找" — 测试策略不能指挥 test agent 用静态分析代替运行时验证
+- "default xxx = yyy" / "变量初始化" / "正则匹配" — 同上，这是测试实现细节
+- 任何将 `renpy.sh project test` 之外的验证手段作为替代方案的描述
+
+**验证手段始终且唯一为 `renpy.sh project test`。**
+
+### 自检 grep 命令
+
+**扫描禁止短语：**
+
+```bash
+grep -iE '(lint.*(代替|验证|替代)|人工.*(启动|验证|目视)|手动.*(测试|验证)|(测试.*)?缺失.*不阻塞|测试.*暂缓|跳过.*测试|Ren.Py Lint)' {task_dir}/plan.md
+```
+
+**扫描测试策略中的静态分析语言：**
+
+```bash
+grep -iE '(源码契约|签名契约|源码中查找|正则匹配|default\s+\w+\s*=\s*|变量初始化)' {task_dir}/plan.md
+```
+
+**扫描 agent 微指令**（plan 的职责是说清 WHAT，HOW 是 exec 和 agent 的领域）：
+
+```bash
+grep -nPi '(^\s*\d+\.\s*\*\*RED\*\*|^\s*\d+\.\s*\*\*GREEN\*\*|RED 验证|GREEN 验证|^###\s+\[AI-\d+\]|^\*\*输出文件\*\*|^\*\*任务步骤\*\*)' {task_dir}/plan.md
+```
+
+**扫描代码级表达式**（`scope[`、`renpy.`、`assert` 等是实现细节——agent 自己决定 API）：
+
+```bash
+grep -nPi '(scope\[|renpy\.get_screen|renpy\.execute_default|monkey.patch|assert\s+len\(|assert\s+scope)' {task_dir}/plan.md
+```
+
+**扫描任务描述中的文件路径**（文件级拆分的信号）：
+
+```bash
+grep -nP '\[AI-\d+\].*\.rpy' {task_dir}/plan.md
+```
+
+### plan 专属（feat/refactor）
+
+仅 plan（非 plan-fix）额外扫描 UI 任务 HTML 引用完整性：
+
+```bash
+grep -n '(type: ui' {task_dir}/plan.md | grep -v 'html:'
+```

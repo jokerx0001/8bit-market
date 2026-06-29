@@ -33,17 +33,8 @@ mkdir -p {task_dir}/.work
 |------|---------|------|---------|
 | feat | （无） | — | 无预约束，走完整 brainstorming 流程 |
 | refactor | `{task_dir}/impact.md` | refactor-conductor | 修改范围、排除范围、已有测试保护、风险点 |
-| fix | `{task_dir}/.work/debug-analysis.md` | fix-conductor | 根因、预期行为列表、影响范围、修复方向 |
 
 **refactor 约束：** 按 `plugins/renpy-dev/references/impact-format.md` 格式解析 impact.md，其中的修改范围、排除范围、已有测试、风险点、特殊约束是 plan 的硬约束。
-
-**fix 约束：** 从 debug-analysis.md 提取：
-- 根因 → plan.md 概述段必须包含
-- 预期行为列表 → plan.md 行为列表段逐条列出（用户已在 fix-conductor 阶段 2 确认，plan 不再重复询问）
-- 影响范围 → 约束 plan.md 的影响范围表
-- 修复方向 → 概要方案（一两句话），plan 负责展开为具体设计
-
-**重要：** debug-analysis.md 只包含根因和预期行为，**不包含测试实现细节**。如果出现 testcase 名称或 assertion 策略，那是调试过程中误写入的——忽略，只提取根因和预期行为。
 
 ### 3. 加载格式契约 + 检测项目环境
 
@@ -87,9 +78,7 @@ grep -rl "teardown:" game/tests/ 2>/dev/null | xargs grep -l "exit" 2>/dev/null 
 
 **为什么这很重要：** Ren'Py 测试跑完后不会自动退出进程。没有 `teardown: exit` 会导致 `renpy test` 进程永久挂起、bash 后台任务永远不返回、整个 TDD 循环卡死。
 
-### 4. 收集需求并确认行为（feat / refactor）
-
-**fix mode 跳过此步骤** — 预期行为已在 fix-conductor 阶段 2 由用户确认，写入 debug-analysis.md，plan 在步骤 2 已读取。
+### 4. 收集需求并确认行为
 
 解析用户的任务描述，生成需求摘要。保存到 `{task_dir}/.work/requirements.md`：
 
@@ -113,7 +102,7 @@ grep -rl "teardown:" game/tests/ 2>/dev/null | xargs grep -l "exit" 2>/dev/null 
 - 状态: {已就绪 / 需安装 — 见 [AI-0] bootstrap 任务}
 ```
 
-**确认行为清单（强制门）：** 在进入架构设计之前，从需求中提取**玩家可见的行为列表**，向用户确认：
+**确认行为清单（强制门）：** 在进入任务拆分之前，从需求中提取**玩家可见的行为列表**，向用户确认：
 
 ```
 ## 确认以下行为是否准确
@@ -133,9 +122,75 @@ grep -rl "teardown:" game/tests/ 2>/dev/null | xargs grep -l "exit" 2>/dev/null 
 
 用户确认后，保存行为清单到 `{task_dir}/.work/requirements.md`。
 
-### 5. 架构设计（feat / refactor）
+### 5. 任务拆分与排序
 
-**fix mode 跳过此步骤** — 根因和修复方向已在 debug-analysis.md 确认，不需要发散设计。
+**拆分原则：按功能模块拆分，不按文件/阶段拆分。**
+
+核心规则：**任务描述 = 可验证的功能行为，不含文件路径。** "可验证"意味着读完描述能回答"用户操作后应该看到什么/发生什么？"——如果答案需要看另一个任务才知道，就合到一起。如果你发现自己在写"修改 xxx.rpy"或"在 xxx.rpy 中创建..."，停下来，用功能语言重写。**如果你发现自己在写 class 名、方法名、函数签名——停下来，你是在描述实现方案，不是描述行为。**
+
+一个 AI 任务 = 一个可独立验证的功能模块。同一文件被多个 AI 任务修改是正常的——每个模块增量修改。
+
+**好/坏对照（关键——写任务前先读这个）：**
+
+```
+❌ 坏: "创建 game/character_select.rpy，定义 character_select screen"
+     → 问题：描述了文件操作，不是功能。无法知道这个 screen 要做什么。
+
+❌ 坏: "修改 game/script.rpy，添加 select_character label"
+     → 问题：同上。label 是手段，跳转行为才是目的。
+
+❌ 坏: "在 game/screens.rpy 中新增 shop_screen"
+     → 问题：文件路径+screen名，没有功能语义。
+
+❌ 坏: "QteController 状态对象 + 状态常量定义（class QteController + class QtePhase）"
+     → 问题：描述的是代码结构（class 名、方法名），不是玩家可感知的行为。
+
+❌ 坏: "5 个 ATL transforms 定义（qte_fly_in / qte_pulse / qte_hit / qte_miss / qte_label_anim）"
+     → 问题：描述的是实现手段（transform 列表），不是行为结果。
+
+✅ 好: "实现角色卡片列表：头像、名称、状态标签的 widget 排列和默认布局"
+     → 可验证：打开 screen 后能看到排列整齐的卡片列表
+
+✅ 好: "实现角色选中交互：点击卡片高亮、再次点击取消、选中状态更新"
+     → 可验证：点击卡片后卡片高亮，再次点击后取消高亮
+
+✅ 好: "实现确认跳转逻辑：有选中角色 → 跳转 start_game，无选中 → 停留当前 screen"
+     → 可验证：选中后确认能跳转，未选中时确认不跳转
+
+✅ 好: "实现商店物品数据层：物品列表定义、价格查询、库存增减接口"
+     → 可验证：能查询到物品价格，购买后库存减少
+
+✅ 好: "实现按键命中反馈：玩家按正确键 → 金色粒子爆散 + HIT 文字 + legend dot 变绿"
+     → 可验证：按正确键后看到金色粒子、HIT 文字、对应 dot 变绿
+
+✅ 好: "实现按键失败反馈：玩家按错键 → 红色粒子 + MISS 文字 + Return(False)"
+     → 可验证：按错键后看到红色粒子、MISS 文字、screen 关闭返回 False
+```
+
+**描述写作规则：**
+
+| 规则 | 说明 |
+|------|------|
+| 用行为语言 | 描述"用户做什么 → 看到什么/发生什么"，不用技术名词（"创建 class"、"定义 transform"、"创建 screen"）开头 |
+| 可独立验证 | 读完描述能回答"怎么确认这个任务做完了？"——如果答案需要看另一个任务，就合到一起 |
+| 不含文件路径 | `.rpy` 文件名不出现在描述中。同一个 rpy 文件被 3 个任务改是正常的 |
+| 不含代码符号 | class 名、方法名、函数名、transform 名不出现在描述中——那些是实现方案，不是行为 |
+| 不含"测试" | 没有"编写/更新测试"任务——测试在各模块的 TDD 循环中自然产出 |
+
+任务列表将在步骤 8 写入 plan.md，届时按以下规则分类和排序：
+
+**分类定义：**
+
+| 类型 | 含义 |
+|------|------|
+| `logic` | 行为/交互/数据逻辑——完成标准来自行为清单，不依赖 HTML 设计稿 |
+| `ui` | 视觉还原——完成标准来自 HTML 设计稿，必须标注 `html:` |
+
+**排序：** 所有 `logic` 任务排在 `ui` 任务前面。`ui` 任务依赖同 screen 的最后一个 `logic` 任务。
+
+**UI 任务标记：** 编写 plan.md 时，`ui` 任务必须标注对应的 HTML 文件：`(type: ui, html: .work/layouts/{name}.html)`
+
+### 6. 架构设计
 
 调用 `Skill` 工具加载 `superpowers:brainstorming`，分析架构设计问题：
 
@@ -166,7 +221,7 @@ grep -rl "teardown:" game/tests/ 2>/dev/null | xargs grep -l "exit" 2>/dev/null 
 - Event 触发: action Function(...)
 ```
 
-### 5b. UI 设计稿（feat / refactor 按需）
+### 6b. UI 设计稿（按需）
 
 分析用户需求，判断是否涉及 UI 视觉设计：
 
@@ -183,9 +238,7 @@ design-ui 产出 HTML 设计稿到 `.work/layouts/`，确认后继续步骤 7。
 
 不涉及 UI → 跳过，直接进入步骤 7。
 
-### 6. 详细设计（feat / refactor）
-
-**fix mode 跳过此步骤。**
+### 7. 详细设计
 
 继续使用 `superpowers:brainstorming` 分析：
 
@@ -220,7 +273,7 @@ transform xxx:
 | persistent.xxx | bool | False | ... |
 ```
 
-### 6b. 产出 UI 标准文件（feat / refactor，UI 功能必须）
+### 7b. 产出 UI 标准文件（UI 功能必须）
 
 **触发条件：** 需求涉及用户可见的视觉界面（新 screen 或 screen 视觉重设计）。纯逻辑功能（如 save/load、数据迁移、后端通信）跳过。
 
@@ -266,67 +319,11 @@ transform xxx:
 
 用户确认后，HTML 文件即为最终视觉标准，后续不可随意修改。
 
-### 7. 任务拆分、分类与排序
-
-**拆分原则：按功能模块拆分，不按文件/阶段拆分。**
-
-核心规则：**任务描述 = 可验证的功能行为，不含文件路径。** "可验证"意味着有明确的完成标准——UI 功能可以截图/点击断言，数据/逻辑功能可以返回值断言。如果你发现自己在写"修改 xxx.rpy"或"在 xxx.rpy 中创建..."，停下来，用功能语言重写。
-
-一个 AI 任务 = 一个可独立验证的功能模块。同一文件被多个 AI 任务修改是正常的——每个模块增量修改。
-
-**好/坏对照（关键——写任务前先读这个）：**
-
-```
-❌ 坏: "创建 game/character_select.rpy，定义 character_select screen"
-     → 问题：描述了文件操作，不是功能。无法知道这个 screen 要做什么。
-
-❌ 坏: "修改 game/script.rpy，添加 select_character label"
-     → 问题：同上。label 是手段，跳转行为才是目的。
-
-❌ 坏: "在 game/screens.rpy 中新增 shop_screen"
-     → 问题：文件路径+screen名，没有功能语义。
-
-✅ 好: "实现角色卡片列表：头像、名称、状态标签的 widget 排列和默认布局"
-     → 可验证：打开 screen 看到卡片列表 → testcase 可截图/断言
-
-✅ 好: "实现角色选中交互：点击卡片高亮、再次点击取消、selected_index 变量更新"
-     → 可验证：点击行为 + 变量断言
-
-✅ 好: "实现确认跳转逻辑：有选中角色 → 跳转 start_game，无选中 → 停留当前 screen"
-     → 可验证：两种情况的跳转行为
-
-✅ 好: "实现商店物品数据层：物品列表定义、价格查询、库存增减接口"
-     → 可验证：数据操作函数的返回值断言
-```
-
-**描述写作规则：**
-
-| 规则 | 说明 |
-|------|------|
-| 用行为语言 | 描述"用户做什么 → 看到什么/发生什么"，不用技术名词（"创建 screen"、"定义 label"）开头 |
-| 可独立验证 | 读完描述能回答"怎么确认这个任务做完了？"——如果答案需要看另一个任务，就合到一起 |
-| 不含文件路径 | `.rpy` 文件名不出现在描述中。同一个 rpy 文件被 3 个任务改是正常的 |
-| 不含"测试" | 没有"编写/更新测试"任务——测试在各模块的 TDD 循环中自然产出 |
-
-在生成任务列表后（step 8），按以下规则分类和排序：
-
-**分类定义：**
-
-| 类型 | 定义 | 可以写 |
-|------|------|--------|
-| `logic` | 基础 screen 骨架（widget 树/交互逻辑）、label 跳转、变量/数据逻辑 | 完整 widget 树、基础 layout（vbox/hbox/fixed 结构）、action 逻辑、条件控制 |
-| `ui` | 需要匹配 HTML 设计稿的视觉还原 | 颜色、背景、字体大小、间距精调、状态样式（hover/selected/insensitive）、自定义 style 定义 |
-
-**排序：** 所有 `logic` 任务排在 `ui` 任务前面。`ui` 任务依赖同 screen 的最后一个 `logic` 任务。
-
-**UI 任务标记：** 编写 plan.md 时，`ui` 任务必须标注对应的 HTML 文件：`(type: ui, html: .work/layouts/{name}.html)`
-
 ### 8. 编写 plan.md
 
 **自己编写，不委托外部 skill。** 外部 skill 不知道 Ren'Py 测试铁律、`[AI-N]` 任务格式和测试策略表约定，会产生偏离。
 
-**fix mode：** 基于步骤 2 读取的 debug-analysis.md（根因 + 预期行为 + 修复方向）直接编写。跳过 .work/ 中间产物——fix 不需要 architecture.md / design.md。
-**feat / refactor：** 基于 `.work/` 下的设计文档（requirements.md / architecture.md / design.md）编写。
+基于 `.work/` 下的设计文档（requirements.md / architecture.md / design.md）编写。
 
 **结构：**
 
@@ -383,67 +380,18 @@ transform xxx:
 
 规则：如果"覆盖"列里出现了"源码"、"正则"、"查找"、"契约"、"default"、"声明"、"变量初始化"，那就是在指挥 test agent 怎么测——这是越界。test agent 有完整的测试哲学（`agents/test-agent.md`），不需要 plan 告诉它用什么技术手段。
 
-**禁止写入 plan.md 的内容：**
+**禁止写入 plan.md 的内容：** 见 `plan-format.md` 的"禁止内容清单"节——禁止短语列表 + 全部 grep 自检命令。plan 在此基础之上额外检查：
 
-以下短语及其变体**绝对不能**出现在 plan.md 中：
+```bash
+# 检查所有 UI 任务都有 html: 标注（plan 专属，plan-fix 不需要）
+grep -n '(type: ui' {task_dir}/plan.md | grep -v 'html:'
+```
 
-- "lint 代替测试" / "lint 验证" / "Ren'Py Lint"
-- "人工启动目视" / "人工验证" / "手动测试"
-- "测试基础设施缺失不阻塞" / "测试暂缓" / "跳过测试"
-- **"源码契约" / "签名契约" / "源码中查找"** — 测试策略不能指挥 test agent 用静态分析代替运行时验证
-- **"default xxx = yyy" / "变量初始化" / "正则匹配"** — 同上，这是测试实现细节
-- 任何将 `renpy.sh project test` 之外的验证手段作为替代方案的描述
-
-**验证手段始终且唯一为 `renpy.sh project test`。** 若 game/tests/ 目录缺失，`[AI-0]` bootstrap 任务是强制的，不是可选的。测试基础设施从未"缺失不阻塞"——它阻塞一切。
+**验证手段始终且唯一为 `renpy.sh project test`。** 若 game/tests/ 目录缺失，`[AI-0]` bootstrap 任务是强制的，不是可选的。
 
 ### 9. 格式自检
 
-输出前对照 `plan-format.md` 的"格式校验清单"逐项确认。
-
-**额外扫描 plan.md 中的类型和 HTML 引用：**
-
-```bash
-# 检查所有 UI 任务都有 html: 标注
-grep -n '(type: ui' {task_dir}/plan.md | grep -v 'html:'
-# 有输出 → UI 任务缺少 html:，拒绝输出，补齐后再扫
-```
-
-**额外扫描任务描述中的文件路径（文件级拆分的信号）：**
-
-```bash
-# 检查任务描述中是否包含文件路径
-grep -nP '\[AI-\d+\].*\.rpy' {task_dir}/plan.md
-# 有输出 → 任务描述写成了文件粒度（"修改 xxx.rpy"），需要改写为功能描述
-# 注意：仅"影响范围"表中出现 .rpy 是正常的，任务列表中不应出现
-```
-
-**额外扫描 plan.md 中的禁止短语。** 用以下 grep 检查：
-
-```bash
-grep -iE '(lint.*(代替|验证|替代)|人工.*(启动|验证|目视)|手动.*(测试|验证)|(测试.*)?缺失.*不阻塞|测试.*暂缓|跳过.*测试|Ren.Py Lint)' {task_dir}/plan.md
-```
-
-**额外扫描测试策略中的静态分析语言。** 用以下 grep 检查：
-
-```bash
-grep -iE '(源码契约|签名契约|源码中查找|正则匹配|default\s+\w+\s*=\s*|变量初始化)' {task_dir}/plan.md
-```
-
-**额外扫描 agent 微指令。** plan 的职责是说清 WHAT（行为目标），HOW（TDD 步骤、文件操作）是 exec 和 agent 的领域。以下任何模式出现都说明 plan 越界了：
-
-```bash
-grep -nPi '(^\s*\d+\.\s*\*\*RED\*\*|^\s*\d+\.\s*\*\*GREEN\*\*|RED 验证|GREEN 验证|^###\s+\[AI-\d+\]|^\*\*输出文件\*\*|^\*\*任务步骤\*\*)' {task_dir}/plan.md
-# 有输出 → plan 在写 TDD 微脚本或文件操作指令。删除，只保留功能行为描述
-```
-
-**额外扫描代码级表达式。** `scope[`、`renpy.`、`assert` 等是实现细节——test-agent 自己决定用什么 API：
-
-```bash
-grep -nPi '(scope\[|renpy\.get_screen|renpy\.execute_default|monkey.patch|assert\s+len\(|assert\s+scope)' {task_dir}/plan.md
-# 有输出 → plan 在教 agent 怎么写代码。删除这些微指令
-```
-
-**命中任何禁止短语或模式 → 拒绝输出，修改 plan.md 直到全部零命中。**
+输出前对照 `plan-format.md` 的"格式校验清单"逐项确认，然后执行"禁止内容清单"中的所有 grep 命令。全部零命中方可输出。
 
 ### 10. 输出摘要
 
