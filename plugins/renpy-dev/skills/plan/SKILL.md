@@ -221,23 +221,6 @@ grep -rl "teardown:" game/tests/ 2>/dev/null | xargs grep -l "exit" 2>/dev/null 
 - Event 触发: action Function(...)
 ```
 
-### 6b. UI 设计稿（按需）
-
-分析用户需求，判断是否涉及 UI 视觉设计：
-
-- 是否产生了新画面/新 widget？
-- 用户明确要求出 HTML 设计稿？
-
-以上任一为真 → 调用 design-ui：
-
-```
-Skill({skill: "renpy-dev:design-ui", args: "--task-dir {task_dir}"})
-```
-
-design-ui 产出 HTML 设计稿到 `.work/layouts/`，确认后继续步骤 7。
-
-不涉及 UI → 跳过，直接进入步骤 7。
-
 ### 7. 详细设计
 
 继续使用 `superpowers:brainstorming` 分析：
@@ -273,51 +256,21 @@ transform xxx:
 | persistent.xxx | bool | False | ... |
 ```
 
-### 7b. 产出 UI 标准文件（UI 功能必须）
+### 7b. 加载 UI 视觉标准（如有）
 
-**触发条件：** 需求涉及用户可见的视觉界面（新 screen 或 screen 视觉重设计）。纯逻辑功能（如 save/load、数据迁移、后端通信）跳过。
+**检查 `{task_dir}/.work/layouts/` 是否存在 HTML 文件。**
 
-**粒度：** 一个逻辑屏幕一个 HTML 文件。例如 "角色选择画面" → 一个 HTML，"剧情对话画面" → 一个 HTML。
+如果有（conductor 已调用 design-ui 产出）：
 
-**HTML 内容要求：**
+1. 读取 `{task_dir}/.work/style-decision.md`，提取风格约束（配色、字体、布局习惯、交互风格）
+2. 将 HTML 文件路径清单纳入架构和详细设计的视觉参考
+3. 步骤 8 编写 plan.md 时，`ui` 任务用这些已有的 HTML 标注：`html: .work/layouts/{name}.html`
 
-- 包含该逻辑屏幕的**所有交互状态**（默认态、hover、选中、禁用、过渡动画等）
-- 使用 CSS 伪类（`:hover`、`:active`、`:disabled`）和过渡（`transition`）表达动态效果
-- 单文件自包含（内联 CSS，浏览器可直接打开）
-- 颜色、字体、间距、背景等视觉属性精确设置
-- 与设计文档中的 widget 树一致
+如果没有，但需求明显涉及新 screen/新 widget 视觉布局：
+→ **异常情况。** conductor 应在调 plan 之前调了 design-ui。提示用户，并询问是否需要先走 UI 设计。
 
-**步骤：**
-
-**1. 生成 HTML**
-
-为每个涉及视觉设计的逻辑屏幕生成 HTML，保存到 `{task_dir}/.work/layouts/`：
-
-```
-{task_dir}/.work/layouts/
-├── character_select.html
-├── dialogue.html
-└── shop.html
-```
-
-**2. 用户确认**
-
-```
-## UI 标准确认
-
-以下 HTML 文件定义了各画面的视觉标准，请用浏览器打开查看：
-
-- character_select.html — 角色选择画面（含默认态、hover、选中态）
-- dialogue.html — 剧情对话画面
-
-这些文件将成为 coding-agent 的视觉真相 — 后续 Ren'Py 代码的布局/颜色/字体/间距以此为准。
-
-确认后回复"OK"继续。如需调整，请描述具体改动。
-```
-
-**3. 确认后保存**
-
-用户确认后，HTML 文件即为最终视觉标准，后续不可随意修改。
+纯逻辑功能（无新画面、无视觉改动）：
+→ 跳过。`ui` 类型任务不会出现，无需 HTML 标注。
 
 ### 8. 编写 plan.md
 

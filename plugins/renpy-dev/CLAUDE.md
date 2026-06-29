@@ -31,18 +31,22 @@ renpy.sh <project> test --report-detailed         # detailed output
 
 The plugin has **three workflow state machines** for different task types:
 
-### New Feature: `orchestrator` → `plan` → `exec --mode feat` → `review`
+### New Feature: `orchestrator` → [UI检测] → `design-ui` → `plan` → `exec --mode feat` → `review`
 
 ```
-idle → plan → [human_review] → exec → review → completed
+idle → [create dir] → [UI检测] → design-ui → plan → [human_review] → exec → review → completed
+          ↑                         ↓
+          └── artifact-manager      └── 无UI则跳过
 ```
 
-### Refactoring: `refactor-conductor` → analyze → `plan` → `exec --mode refactor` → `review`
+### Refactoring: `refactor-conductor` → analyze → `impact.md` → [UI检测] → `design-ui` → `plan` → `exec --mode refactor` → `review`
 
-The refactor workflow has one additional step: **analyze existing code and write `impact.md`** before calling `plan`. The plan skill reads impact.md as hard constraints on scope, exclusions, and existing test protection.
+The refactor workflow has two additional steps before `plan`: write `impact.md` (modification scope constraints) and UI detection (same as orchestrator). All three conductors delegate directory creation to `renpy-dev:artifact-manager`.
 
 ```
-analyze → write impact.md → plan (reads impact constraints) → [review] → exec → review
+[create dir] → [UI检测] → design-ui → analyze → write impact.md → plan (reads impact) → [review] → exec → review
+       ↑           ↓
+artifact-manager   └── 无UI则跳过
 ```
 
 ### Bug Fix: `fix-conductor` → systematic-debugging → debug-analysis.md → `plan` → `exec --mode fix` → `review`
@@ -111,7 +115,15 @@ Each `[AI-N]` task follows a strict RED→GREEN→REFACTOR cycle:
 
 ```
 commands/           # Slash command entry points (thin wrappers that invoke skills)
-skills/             # Core skill definitions (orchestrator, plan, exec, review, refactor-conductor, fix-conductor)
+skills/             # Core skill definitions
+  artifact-manager/ #   Shared directory + state management (used by all 3 conductors)
+  orchestrator/     #   Feat workflow state machine
+  refactor-conductor/ # Refactor workflow state machine
+  fix-conductor/    #   Fix workflow state machine
+  design-ui/        #   UI design phase (called by conductors BEFORE plan)
+  plan/             #   Design phase (called by conductors AFTER UI detection)
+  exec/             #   TDD implementation phase
+  review/           #   Compliance review
 agents/             # Subagent definitions (coding, test-agent)
 references/         # Format contracts read by skills at runtime
   plan-format.md    #   plan.md → exec parsing contract

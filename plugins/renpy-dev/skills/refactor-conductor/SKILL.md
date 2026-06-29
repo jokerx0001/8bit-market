@@ -19,30 +19,45 @@ description: |
 ## 工作流
 
 ```
-分析影响范围 → 写入 impact.md → plan(读impact约束) → [审查] → exec → review
-↑___唯一增量___↑            ↑_________正常流程_________↑
+创建目录 → [UI检测] → design-ui → 分析影响范围 → 写入 impact.md → plan(读impact约束) → [审查] → exec → review
+     │        ↓           ↑                       ↑_________正常流程_________↑
+     │        └── 无UI ───┘
+     └── artifact-manager
 ```
 
 ---
 
-### 第一步：Analyze & Impact — 分析影响范围
+### 第一步：创建任务目录 + UI 检测
 
-确定 N 并创建目录：
+**1a. 创建目录：**
 
-1. 读取 `.renpy-dev/current-state.json`
-   - **文件不存在** → 初始化为 `{"current_task": "", "current_kind": "", "counters": {"feat": 0, "refactor": 0, "fix": 0}}`
-   - **旧格式**（有 `current_feat` 无 `counters`）→ 按 `counters = {"feat": N, "refactor": 0, "fix": 0}` 转换
-2. 从 `counters.refactor` 取值，+1 得到 N
-3. 创建目录：`mkdir -p .renpy-dev/refactor-{N}/.work`
-4. 写回 `current-state.json`：
-   ```json
-   {
-     "current_task": "refactor-{N}",
-     "current_kind": "refactor",
-     "phase": "analyze",
-     "counters": { "...", "refactor": N }
-   }
-   ```
+```
+Skill({skill: "renpy-dev:artifact-manager", args: "create_task kind=refactor phase=analyze"})
+```
+
+artifact-manager 会读取 `current-state.json`、递增 `counters.refactor`、创建 `.renpy-dev/refactor-{N}/`、写回状态。返回 `task_dir`。
+
+**1b. UI 检测：**
+
+分析用户的任务描述和重构目标，判断是否涉及 UI 视觉设计：
+
+**触发条件（满足任一即为 UI 任务）：**
+- 涉及创建新模块且明显包含新界面
+- 涉及现有模块的视觉重设计
+
+**判定原则：宁可误判多调 design-ui（它会自己判断并跳过不需要的部分），也不要漏判。**
+
+**涉及 UI 视觉设计 →** 调用 design-ui：
+
+```
+Skill({skill: "renpy-dev:design-ui", args: "--task-dir {task_dir}"})
+```
+
+等待 design-ui 完成后再进入 1c。
+
+**不是 UI 任务 →** 直接进入 1c。
+
+**1c. 分析影响范围：**
 
 充分阅读现有代码：
 
@@ -99,6 +114,8 @@ Skill({skill: "renpy-dev:exec", args: "--mode refactor --task-dir .renpy-dev/ref
 
 | | orchestrator | refactor-conductor |
 |--|:--:|:--:|
+| 创建目录 | ✅ artifact-manager | ✅ artifact-manager |
+| UI 检测 + design-ui | ✅ | ✅ |
 | 分析影响范围 | — | ✅ 写 impact.md |
 | plan (brainstorming → 写 plan.md) | ✅ | ✅ 读 impact.md 约束 |
 | 审查 plan.md | ✅ | ✅ |
