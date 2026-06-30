@@ -172,6 +172,9 @@ Output a structured RED report:
 ### Test file
 - Path: game/tests/test_xxx.rpy
 
+### Testsuite
+- Name: global.xxx_suite
+
 ### Testcases
 | # | Testcase | What it verifies | Expected failure reason |
 |---|----------|------------------|------------------------|

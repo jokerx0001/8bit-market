@@ -111,6 +111,11 @@ RIGHT (垂直切片):
 
 按 **exec-logging.md** 的"初始化"节初始化 `{task_dir}/.work/tdd-iterations.md`。
 
+创建 coding agent 日志目录：
+
+```bash
+mkdir -p {task_dir}/.work/coding
+```
 **这一步必须在 spawn RED agent 之前执行**，确保 GREEN 阶段 coding-agent 的自验证日志有地方写入。
 
 #### 6b. RED — spawn renpy-dev:test-agent
@@ -125,9 +130,9 @@ RIGHT (垂直切片):
 
 #### 6c. GREEN — spawn renpy-dev:coding（含自验证）
 
-使用 **GREEN prompt** 组装 spawn prompt。从 renpy-dev:test-agent 的 RED report 提取行为级失败描述和 testcase 名称——不传测试源码或测试文件路径。（testcase 名称是 agent 自己起的标识符，属于元数据，不是测试源码。）
+使用 **GREEN prompt** 组装 spawn prompt。从 renpy-dev:test-agent 的 RED report 提取行为级失败描述、testsuite 名称和 testcase 名称——不传测试源码或测试文件路径。（testsuite/testcase 名称是 agent 自己起的标识符，属于元数据，不是测试源码。）
 
-**关键：验证命令必须是 `renpy.sh <project> test <testsuite>::<testcase>`（逐个运行目标用例），绝对不能是 `renpy.sh <project> test`（全量运行）。** 全量回归由后续 VERIFY phase 的 renpy-dev:test-agent 负责。
+**关键：验证命令必须是 `renpy.sh <project> test <testsuite>`（运行目标 testsuite，覆盖该 suite 下所有 testcase），绝对不能是 `renpy.sh <project> test`（全量运行）。** 全量回归由后续 VERIFY phase 的 renpy-dev:test-agent 负责。一次 testsuite 运行即可验证该模块所有行为，无需逐 testcase 单独 spawn 进程。
 
 **检查结果**：按 **exec-prompts.md GREEN 检查规则** 验收，额外检查：
 - 失败报告必须列出具体 testcase 名称 + 错误信息，只有 Summary 数字 → exec 拒绝接受

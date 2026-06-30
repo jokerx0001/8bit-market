@@ -98,20 +98,26 @@ GREEN
 - 不修改 game/tests/、game/libs/、game/tl/
 - 不写空代码或假代码
 
-## 测试用例 — 只验证以下用例，禁止运行全量测试
-{从 test-agent RED report 的 "### Testcases" 表格提取的 testcase 名称}
+## 目标 testsuite
+{从 test-agent RED report 的 "### Testsuite" 提取的 testsuite 名称（如 global.character_select）}
+
+## 目标 testcase — 每个都代表一个待实现的行为
+{从 test-agent RED report 的 "### Testcases" 表格提取的 testcase 名称，供 coding-agent 了解需要实现哪些行为}
 - testcase_1
 - testcase_2
 
 ## 验证
-- 逐个执行上面列出的 target testcase，每个单独跑一次：
-  renpy.sh <project> test <testsuite>::<testcase> --report-detailed
-- 禁止运行全量测试 — renpy.sh <project> test 不带 testsuite::testcase 名是错误的
-- 全量回归验证由后续 VERIFY phase 的 test-agent 负责，coding-agent 只跑目标用例
+- 每轮测试结果写入**独立文件**，文件名带轮次号 N（N 从 1 开始递增）：
+  renpy.sh <project> test <testsuite> --report-detailed > {task_dir}/.work/coding/<testsuite>_run<N>.log 2>&1
+- 每轮独立文件 — 无需解析标记，文件名本身就是上下文
+- 禁止运行全量测试 — renpy.sh <project> test 不带 testsuite 名是错误的
+- 全量回归验证由后续 VERIFY phase 的 test-agent 负责，coding-agent 只跑目标 testsuite
+- **获取本轮失败明细 — 直接执行此 bash 命令**：
+  grep -A 60 "During testcase execution:" {task_dir}/.work/coding/<testsuite>_run<N>.log
 - 全部通过 → 追加通过日志到 tdd-iterations.md → 报告成功
-- 有失败 → 从输出中提取 `During testcase execution:` 段落获取具体失败 testcase 名称和错误信息 → 先追加失败日志到 tdd-iterations.md（含 Failure Reason + Solution）→ 再修复 → 重跑。重试最多 5 轮
+- 有失败 → 执行上方 grep 命令获取失败 testcase 名称和具体错误信息 → 先追加失败日志到 tdd-iterations.md（含 Failure Reason + Solution）→ 再修复 → 重跑。重试最多 5 轮
 - 报告必须列出每个失败 testcase 的具体名称和对应错误行，禁止只说"N 个失败"
-- 5 轮后仍失败 → 追加阻塞日志到 tdd-iterations.md → 报告阻塞，附上运行输出中所有 `During testcase execution:` 段落
+- 5 轮后仍失败 → 追加阻塞日志到 tdd-iterations.md → 报告阻塞，附上最后一轮日志文件完整内容
   `
 })
 ```
@@ -221,9 +227,13 @@ REFACTOR
 - 不改范围外的文件
 
 ## 验证
-- 重构完成后运行 renpy.sh <project> test --report-detailed
+- 每轮重构验证结果写入**独立文件**，文件名带轮次号 N（N 从 1 开始递增）：
+  renpy.sh <project> test --report-detailed > {task_dir}/.work/coding/refactor_run<N>.log 2>&1
+- 每轮独立文件 — 无需解析标记，文件名本身就是上下文
+- **获取本轮失败明细 — 直接执行此 bash 命令**：
+  grep -A 60 "During testcase execution:" {task_dir}/.work/coding/refactor_run<N>.log
 - 全部通过 → 追加通过日志到 tdd-iterations.md → 报告成功
-- 有失败 → 必须从输出中提取 `During testcase execution:` 段落获取具体失败 testcase 名称和错误信息 → 先追加失败日志到 tdd-iterations.md（含 Failure Reason + Solution）→ 再修复 → 重跑。重试最多 5 轮
+- 有失败 → 执行上方 grep 命令获取失败 testcase 名称和具体错误信息 → 先追加失败日志到 tdd-iterations.md（含 Failure Reason + Solution）→ 再修复 → 重跑。重试最多 5 轮
 - 报告必须列出每个失败 testcase 的具体名称和对应错误行
 - 5 轮后仍失败 → 追加阻塞日志到 tdd-iterations.md → 报告阻塞，建议撤销重构
   `

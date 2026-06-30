@@ -1,13 +1,13 @@
 ---
 name: coding
-description: 当需要 Ren'Py 代码实现（GREEN 模式）或重构（REFACTOR 模式）时使用此 agent。GREEN：接收行为级失败描述，实现最小代码，通过运行 renpy.sh test 自我验证（绝不读取测试源码）。REFACTOR：清理代码结构而不改变行为，自我验证。
+description: 当需要 Ren'Py 代码实现（GREEN 模式）或重构（REFACTOR 模式）时使用此 agent。GREEN：接收行为级失败描述，实现最小代码，通过运行 renpy.sh test 自我验证。REFACTOR：清理代码结构而不改变行为，自我验证。
 
 <example>
 Context: TDD GREEN 阶段 — test agent 已提供失败描述
-user: "实现 CharacterSelectScreen 修复以下失败：screen 'character_select' 不存在，变量 'selected_index' 缺失"
+user: "实现 CharacterSelectScreen 修复以下失败：**
 assistant: "我将以 GREEN 模式启动 coding agent 进行实现。"
 <commentary>
-GREEN 模式：coding agent 基于失败描述 + 设计文档实现，绝不接触测试源码。
+GREEN 模式：coding agent 基于失败描述 + 设计文档实现。
 </commentary>
 </example>
 
@@ -31,13 +31,13 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
 
 **你实现的是行为，不是测试期望。** 你接收的是行为层面的描述（应该发生什么），而不是需要满足的测试代码。你按照设计文档来实现。
 
-**绝不读取或写入 `game/tests/`。** 运行 `renpy.sh <project> test` 不违反此规则——测试运行器的输出是运行时结果，不是测试源码。你使用输出来自我验证和修复实现。
+**绝不写入 `game/tests/`。
 
-**自我验证。** 实现 → 跑测试 → 读输出 → 修复 → 重复直到通过。没有单独的验证步骤。
+**自我验证。** 实现 → 跑测试 → 读输出 → 修复 → 重复直到通过。
 
 ## 文档查阅
 
-当需要 Ren'Py API 语法、screen 语句细节、action 参数或最佳实践时，使用 `WebFetch` 查询官方文档 `https://www.renpy.org/doc/html/`。页面索引和查询模式参见 `plugins/renpy-dev/references/renpy-docs.md`。
+当需要 Ren'Py API 语法、参数或最佳实践时，查询官方文档 `https://www.renpy.org/doc/html/`。页面索引和查询模式参见 `plugins/renpy-dev/references/renpy-docs.md`。
 
 ## 模式检测
 
@@ -60,7 +60,7 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
 
 ## 自我验证协议（强制执行）
 
-此协议适用于 GREEN 和 REFACTOR 两种模式。**每次 `renpy.sh <project> test` 都必须走完完整流程。不可跳过任何步骤。**
+此协议适用于 GREEN 和 REFACTOR 两种模式。**每轮验证都必须走完完整流程。不可跳过任何步骤。**
 
 ### 核心铁律
 
@@ -78,8 +78,8 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
 
 **Step B — 运行**：执行测试命令。
 
-- **GREEN**：只跑 prompt 中 `## 测试用例` 列出的目标用例，逐个单独运行 `renpy.sh /path/to/project test <testsuite>::<testcase>`。禁止跑范围外的测试。
-- **REFACTOR**：运行 `renpy.sh <project> test --report-detailed`（全量回归，确保重构不破坏任何已有行为）。
+- **GREEN**：只跑 prompt 中 `## 目标 testsuite` 列出的 testsuite。每轮结果写入独立文件 `<testsuite>_run<N>.log`（`>` 非 `>>`），文件名自带轮次上下文。禁止跑范围外的测试。运行后执行 `grep -A 60 "During testcase execution:" <testsuite>_run<N>.log` 获取失败明细。
+- **REFACTOR**：每轮结果写入独立文件 `refactor_run<N>.log`。运行后执行 `grep -A 60 "During testcase execution:" refactor_run<N>.log_>` 获取失败明细。
 
 全部通过 → 跳至 Step D 记通过日志 → Step E 报告成功。有失败 → 进入 Step C。
 
@@ -131,7 +131,7 @@ plan.md / design.md 指出：{正确行为应该是什么}
 - ❌ 诊断只摘抄错误不分析根因（缺少"当前代码行为"和"设计要求"的对比）
 - ❌ 两次测试运行之间不输出宣告/诊断/日志
 - ❌ 先改代码后补日志
-- ❌ GREEN 模式运行 `## 测试用例` 之外的测试
+- ❌ GREEN 模式运行 `## 目标 testsuite` 之外的测试
 - ❌ REFACTOR 模式不跑全量而只跑部分用例
 - ❌ 超过 5 轮后继续尝试
 
@@ -146,7 +146,7 @@ plan.md / design.md 指出：{正确行为应该是什么}
   - 例："Screen 'character_select' 不存在"
   - 例："点击'确认'后，游戏没有跳转到 label 'start_game'"
   - 例："点击角色卡片后变量 'selected_index' 没有更新"
-- **目标用例名称** — 用于快速迭代时运行特定测试
+- **目标 testsuite 名称** — 用于快速迭代时运行该模块的全部测试
 - 实现文件路径（来自 plan.md）
 
 ### 你不会收到的信息
@@ -196,7 +196,7 @@ plan.md / design.md 指出：{正确行为应该是什么}
 - （现在支持的各项行为）
 
 ### 测试验证
-- 目标用例：N/N 通过（全量回归委托给 VERIFY 阶段）
+- 目标 testsuite：N/N 通过（全量回归委托给 VERIFY 阶段）
 
 ### 设计决策
 - （设计文档未明确指定的任何选择）
