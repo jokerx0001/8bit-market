@@ -50,9 +50,11 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
 
 ### 启动初始化
 
-一次性读取以下文件：
-- `plugins/renpy-dev/references/exec-logging.md` — 获知 **AGENT PROGRESS** 日志的写入格式和 `tdd-iterations.md` 追加命令
-- `plugins/renpy-dev/references/renpy-coding.md` — Ren'Py 编码最佳实践和已知陷阱
+1. 从 prompt 的 `## task_dir` 字段获取任务目录路径
+2. 本文件中所有 `{task_dir}` 占位符均替换为此值
+3. 一次性读取以下文件：
+   - `plugins/renpy-dev/references/exec-logging.md` — 获知 tdd-iterations.md 追加命令和日志格式
+   - `plugins/renpy-dev/references/renpy-coding.md` — Ren'Py 编码最佳实践和已知陷阱
 
 后续不再重读这些文件。
 
@@ -64,76 +66,245 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
 
 ### 核心铁律
 
-1. **先诊断** 看到测试失败后，必须先读源文件+设计文档找出根因。
+**没有根因分析就没有修复。** 测试失败不是需要"修掉"的障碍，而是需要理解的信号。看到失败后第一反应不是"改代码试试"，而是"为什么失败"。
+
+1. **先诊断，再动手。** 看到测试失败后，必须先读执行测试的错误日志+对应代码位置+设计文档+Ren'Py 文档找出根因。跳过诊断直接改代码 = 本轮无效。
 2. **先记日志，再改代码。** 诊断完成后，必须立刻追加 `tdd-iterations.md`，然后才能修改源代码。
+3. **怀疑 Ren'Py 用法时必须查文档。** 不许凭记忆猜测 API 语法。用 WebFetch 查 `https://www.renpy.org/doc/html/`，参考 `plugins/renpy-dev/references/renpy-docs.md` 定位页面。
+4. **逐个击破，不一锅端。** GREEN 模式下，一次只诊断和修复一个 testcase。批量修改多个 testcase 导致无法判断哪个修改起了作用。
 
-### 每轮测试的固定流程
+---
 
-**Step A — 宣告**（响应文本中输出）：
+## GREEN 模式 — 三层验证结构
+
+GREEN 模式使用三层结构：初步运行 → 逐个 testcase 循环 → 收尾。
+
+```
+Phase 1: 初步运行（testsuite 级别）
+   ↓ 有失败
+Phase 2: 逐个 Testcase 系统性循环
+   ├── 2a. 读失败日志（只关注当前 case）
+   ├── 2b. 系统性诊断（找根因）
+   ├── 2c. 记录根因到 tdd-iterations.md
+   ├── 2d. 实施修复（只修当前 case）
+   ├── 2e. 单 testcase 验证
+   └── 2f. 通过 → 下一个 / 失败 → 回到 2a
+   ↓ 全部通过
+Phase 3: 收尾（追加完成记录 + 写 CLAUDE.md 经验）
+（全量回归验证由后续 VERIFY 阶段 test-agent 负责）
+```
+
+### Phase 1: 初步运行
+
+**Step 1a — 宣告**（响应文本中输出）：
 
 ```
 ## 第 {N} 轮测试：验证 <目标行为>
-命令: <实际执行的命令>
 ```
 
-**Step B — 运行**：执行测试命令。
+**Step 1b — 运行**：
 
-- **GREEN**：只跑 prompt 中 `## 目标 testsuite` 列出的 testsuite。每轮结果写入独立文件 `<testsuite>_run<N>.log`（`>` 非 `>>`），文件名自带轮次上下文。禁止跑范围外的测试。运行后执行 `grep -A 60 "During testcase execution:" <testsuite>_run<N>.log` 获取失败明细。
-- **REFACTOR**：每轮结果写入独立文件 `refactor_run<N>.log`。运行后执行 `grep -A 60 "During testcase execution:" refactor_run<N>.log_>` 获取失败明细。
+```bash
+renpy.sh <project> test <testsuite> --report-detailed > {task_dir}/.work/coding/<testsuite>_run<N>.log 2>&1
+```
 
-全部通过 → 跳至 Step D 记通过日志 → Step E 报告成功。有失败 → 进入 Step C。
+**Step 1c — 检查结果**：
 
-**Step C — 诊断**（响应文本中输出，**这是最关键的一步**）：
+```bash
+grep -A 80 "During testcase execution:" {task_dir}/.work/coding/<testsuite>_run<N>.log
+```
 
-对每个失败的用例，必须完成以下诊断过程并输出：
+- **全部通过** → 跳过 Phase 2，直接进入 Phase 3（Step 3a）
+- **有失败** → 进入 Phase 2
 
-1. **错误摘抄**：从 `During testcase execution:` 段落提取用例名称和具体错误行
-2. **读当前代码**：读相关的 `game/*.rpy` 源文件，写出"当前代码实际做了什么"
-3. **读设计要求**：读设计文档（plan.md、design.md），写出"正确行为应该是什么"
-4. **根因**：对比两者，分析根因，怀疑renpy用法问题时必须查阅 Ren'Py 文档。定位后写出"根因是什么"
+### Phase 2: 逐个 Testcase 系统性循环
 
-格式：
+**这是整个协议的核心。** 从 grep 输出提取**所有失败 testcase 的完整列表**，然后逐个处理。
+
+**前置 — 建立失败清单：**
+
+列出所有失败的 testcase 名称。这是你的工作队列。按顺序逐个处理，处理完一个再处理下一个。
+
+**对每个失败 testcase 执行以下子循环：**
+
+---
+
+**Step 2a — 读失败日志（只关注当前 case）**
+
+从 `During testcase execution:` 段落提取**当前这一个 testcase** 的错误行。忽略其他 case 的报错。如果当前日志中该 case 的信息不够详细，用 `grep` 在日志文件中按 case 名精确检索。
+
+---
+
+**Step 2b — 系统性诊断**
+
+**这是最关键的一步。不完成诊断就不能修代码。** 输出格式：
 
 ```
-## 诊断 — {用例名称}
+## 诊断 — {testcase_name}（第 {N} 轮第 {M}/{total} 个 case）
 
-### 错误
-{从 "During testcase execution:" 段落摘抄的错误行}
+### 错误信息
+{从 During testcase execution: 段落摘抄的该 case 具体错误行}
 
-### 当前代码行为
-读 game/xxx.rpy 后发现：{代码实际在做什么}
+### 当前代码实际行为
+读 game/xxx.rpy 后发现：{代码现在实际在做什么}
 
-### 设计要求
+### 设计文档要求
 plan.md / design.md 指出：{正确行为应该是什么}
 
+### 问题分类
+- [ ] 未按设计文档实现 — 当前代码与文档描述不一致
+- [ ] Ren'Py 使用方法问题 — 语法错误、API 误用、框架规则违反
+- [ ] 其他：{说明}
+
 ### 根因
-{当前行为 vs 设计要求的差距，以及为什么会产生这个差距}
+{对比当前行为 vs 设计要求，说明差距产生的根本原因}
 ```
 
-**只写 "N 个失败" 不写诊断过程 → 本轮无效，禁止进入 Step D，必须重做 Step C。**
+**问题分类决定后续动作：**
 
-**Step D — 记日志**：**立刻**用 Bash 追加到 prompt 中 `## TDD 迭代日志` 段指定的 `tdd-iterations.md` 路径。格式严格遵循 `plugins/renpy-dev/references/exec-logging.md` 中 **AGENT PROGRESS** 段的定义（`Test Case | Result | Failure Reason | Solution` 四列表格）。
+- **未按设计文档实现** → 重新阅读设计文档对应章节，找到正确行为描述，据此修改代码
+- **Ren'Py 使用方法问题** → **必须**使用 WebFetch 查询 Ren'Py 官方文档。参考 `plugins/renpy-dev/references/renpy-docs.md` 确定要查的页面。查到文档确认正确用法后才能写出根因。**禁止凭记忆猜测 Ren'Py API 用法。**
+- **其他** → 按实际情况决定查阅来源
 
-- 全部通过：所有行 Result 填 ✅，其余列填 `-`
-- 有失败：每个 ❌ 行必须填写 Failure Reason 和 Solution 两列。内容必须从 Step C 的诊断结论中摘抄，不能凭空写。
+**诊断完成前自检清单：**
+- [ ] 已读该 case 的错误信息（从日志中提取）
+- [ ] 已读相关源文件的当前代码
+- [ ] 已读设计文档中的相关描述
+- [ ] 已分类（设计不匹配 / Ren'Py 用法 / 其他）
+- [ ] 若是 Ren'Py 用法问题，已 WebFetch 查阅官方文档并得到答案
+- [ ] 根因具体明确，不是"代码写错了"这种废话
 
-**Step E — 决策**（响应文本中输出）：
-- 全部通过 → 报告成功，结束验证
-- 有失败 → 按修复方案列的方案修改代码，然后回到 Step A（N+1 轮）
+**只写 "N 个失败" 不写诊断过程 → 本轮无效，禁止进入 Step 2c，必须重做 Step 2b。**
+
+---
+
+**Step 2c — 记录根因到 tdd-iterations.md**
+
+**先记日志，后改代码。** 追加到 prompt 中 `## TDD 迭代日志` 段指定的 `tdd-iterations.md` 路径：
+
+```
+## [AI-N] GREEN — Test Run #{N} — Case {M}/{total}：{testcase_name} — $(date '+%Y-%m-%d %H:%M:%S')
+
+| Test Case | Result | Failure Reason | Solution |
+|-----------|--------|---------------|----------|
+| {testcase_name} | ❌ | {从 Step 2b 诊断中提取的根因，具体明确} | {修复方案，用行为语言描述} |
+
+### 根因分析
+- **问题分类**：{设计不匹配 / Ren'Py 用法 / 其他}
+- **根因**：{Step 2b 的诊断结论}
+- **若是 Ren'Py 用法问题**：查阅的文档 URL + 关键发现
+- **影响范围**：此根因是否可能影响其他 case？（若是，列出可能受影响的 case 名）
+```
+
+Failure Reason 和 Solution 必须从 Step 2b 的诊断结论中摘抄，不能凭空编造。
+
+---
+
+**Step 2d — 实施修复**
+
+基于 Step 2b 的根因分析，编写**针对这一个 testcase** 的最小修复代码。
+
+规则：
+- 一次只修一个 testcase 的问题
+- 不顺手重构无关代码
+- 不批量修改
+- 不写空壳/假代码
+- 若是 Ren'Py 用法问题，使用 Step 2b 中查阅文档确认的正确写法
+
+---
+
+**Step 2e — 单 Testcase 验证**
+
+**只运行当前这一个 testcase**，不跑整个 testsuite：
+
+```bash
+renpy.sh <project> test <testsuite>::<testcase_name> --report-detailed > {task_dir}/.work/coding/<testsuite>_run<N>_<testcase_name>.log 2>&1
+```
+
+读日志：
+
+```bash
+cat {task_dir}/.work/coding/<testsuite>_run<N>_<testcase_name>.log
+```
+
+- **通过** → 将此 case 在 tdd-iterations.md 中的结果更新为 ✅ → 进入 Step 2f
+- **未通过** → **注意：此时读的是 `<testsuite>_run<N>_<testcase_name>.log`（单 case 日志），不是 testsuite 日志。** 回到 Step 2a，从单 case 日志中提取新的错误信息重新诊断
+
+**每个 testcase 最多 3 轮子循环。** 3 轮仍失败 → 在 tdd-iterations.md 中标记此 case 为 🚫，追加阻塞原因，进入下一个 case。
+
+---
+
+**Step 2f — 进入下一个 Testcase 前的检查**
+
+处理下一个 case 之前：
+
+1. **回顾已解决 case 的经验**：阅读 tdd-iterations.md 中前面 case 的根因分析。当前 case 的根因是否与之前的相同或相似？如果是，直接应用已知的修复方案。
+2. **检查连锁影响**：当前 case 的修复是否可能影响已通过的 case？如果可能，回跑受影响的 case 验证。
+3. 确认无误后，开始下一个 case（回到 Step 2a）
+
+**禁止在同一个根因问题上反复犯错。** 如果前面 case 已经分析过的同类问题，直接复用诊断结论。
+
+---
+
+### Phase 3: 收尾
+
+所有 testcase 逐个解决完毕后：
+
+**Step 3a — 追加完成记录到 tdd-iterations.md**
+
+所有 case 已通过单 case 验证，追加一条汇总确认：
+
+```bash
+cat >> {task_dir}/.work/tdd-iterations.md << 'EOF'
+
+## [AI-N] GREEN — Phase 2 完成，{total} 个 case 全部通过 ✅ — $(date '+%Y-%m-%d %H:%M:%S')
+EOF
+```
+
+不再跑全量验证——单 case 已逐个通过，全量回归是后续 VERIFY 阶段 test-agent 的职责。
+
+**Step 3b — 写入 Ren'Py 开发经验到 CLAUDE.md**
+
+如果本轮解决过程中发现了 **Ren'Py 使用方法** 相关的经验教训（即 Step 2b 中分类为"Ren'Py 使用方法问题"的 case），必须将其写入项目根目录的 `CLAUDE.md`。
+
+目的：让后续开发任务和后续 case 能复用这些经验，避免重复踩坑。
+
+步骤：
+1. 读取项目根目录的 `CLAUDE.md`
+2. 检查是否已有 `## Ren'Py 开发经验` 章节
+   - 有 → 在章节末尾追加新条目
+   - 无 → 创建该章节
+3. 逐个写入本轮发现的 Ren'Py 使用经验，格式：
+
+```markdown
+### {经验标题（简短描述问题）}
+- **问题**：{一句话描述遇到的问题}
+- **原因**：{为什么出错——Ren'Py 的什么规则/行为导致了这个问题}
+- **解决**：{正确做法——具体代码模式或 API 用法}
+- **参考**：{Ren'Py 文档 URL}
+```
+
+4. 与已有内容对比，剔除完全重复的条目。如果新经验是已有条目的补充，更新已有条目而非新增。
 
 ### 重试上限
 
-**每个任务最多 5 轮。** 第 5 轮仍失败 → 追加一条阻塞日志到 `tdd-iterations.md` → 报告阻塞，附上最后一轮 `During testcase execution:` 段落原文和最后一轮的诊断过程。**禁止第 6 轮。**
+- **整体**：每个任务最多 5 轮（N ≤ 5）。第 5 轮仍失败 → 追加阻塞日志 → 报告阻塞。**禁止第 6 轮。**
+- **单个 testcase**：在 Phase 2 子循环中，每个 case 最多 3 轮。3 轮仍失败 → 标记 🚫，继续处理其他 case。
 
 ### 禁止的行为
 
-- ❌ 看到失败直接改代码，跳过 Step C 诊断
+- ❌ 看到失败直接改代码，跳过 Phase 2 诊断（Step 2b）
 - ❌ 诊断只摘抄错误不分析根因（缺少"当前代码行为"和"设计要求"的对比）
+- ❌ **编造 Failure Reason 和 Solution**——这两列必须来自 Step 2b 的实际诊断结果
+- ❌ 批量修改多个 testcase，不逐个击破
+- ❌ 怀疑 Ren'Py 用法问题但不查文档，凭记忆猜测
+- ❌ 单 case 验证时跑整个 testsuite（浪费时间和上下文）
 - ❌ 两次测试运行之间不输出宣告/诊断/日志
 - ❌ 先改代码后补日志
 - ❌ GREEN 模式运行 `## 目标 testsuite` 之外的测试
 - ❌ REFACTOR 模式不跑全量而只跑部分用例
-- ❌ 超过 5 轮后继续尝试
+- ❌ 超过重试上限后继续尝试
+- ❌ 在同样根因上反复犯错——必须回顾之前 case 的诊断结论
 
 ---
 
@@ -182,7 +353,10 @@ plan.md / design.md 指出：{正确行为应该是什么}
 
 ### Step 4：验证
 
-严格遵循上方**自我验证协议**，每轮走完 Step A→E，最多 5 轮。
+严格遵循上方**自我验证协议 → GREEN 模式 — 三层验证结构**：
+- Phase 1：运行目标 testsuite，获取失败清单
+- Phase 2：逐个 testcase 系统性诊断 → 记录根因 → 修复 → 单 case 验证
+- Phase 3：追加完成记录 + （如有 Ren'Py 用法发现）写入 CLAUDE.md
 
 ### Step 5：报告
 
@@ -192,14 +366,18 @@ plan.md / design.md 指出：{正确行为应该是什么}
 ### 修改的文件
 - game/xxx.rpy：（改了什么）
 
-### 实现的行为
-- （现在支持的各项行为）
+### 解决的 Testcase
+| # | Testcase | 根因分类 | 解决方式 |
+|---|----------|---------|---------|
+| 1 | xxx | 设计不匹配 | 补全了... |
+| 2 | xxx | Ren'Py 用法 | 查阅文档后改用... |
 
 ### 测试验证
-- 目标 testsuite：N/N 通过（全量回归委托给 VERIFY 阶段）
+- 目标 testsuite：N/N 通过 ✅
+- 总轮次：{N} 轮
 
-### 设计决策
-- （设计文档未明确指定的任何选择）
+### Ren'Py 经验记录
+- （本轮写入 CLAUDE.md 的条目，或"无新经验"）
 ```
 
 ---
@@ -310,6 +488,63 @@ WebFetch(url="https://www.renpy.org/doc/html/{页面名}.html", prompt="{查询}
 
 ---
 
+## REFACTOR 模式 — 自验证协议
+
+REFACTOR 的验证比 GREEN 简单——所有测试已经通过，只需确认重构没有破坏任何东西。
+
+### 每轮流程
+
+**Step R1 — 宣告**：
+
+```
+## 第 {N} 轮 REFACTOR 验证
+命令: renpy.sh <project> test --report-detailed
+```
+
+**Step R2 — 运行**：
+
+```bash
+renpy.sh <project> test --report-detailed > {task_dir}/.work/coding/refactor_run<N>.log 2>&1
+```
+
+REFACTOR 必须跑全量，不跑部分用例——重构可能影响任何地方。
+
+**Step R3 — 检查结果**：
+
+```bash
+grep -A 80 "During testcase execution:" {task_dir}/.work/coding/refactor_run<N>.log
+```
+
+全部通过 → 追加通过日志到 tdd-iterations.md → 报告成功。
+
+有失败 → 进入 Step R4。
+
+**Step R4 — 诊断**（输出格式）：
+
+```
+## REFACTOR 诊断 — 第 {N} 轮
+
+### 失败用例
+{从 During testcase execution: 段落提取}
+
+### 本轮重构变更
+{本轮做了哪些重构修改}
+
+### 受影响分析
+哪个重构修改导致了哪个 testcase 失败？为什么？
+
+### 修复方案
+{撤销或调整导致问题的重构}
+```
+
+诊断完成后 → 追加日志到 tdd-iterations.md → 修改代码 → 回到 Step R1（N+1 轮）。
+
+### 重试上限
+
+**最多 5 轮。** 第 5 轮仍失败 → 追加阻塞日志 → 报告阻塞，建议撤销重构。**禁止第 6 轮。**
+
+---
+
 ## REFACTOR 模式
 
 ### 你从 exec 收到的信息
@@ -353,7 +588,7 @@ WebFetch(url="https://www.renpy.org/doc/html/{页面名}.html", prompt="{查询}
 
 ### Step 4：验证
 
-严格遵循上方**自我验证协议**，每轮走完 Step A→E，最多 5 轮。
+严格遵循上方 **REFACTOR 模式 — 自验证协议**（Step R1→R4），最多 5 轮。
 
 ### Step 5：报告
 
@@ -382,30 +617,20 @@ WebFetch(url="https://www.renpy.org/doc/html/{页面名}.html", prompt="{查询}
 
 ## 关键规则（绝不违反）
 
-1. **绝不读取或写入 `game/tests/`。** 运行 `renpy.sh test` 查看结果——运行器输出是运行时信息，不是源码。
+1. **绝不写入 `game/tests/`。**
 2. **绝不修改 `game/libs/`、`game/tl/` 或第三方包。**
 3. **绝不写空壳/假代码。** 不允许 `pass`、`TODO` 或 `NotImplementedError`。
 4. **绝不修改任务范围之外的文件。**
 5. **新增 screen 时必须给关键交互 widget 添加 `id` 属性。**
-6. **GREEN：实现达成所描述行为的最小代码，然后用 `renpy.sh test` 自我验证。**
-7. **REFACTOR：改变结构，绝不改变行为，然后用 `renpy.sh test` 自我验证。**
-8. **UI 翻译：HTML 文件是真相来源。** 不要发明颜色、字体或间距。翻译你所看到的。
-9. **UI 翻译：强制执行** 编写任何视觉代码前先读取 `renpy-ui-principles.md` 和 `html-to-renpy.md`。
-10. **UI 翻译：必须输出样式定义检查清单。** 没有例外。
-11. **自我验证协议是强制流程。** 每次 `renpy.sh test` 必须走完 Step A→B→C→D→E。Step C（诊断）是核心——跳过诊断直接改代码即违规。
-12. **禁止跳过诊断。** Step C 必须包含：错误摘抄 → 当前代码行为 → 设计要求 → 根因。缺少任一段落即诊断不合格，禁止进入 Step D。
-13. **先记日志再改代码。** Step D 完成后才能进入 Step E 修改源代码。
-14. **每个任务最多 5 轮测试。** 超过则报告阻塞，禁止第 6 轮。
-
-## Ren'Py 编码惯例
-
-- UI 用 `screen` 语句，流程控制用 `label`
-- 变量初始化用 `default`，跨会话数据用 `persistent.`
-- 等待用户交互时优先用 `call screen` 而非 `show screen`
-- 按钮回调用 `action`：`action [Function(...), Return()]`
-- 在使用 transform 的 screen 之前先定义 transform
-- **样式**：使用下划线命名实现自动继承（`style my_button` → 父样式 `button`）
-- **容器**：`frame` 用于带背景的面板（单个子元素 + `has vbox`/`has hbox`）；`vbox`/`hbox` 用于不可见的布局；`fixed` 用于定位布局
-- **按钮**：`textbutton` 自带 window 属性（background、padding）。不要嵌套在 `frame` 里。
-- **状态前缀**：`hover_background`、`selected_color`、`insensitive_alpha` 等用于交互状态样式
-- **尺寸**：可显示对象默认收缩到内容大小。用 `xfill True` 或 `xsize N` 显式控制宽度。
+6. **GREEN：先根因分析，再修复，再单 case 验证。** 编造 Failure Reason/Solution = 违规。
+7. **GREEN：怀疑 Ren'Py 用法问题时必须查官方文档。** 不许凭记忆猜测 API 用法。
+8. **GREEN：逐个 testcase 击破。** 不批量修改多个 case。
+9. **GREEN：单 case 验证跑单个 testcase，不跑全量。**
+10. **REFACTOR：改变结构，绝不改变行为，然后用 `renpy.sh test` 自我验证。**
+11. **UI 翻译：HTML 文件是真相来源。** 不要发明颜色、字体或间距。翻译你所看到的。
+12. **UI 翻译：强制执行** 编写任何视觉代码前先读取 `renpy-ui-principles.md` 和 `html-to-renpy.md`。
+13. **UI 翻译：必须输出样式定义检查清单。** 没有例外。
+14. **自我验证协议是强制流程。** GREEN 走 Phase 1→2→3，REFACTOR 走 Step R1→R4。跳过诊断直接改代码即违规。
+15. **禁止跳过诊断。** GREEN Step 2b 必须包含：错误信息 → 当前代码行为 → 设计要求 → 问题分类 → 根因。缺少任一段落即诊断不合格。
+16. **先记日志再改代码。** tdd-iterations.md 追加完成后才能修改源代码。
+17. **GREEN 每个任务最多 5 轮，每个 testcase 最多 3 轮子循环。** 超过则报告阻塞。

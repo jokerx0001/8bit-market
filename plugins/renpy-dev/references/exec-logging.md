@@ -101,17 +101,55 @@ EOF
 
 ### AGENT PROGRESS
 
+GREEN 模式有三层记录，自然形成从 ❌ 到 ✅ 的完整过程。
+
+**Phase 1 初始运行（testsuite 级别）：**
+
 ```bash
 cat >> {task_dir}/.work/tdd-iterations.md << 'EOF'
 
-## [AI-N] {GREEN | REFACTOR} — Test Run #{N} — $(date '+%Y-%m-%d %H:%M:%S')
+## [AI-N] GREEN — Test Run #{N} — $(date '+%Y-%m-%d %H:%M:%S')
 
 | Test Case | Result | Failure Reason | Solution |
 |-----------|--------|---------------|----------|
 | {case_name} | ✅ | - | - |
-| {case_name} | ❌ | {从 "During testcase execution:" 段落提取的失败原因} | {根因分析后确定的修复方案，用行为语言描述} |
+| {case_name} | ❌ | {从 "During testcase execution:" 段落提取的失败原因} | {暂空 — Phase 2 逐个填写} |
 EOF
 ```
+
+**Phase 2 逐个 Testcase 诊断记录（每个 case 追加一条）：**
+
+```bash
+cat >> {task_dir}/.work/tdd-iterations.md << 'EOF'
+
+## [AI-N] GREEN — Test Run #{N} — Case {M}/{total}：{testcase_name} — $(date '+%Y-%m-%d %H:%M:%S')
+
+| Test Case | Result | Failure Reason | Solution |
+|-----------|--------|---------------|----------|
+| {testcase_name} | ❌ | {从 Step 2b 诊断中提取的根因，具体明确} | {修复方案，用行为语言描述} |
+
+### 根因分析
+- **问题分类**：{设计不匹配 / Ren'Py 用法 / 其他}
+- **根因**：{Step 2b 的诊断结论}
+- **Ren'Py 文档参考**（如有）：{查阅的文档 URL + 关键发现}
+- **影响范围**：{此根因是否可能影响其他 case？}
+EOF
+```
+
+单 case 验证通过后，在同一标题下将 Result 更新为 ✅。
+
+**Phase 3 收尾：**
+
+所有 case 通过后追加一条汇总确认：
+
+```bash
+cat >> {task_dir}/.work/tdd-iterations.md << 'EOF'
+
+## [AI-N] GREEN — Phase 2 完成，{total} 个 case 全部通过 ✅ — $(date '+%Y-%m-%d %H:%M:%S')
+EOF
+```
+
+不再跑全量验证——单 case 已逐个通过，全量回归是后续 VERIFY 阶段 test-agent 的职责。
 
 失败/阻塞时在表格后追加 **Analysis** 段简述根因推理过程。
 

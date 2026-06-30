@@ -62,6 +62,9 @@ GREEN
 ## 任务
 [AI-N] {任务描述}
 
+## task_dir
+{task_dir}  — 本任务的目录，agent 定义文件中所有 {task_dir} 占位符都替换为此值
+
 ## 当前状态 — 以下行为尚未实现
 {从 test-agent RED report 中提取的失败描述，用行为语言}
 
@@ -88,15 +91,15 @@ GREEN
 
 ## TDD 迭代日志
 每次运行测试后，将验证结果追加写入 `{task_dir}/.work/tdd-iterations.md`。
-格式参见 exec-logging.md 的 **AGENT PROGRESS** 节（表格：Test Case / Result / Failure Reason / Solution）。
-每轮测试写一条记录，标题 `## [AI-N] GREEN — Test Run #{N} — $(date '+%Y-%m-%d %H:%M:%S')`。
-失败时必须填写 Failure Reason + Solution 列；全部通过时所有 Result 填 ✅。
+格式参见 exec-logging.md 的 **AGENT PROGRESS** 节。
+失败时必须填写 Failure Reason + Solution 两列（从诊断中提取，禁止编造）；全部通过时所有 Result 填 ✅。
 
 ## 约束
 - 按设计文档实现行为，不是按测试要求实现
 - 新增 screen 时必须给关键交互 widget 添加 id 属性
 - 不修改 game/tests/、game/libs/、game/tl/
 - 不写空代码或假代码
+- **严格遵循 agents/coding.md 中的 GREEN 三层验证协议（Phase 1→2→3）** — agents/coding.md 是唯一方法论来源
 
 ## 目标 testsuite
 {从 test-agent RED report 的 "### Testsuite" 提取的 testsuite 名称（如 global.character_select）}
@@ -106,18 +109,12 @@ GREEN
 - testcase_1
 - testcase_2
 
-## 验证
-- 每轮测试结果写入**独立文件**，文件名带轮次号 N（N 从 1 开始递增）：
-  renpy.sh <project> test <testsuite> --report-detailed > {task_dir}/.work/coding/<testsuite>_run<N>.log 2>&1
-- 每轮独立文件 — 无需解析标记，文件名本身就是上下文
-- 禁止运行全量测试 — renpy.sh <project> test 不带 testsuite 名是错误的
-- 全量回归验证由后续 VERIFY phase 的 test-agent 负责，coding-agent 只跑目标 testsuite
-- **获取本轮失败明细 — 直接执行此 bash 命令**：
-  grep -A 60 "During testcase execution:" {task_dir}/.work/coding/<testsuite>_run<N>.log
-- 全部通过 → 追加通过日志到 tdd-iterations.md → 报告成功
-- 有失败 → 执行上方 grep 命令获取失败 testcase 名称和具体错误信息 → 先追加失败日志到 tdd-iterations.md（含 Failure Reason + Solution）→ 再修复 → 重跑。重试最多 5 轮
-- 报告必须列出每个失败 testcase 的具体名称和对应错误行，禁止只说"N 个失败"
-- 5 轮后仍失败 → 追加阻塞日志到 tdd-iterations.md → 报告阻塞，附上最后一轮日志文件完整内容
+## 关键提醒
+- **单 case 验证用此命令**（不跑全量）：
+  renpy.sh <project> test <testsuite>::<testcase_name> --report-detailed > {task_dir}/.work/coding/<testsuite>_run<N>_<testcase_name>.log 2>&1
+- **怀疑 Ren'Py 用法时必须查官方文档**，不许凭记忆猜测 API
+- **所有 case 通过后检查是否需要将 Ren'Py 使用经验写入项目 CLAUDE.md**（`## Ren'Py 开发经验` 章节）
+- **禁止编造 Failure Reason / Solution** — 必须来自实际诊断结果
   `
 })
 ```
@@ -194,8 +191,11 @@ Agent({
 ## 模式
 REFACTOR
 
-## 已完成的任务
+## 任务
 [AI-N] {任务描述} — 所有测试通过 ✅
+
+## task_dir
+{task_dir}  — 本任务的目录，agent 定义文件中所有 {task_dir} 占位符都替换为此值
 
 ## 项目
 {project 名称，用于运行 renpy.sh <project> test --report-detailed}
@@ -216,26 +216,22 @@ REFACTOR
 
 ## TDD 迭代日志
 每次运行测试后，将验证结果追加写入 `{task_dir}/.work/tdd-iterations.md`。
-格式参见 exec-logging.md 的 **AGENT PROGRESS** 节（表格：Test Case / Result / Failure Reason / Solution）。
-每轮测试写一条记录，标题 `## [AI-N] REFACTOR — Test Run #{N} — $(date '+%Y-%m-%d %H:%M:%S')`。
-失败时必须填写 Failure Reason + Solution 列；全部通过时所有 Result 填 ✅。
+格式参见 exec-logging.md 的 **AGENT PROGRESS** 节。
+失败时必须填写 Failure Reason + Solution 两列（从诊断中提取，禁止编造）；全部通过时所有 Result 填 ✅。
 
 ## 约束
 - 不改任何 game/tests/ 下的文件
 - 不改行为 — 所有已有测试必须继续通过
 - 不添加新功能、新配置项
 - 不改范围外的文件
+- **严格遵循 agents/coding.md 中的 REFACTOR 自验证协议（Step R1→R4）** — agents/coding.md 是唯一方法论来源
 
-## 验证
-- 每轮重构验证结果写入**独立文件**，文件名带轮次号 N（N 从 1 开始递增）：
+## 验证 — 关键命令
+- 每轮重构验证写独立文件：
   renpy.sh <project> test --report-detailed > {task_dir}/.work/coding/refactor_run<N>.log 2>&1
-- 每轮独立文件 — 无需解析标记，文件名本身就是上下文
-- **获取本轮失败明细 — 直接执行此 bash 命令**：
-  grep -A 60 "During testcase execution:" {task_dir}/.work/coding/refactor_run<N>.log
-- 全部通过 → 追加通过日志到 tdd-iterations.md → 报告成功
-- 有失败 → 执行上方 grep 命令获取失败 testcase 名称和具体错误信息 → 先追加失败日志到 tdd-iterations.md（含 Failure Reason + Solution）→ 再修复 → 重跑。重试最多 5 轮
-- 报告必须列出每个失败 testcase 的具体名称和对应错误行
-- 5 轮后仍失败 → 追加阻塞日志到 tdd-iterations.md → 报告阻塞，建议撤销重构
+- 获取失败明细：
+  grep -A 80 "During testcase execution:" {task_dir}/.work/coding/refactor_run<N>.log
+- **REFACTOR 必须跑全量，不跑部分用例** — 重构可能影响任何地方
   `
 })
 ```
