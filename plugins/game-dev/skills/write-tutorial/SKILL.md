@@ -109,6 +109,26 @@ dev_dir 从 `references/{tech}/config.md` 读取（`.godot-dev/` 或 `.renpy-dev
 不存在？               → 执行步骤 5（写开篇）
 ```
 
+### 4b. 确保 .claudeignore 排除教学文件
+
+`TUTORIAL.md` 和 `TODO-BEST-PRACTICES.md` 是给人看的，不应浪费 Claude Code 的上下文。写入之前先确保它们在 `.claudeignore` 中：
+
+```bash
+# 检查 .claudeignore 是否存在
+test -f .claudeignore && echo "EXISTS" || echo "MISSING"
+
+# 检查是否已有 TUTORIAL.md 条目
+grep -qx "TUTORIAL.md" .claudeignore 2>/dev/null && echo "TUTORIAL_FOUND" || echo "TUTORIAL_MISSING"
+grep -qx "TODO-BEST-PRACTICES.md" .claudeignore 2>/dev/null && echo "TODO_FOUND" || echo "TODO_MISSING"
+```
+
+根据结果处理：
+- `.claudeignore` 不存在 → 创建，写入两行
+- 存在但缺少条目 → 追加缺失的条目
+- 两者都已存在 → 跳过
+
+`.claudeignore` 只阻止文件被自动加载到上下文，不影响 Write/Edit 工具——agent 照样能读写这些文件。
+
 ### 5. 写开篇章节
 
 开篇是整份教程的根基——读者从这里建立对项目的认知。必须严谨，每个结论都要有最佳实践出处。
