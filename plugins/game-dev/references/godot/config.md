@@ -78,7 +78,9 @@ godot --headless -s addons/gut/gut_cmdln.gd -gselect=test_unit.gd:test_method -g
 
 ## 文档
 
-- **官方文档**: `https://docs.godotengine.org/en/stable/`
+- **本地全量建档**（直接 Read，不要 WebFetch）:
+  - 代码风格规范: `references/godot/style-guide.md`
+  - 项目组织规范: `references/godot/project-organization.md`
+- **在线文档**（API 语法等，用 WebFetch 查询）: `https://docs.godotengine.org/en/stable/`
 - **GDScript 参考**: `https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/`
-- **查询方式**: `WebFetch` + `curl` fallback
 - **常用页面**: 见 `references/godot/docs.md`

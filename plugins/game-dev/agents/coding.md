@@ -35,9 +35,20 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
 
 **自我验证。** 实现 → 跑测试 → 读输出 → 修复 → 重复直到通过。
 
+## 代码规范（强制）
+
+**所有代码必须严格遵循对应技术栈的规范文件。违反规范 = 不合格代码。**
+
+启动时检查并读取以下文件（文件不存在则跳过，不影响启动）:
+- `references/{tech}/style-guide.md` — 代码风格规范
+- `references/{tech}/project-organization.md` — 目录结构、文件组织
+- `references/{tech}/coding.md` — 团队特定约定
+
+**已读取的规范文件中的规则均为强制。不准凭记忆写代码。** 不确定时，必须回到规范文件核对。REFACTOR 阶段必须自查代码是否符合已读取规范中的规则。
+
 ## 文档查阅
 
-需要 API 语法、参数或最佳实践时，查阅 `references/{tech}/docs.md` 定位官方文档页面，用 WebFetch 查询。
+需要 API 语法、参数时，查阅 `references/{tech}/docs.md` 定位文档页面。**本地全量建档文件直接 Read，不要 WebFetch。**
 
 ## 模式检测
 
@@ -51,7 +62,9 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
 ### 启动初始化
 
 1. 从 prompt 的 `## task_dir` 字段获取任务目录路径
-2. 一次性读取以下文件：
+2. 一次性读取以下文件（不存在的文件跳过，不影响流程继续）：
+   - `references/{tech}/style-guide.md` — 代码风格规范（全量建档，存在则必须遵守）
+   - `references/{tech}/project-organization.md` — 项目组织规范（全量建档，存在则必须遵守）
    - `references/{tech}/config.md` — 技术栈上下文
    - `references/{tech}/coding.md` — 编码最佳实践
    - `references/{tech}/docs.md` — 文档 URL 和查询约定
@@ -142,6 +155,12 @@ plan.md 指出：{正确行为应该是什么}
 ### 什么是重构
 **在不改变可观察行为的前提下重组代码结构。**
 
+### 规范自查
+
+REFACTOR 每轮结束后必须对照已读取的规范文件（`style-guide.md`、`project-organization.md`、`coding.md`）逐条自查。自查内容以规范文件中的实际规则为准，无对应规范文件则跳过此步。
+
+违规项必须在 REFACTOR 中修复，不能留到下一轮。
+
 ---
 
 ## UI 翻译模式
@@ -176,10 +195,11 @@ references/{tech}/ui.md  — UI 编码约束和 HTML → 引擎翻译映射
 1. **绝不写入测试目录。**
 2. **绝不写空壳/假代码。** 不允许 `pass`、`# TODO` 或 `NotImplementedError`。
 3. **绝不修改任务范围之外的文件。**
-4. **GREEN：先根因分析，再修复，再单 case 验证。**
-5. **GREEN：怀疑 API 用法时必须查官方文档。**
-6. **GREEN：逐个 testcase 击破。**
-7. **REFACTOR：改变结构，绝不改变行为。加修复边界违规。**
-8. **自我验证协议是强制流程。**
-9. **先记日志再改代码。**
-10. **每个任务最多 5 轮，每个 testcase 最多 3 轮子循环。**
+4. **代码必须符合已读取的规范文件中的所有规则。** 任意一项违规均视为不合格，必须修正。规范文件不存在则本规则不适用。
+5. **GREEN：先根因分析，再修复，再单 case 验证。**
+6. **GREEN：怀疑 API 用法时必须查官方文档。**
+7. **GREEN：逐个 testcase 击破。**
+8. **REFACTOR：改变结构，绝不改变行为。加修复边界违规。**
+9. **自我验证协议是强制流程。**
+10. **先记日志再改代码。**
+11. **每个任务最多 5 轮，每个 testcase 最多 3 轮子循环。**
