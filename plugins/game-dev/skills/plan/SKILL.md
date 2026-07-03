@@ -110,7 +110,70 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 
 用户确认后，保存行为清单到 `{task_dir}/.work/requirements.md`。
 
-### 5. 任务拆分与排序
+### 5. 领域设计
+
+**在进入引擎落地之前，先做领域建模。** 这一步回答"这个功能在游戏开发中本质上是什么？业界公认的好做法是什么？"——用引擎无关的语言讲清楚，不涉及任何 Screen/Label/Node/GDScript。
+
+**为什么这样做：**
+- 领域设计让你先想清楚"做什么"，再决定"怎么写"——顺序不能反
+- 引擎 API 不会提醒你漏了边界情况，但领域模型会——状态机少了一个 transition、资源管理少了回滚策略，在领域层就能发现
+- 领域模型是评判后续架构设计质量的标尺——没有它，架构设计没有参照基准
+
+**对每个功能行为，分析三层：**
+
+```
+功能行为: "玩家按 R 键换弹，换弹期间不能射击"
+
+领域分析:
+  ├── 这是什么模式？ → 状态机（IDLE → RELOADING → READY）
+  ├── 业界通用做法？ → 有限状态机 + Timer 驱动 + 事件通知
+  └── 有哪些边界？   → 满弹时不换弹、换弹中切武器中断、空弹射击自动触发换弹
+```
+
+**输出 `{task_dir}/.work/domain-design.md`：**
+
+```markdown
+# 领域设计
+
+## 领域模型识别
+
+{对每个功能行为，识别背后的领域模式}
+
+### {功能行为 1}
+
+**这是什么模式：** {状态机 / 资源管理 / 事件队列 / 空间查询 / 命令模式 / ...}
+
+**业界通用做法：**
+
+{这个模式在游戏开发中一般怎么实现。讲清楚核心概念、状态/阶段、关键规则。}
+
+以 reload 为例：
+- 核心是有限状态机：IDLE → RELOADING → READY 三个状态
+- 状态转换由事件驱动：玩家按 R 键、Timer 到期、切武器
+- ammo 管理：`magazine_ammo` 和 `reserve_ammo` 两个变量，边界规则明确（满弹不换、空弹自动换、备弹不够只装部分）
+- 中断策略：换弹中切武器 → 状态回 IDLE，不补充弹药
+
+**边界情况清单：**
+
+{这个模式常见的边界情况和处理方式。领域模型的价值就在这里——提前发现边界。}
+
+| # | 边界情况 | 预期行为 |
+|---|---------|---------|
+| 1 | 满弹时按 R | 忽略，不进入 RELOADING |
+| 2 | 备弹为 0 时按 R | 忽略，不进入 RELOADING |
+| 3 | 换弹中再次按 R | 忽略（或：触发快速换弹，视设计而定） |
+| 4 | 换弹中切武器 | 取消换弹，状态回 IDLE |
+| 5 | 空弹时按射击键 | 自动触发换弹 |
+| 6 | 备弹不足填满弹夹 | 只装可用数量（如弹夹 30 但备弹仅剩 5 → 装 5 发） |
+```
+
+**要求：**
+- 每个功能行为都要做领域分析，不能跳过
+- 领域描述中不出现引擎概念（不写 "Screen"、"Label"、"Node"、"Signal"、"@export"）
+- 边界情况清单是重点——这是领域模型的核心价值
+- 如果某个功能的领域模式很明显（如"显示一个按钮"→ 无复杂领域逻辑），简写即可，不需要强行拔高
+
+### 6. 任务拆分与排序
 
 **拆分原则：按功能模块拆分，不按文件/阶段拆分。**
 
@@ -165,7 +228,7 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 | 不含代码符号 | class 名、方法名、函数名、transform 名不出现在描述中——那些是实现方案，不是行为 |
 | 不含"测试" | 没有"编写/更新测试"任务——测试在各模块的 TDD 循环中自然产出 |
 
-任务列表将在步骤 8 写入 plan.md，届时按以下规则分类和排序：
+任务列表将在步骤 9 写入 plan.md，届时按以下规则分类和排序：
 
 **分类定义：**
 
@@ -178,14 +241,20 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 
 **UI 任务标记：** 编写 plan.md 时，`ui` 任务必须标注对应的 HTML 文件：`(type: ui, html: .work/layouts/{name}.html)`
 
-### 6. 架构设计
+### 7. 架构设计
 
-调用 `Skill` 工具加载 `superpowers:brainstorming`，分析架构设计问题：
+**输入：** 步骤 5 的 `{task_dir}/.work/domain-design.md`。架构设计的任务是把领域模型映射到引擎的 idiomatic 写法——不是从零设计，是**翻译**。
 
-- 总体结构（Screen/Transform/Style 如何组织）
-- Screen 划分（哪些 screen、如何跳转）
-- 数据流（label 间传递什么数据、持久化什么数据）
-- Screen 间交互约定
+**读取引擎映射指引：** `references/{tech}/patterns.md` 包含了该引擎的领域模式 → 引擎构造映射规则。映射时对照其中的规则，确保每个选择都是该引擎推荐的写法，不是"能跑就行"。
+
+调用 `Skill` 工具加载 `superpowers:brainstorming`，基于领域模型做引擎层映射：
+
+- 领域模型中的状态机 → 引擎中用什么表达？
+- 领域模型中的数据流 → 引擎中用什么承载？
+- 领域模型中的边界规则 → 引擎中在哪里校验？
+- 总体结构：文件/模块如何组织以表达领域模型
+
+**映射时对照 `references/{tech}/coding.md` 中的规则**，确保每个映射都是该引擎推荐的写法，不是"能跑就行"。
 
 生成 Mermaid 架构图。保存到 `{task_dir}/.work/architecture.md`：
 
@@ -209,7 +278,7 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 - Event 触发: action Function(...)
 ```
 
-### 7. 详细设计
+### 8. 详细设计
 
 继续使用 `superpowers:brainstorming`。
 
@@ -240,7 +309,7 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 
 保存到 `{task_dir}/.work/design.md`。
 
-### 7b. 加载 UI 视觉标准（如有）
+### 8b. 加载 UI 视觉标准（如有）
 
 **检查 `{task_dir}/.work/layouts/` 是否存在 HTML 文件。**
 
@@ -248,11 +317,11 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 
 如果没有但涉及新画面视觉布局 → 异常。纯逻辑功能 → 跳过。
 
-### 8. 编写 plan.md
+### 9. 编写 plan.md
 
 **自己编写，不委托外部 skill。** 外部 skill 不知道 `[AI-N]` 任务格式和测试策略表约定，会产生偏离。
 
-基于 `.work/` 下的设计文档（requirements.md / architecture.md / design.md）编写。
+基于 `.work/` 下的设计文档（requirements.md / domain-design.md / architecture.md / design.md）编写。
 
 **结构：**
 
@@ -260,10 +329,18 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 # Plan: {feature-name}
 
 ## 概述
-{从 requirements.md + architecture.md 提炼：功能目标、项目环境、{sdk_env_var} 状态、{test_dir}/ 状态}
+{从 requirements.md 提炼：功能目标、项目环境、{sdk_env_var} 状态、{test_dir}/ 状态}
+
+## 领域模型
+{从 domain-design.md 提炼每个功能行为的领域模式——让 exec 和 coding agent 知道"这个功能本质上是什么"。}
+
+以 reload 为例：
+- **模式**：有限状态机 IDLE → RELOADING → READY
+- **核心规则**：满弹不换、空弹自动换、换弹中切武器中断
+- **边界**：备弹不足时只装可用数、换弹中不能射击
 
 ## 设计摘要
-{从 architecture.md + design.md 提炼关键决策 — screen 结构、数据流、关键交互}
+{从 architecture.md + design.md 提炼：领域模型如何映射到引擎构造}
 {自包含，不写"详见 design.md"}
 
 ## 影响范围
@@ -325,11 +402,11 @@ grep -n '(type: ui' {task_dir}/plan.md | grep -v 'html:'
 
 **验证手段始终且唯一为 `{test_runner} project test`。** 若 {test_dir}/ 目录缺失，`[AI-0]` bootstrap 任务是强制的，不是可选的。
 
-### 9. 格式自检
+### 10. 格式自检
 
 输出前对照 `plan-format.md` 的"格式校验清单"逐项确认，然后执行"禁止内容清单"中的所有 grep 命令。全部零命中方可输出。
 
-### 10. 输出摘要
+### 11. 输出摘要
 
 ```
 ## Plan: {feature-name}

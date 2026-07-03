@@ -204,6 +204,18 @@ mkdir -p {task_dir}/.work/coding
 Skill("game-dev:collect-lessons")
 ```
 
+### 10. 编写教学文档
+
+**仅 feat 和 refactor 任务执行此步骤。fix 任务跳过。**
+
+调用 `game-dev:write-tutorial` skill：
+
+```
+Skill("game-dev:write-tutorial")
+```
+
+将本次开发工作编写为教学文档，追加到项目 `TUTORIAL.md`。同时检查最佳实践合规性，发现不合理违规时记录到 `TODO-BEST-PRACTICES.md`。
+
 ---
 
 ## 断点续跑
@@ -222,4 +234,5 @@ Skill("game-dev:collect-lessons")
 2. 全量测试全部通过
 3. 边界违规全部修复
 4. `game-dev:collect-lessons` 已完成
-5. 输出完成报告
+5. `game-dev:write-tutorial` 已完成（feat/refactor），fix 跳过
+6. 输出完成报告
