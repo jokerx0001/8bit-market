@@ -3,11 +3,11 @@ name: game-dev:plan-fix
 description: "Plan BUG fix development. trigger when fix-conductor calls plan phase. Reads debug-analysis.md (root cause + expected behaviors), produces plan.md with task list for TDD fix execution. Only writes design documents — NEVER writes implementation code."
 ---
 
-# Ren'Py Fix — 设计阶段
+# Game Dev Fix — 设计阶段
 
 分析 BUG 根因和修复方向，生成 plan.md。**铁律：只做分析和规划并输出文档，不写实现代码。**
 
-**文档查询：** 需要 Ren'Py API 语法时，读 `references/renpy/docs.md` 获取约定，用 `WebFetch` 查 `https://www.renpy.org/doc/html/`。
+**文档查询：** 需要技术栈 API 语法、属性和最佳实践时，读 `references/{tech}/docs.md` 获取约定，用 `WebFetch` 查 config.md 中的 docs_url。
 
 ---
 
@@ -34,23 +34,23 @@ mkdir -p {task_dir}/.work
 
 **重要：** debug-analysis.md 只包含根因和预期行为，**不包含测试实现细节**。如果出现 testcase 名称或 assertion 策略，那是调试过程中误写入的——忽略，只提取根因和预期行为。
 
-### 3. 加载格式契约 + 技术栈上下文从 `references/{tech}/config.md` 读取（conductor 已创建）。
+### 3. 加载格式契约 + 技术栈上下文
 
 读取 `references/plan-format.md`。所有输出必须遵守此格式规范，exec skill 依赖此格式解析。
 
-同时技术栈上下文从 `references/{tech}/config.md` 读取（conductor 已创建）。
+**读取技术栈上下文（一份文件，所有信息在此）：**
 
-**Ren'Py 版本检测：**
-
-```bash
-ls game/*.rpy 2>/dev/null | head -10
-grep -i "renpy" game/options.rpy 2>/dev/null | head -3
+```
+references/{tech}/config.md
 ```
 
-**测试基础设施检测：**
+**检测测试基础设施：**
+
+从 `references/{tech}/config.md` 提取 `test_runner`、`sdk_env_var`、`test_dir` 字段，执行对应的环境检测命令：
 
 ```bash
-echo ${sdk_env_var} && test -x "${sdk_env_var}" && echo "SDK_OK" || echo "SDK_MISSING"
+# 示例（具体命令从 references/{tech}/config.md 拼接）
+echo ${SDK_ENV_VAR} && test -x "${SDK_ENV_VAR}" && echo "SDK_OK" || echo "SDK_MISSING"
 ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 ```
 
@@ -58,15 +58,11 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 
 | 检测结果 | 强制行为 |
 |---------|---------|
-| SDK_OK + TESTS_OK + EXIT_OK | 测试文件写入 `{test_dir}/`，验证使用 `{test_runner} project test` |
-| SDK_MISSING | **阻断** — `{sdk_env_var}` 环境变量必须指向可执行的 Ren'Py SDK |
+| SDK_OK + TESTS_OK | 测试文件写入 `{test_dir}/` |
+| SDK_MISSING | **阻断** — 环境变量必须指向可执行的 SDK |
 | TESTS_MISSING | **必须**在任务列表最前面添加 `[AI-0]` bootstrap 任务 |
-| EXIT_MISSING | **必须**在任务列表最前面添加 `[AI-0.1]` 修复任务 |
 
-**EXIT_OK 检测方式：**
-```bash
-grep -rl "teardown:" {test_dir}/ 2>/dev/null | xargs grep -l "exit" 2>/dev/null && echo "EXIT_OK" || echo "EXIT_MISSING"
-```
+**已知坑：** 从 `references/{tech}/config.md` 的 `known_pitfall` 字段读取。如 Ren'Py 的 `teardown: exit`、GUT 的 `-gexit`。这些硬门必须在 bootstrap 任务中处理。
 
 ### 4. 任务拆分与排序
 
@@ -105,7 +101,7 @@ grep -rl "teardown:" {test_dir}/ 2>/dev/null | xargs grep -l "exit" 2>/dev/null 
 |------|------|
 | 用行为语言 | 描述"用户做什么 → 看到什么/发生什么"，不以技术名词开头 |
 | 可独立验证 | 读完描述能回答"怎么确认这个修复做完了？" |
-| 不含文件路径 | `.rpy` 文件名不出现在描述中 |
+| 不含文件路径 | 源码文件名不出现在描述中 |
 | 不含代码符号 | class 名、方法名、函数名不出现在描述中——那些是实现方案，不是行为 |
 | 不含"测试" | 没有"编写/更新测试"任务——测试在各模块的 TDD 循环中自然产出 |
 | 回归优先 | 修复 BUG 的任务前，先有一个"锁定当前行为"的回归测试任务 |

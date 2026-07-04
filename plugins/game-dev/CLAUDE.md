@@ -9,7 +9,7 @@ This is a Claude Code plugin (`game-dev`) that provides autonomous Plan → Exec
 Each workflow uses a different analysis methodology:
 - **feat**: brainstorming → design → [resources]
 - **refactor**: code analysis → impact assessment → constrained design
-- **fix**: systematic-debugging → root cause verification → fix plan
+- **fix**: behavior clarification → BUG reproduction test → backward tracing → fix plan
 
 ## Commands
 
@@ -42,7 +42,7 @@ detect tech → create dir → [UI检测] → design-ui → analyze → impact.m
 ### Bug Fix: `fix-conductor`
 
 ```
-detect tech → behavior clarification → systematic-debugging → debug-analysis.md → plan-fix → [review] → exec → completed
+detect tech → behavior clarification → test agent BUG test → debug-root-cause → debug-analysis.md → plan-fix → [review] → exec → completed
 ```
 
 ### TDD Loop (exec phase)
@@ -66,6 +66,7 @@ skills/             # Core skill definitions
   orchestrator/     #   Feat workflow state machine (+tech detection)
   refactor-conductor/
   fix-conductor/
+  debug-root-cause/ #   Root cause analysis (backward tracing)
   design-ui/        #   UI design phase (tech-aware)
   design-resources/ #   Resource generation (Godot-specific)
   plan/             #   Design phase (tech-aware)
