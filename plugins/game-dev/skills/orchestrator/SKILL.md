@@ -74,7 +74,7 @@ grep -iE "(Ren'Py|renpy|Godot|godot)" CLAUDE.md 2>/dev/null | head -5
 
 **Step 0b — 读 config 获取 dev_dir（硬门）：**
 
-1. 读 `references/{tech}/config.md` 的 `## 产物目录` 节
+1. 读 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 的 `## 产物目录` 节
 2. 提取 `dev_dir` 值
 3. 回显确认后才能调用 artifact-manager：
 
@@ -87,7 +87,7 @@ grep -iE "(Ren'Py|renpy|Godot|godot)" CLAUDE.md 2>/dev/null | head -5
 
 **不猜测不缩写。** config 写 `.godot-dev` 不能用 `.dev`，写 `.renpy-dev` 不能用 `.renpy`。
 
-**Step 0c — 传参，不复制文件。** `tech` 作为上下文传给所有 downstream skill。各 skill 自行读 `references/{tech}/config.md` 获取所需字段。不创建中间文件。
+**Step 0c — 传参，不复制文件。** `tech` 作为上下文传给所有 downstream skill。各 skill 自行读 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 获取所需字段。不创建中间文件。
 
 **Step 0d — Godot 额外：检测 2D/3D 维度。** 按 config.md 中"维度检测"规则判断。
 
@@ -120,7 +120,7 @@ artifact-manager 会读取 `current-state.json`、递增计数器、创建 `{dev
 Skill({skill: "game-dev:design-ui", args: "--task-dir {task_dir} --tech {tech}"})
 ```
 
-design-ui 读 `references/{tech}/config.md` 获取路径配置，读 `references/{tech}/ui.md` 获取 UI 原则。等待完成后再进入阶段 3。
+design-ui 读 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 获取路径配置，读 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/ui.md` 获取 UI 原则。等待完成后再进入阶段 3。
 
 **不是 UI 任务 →** 直接进入阶段 3。
 
@@ -130,7 +130,7 @@ design-ui 读 `references/{tech}/config.md` 获取路径配置，读 `references
    ```
    Skill({skill: "game-dev:plan", args: "--task-dir {task_dir}"})
    ```
-2. plan 读 `references/{tech}/config.md` 获取路径/测试配置，读 `references/{tech}/docs.md` 查文档。加上 `.work/` 下已有的 HTML 设计稿和 style-decision.md
+2. plan 读 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 获取路径/测试配置，读 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/docs.md` 查文档。加上 `.work/` 下已有的 HTML 设计稿和 style-decision.md
 3. plan 读取 `.work/` 下已有产物（如有 UI 阶段产出则含 HTML 和 style-decision.md），执行设计全流程
 4. 输出 plan.md 路径
 
@@ -155,7 +155,7 @@ art-resources-conductor 读 resources.md → 逐个调用 art-resource-creator s
    ```
    Skill({skill: "game-dev:exec", args: "--mode feat --task-dir {task_dir}"})
    ```
-2. exec 从 `references/{tech}/config.md` 读取技术栈上下文（测试命令、路径模式等）
+2. exec 从 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 读取技术栈上下文（测试命令、路径模式等）
 3. exec 按 TDD 循环逐任务执行
    - RED: spawn test-agent
    - GREEN: spawn coding-agent

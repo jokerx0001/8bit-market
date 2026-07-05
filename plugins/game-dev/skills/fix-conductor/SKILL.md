@@ -48,7 +48,7 @@ description: |
 
 **Step 0b — 读 config 获取 dev_dir（硬门）：**
 
-1. 读 `references/{tech}/config.md` 的 `## 产物目录` 节
+1. 读 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 的 `## 产物目录` 节
 2. 提取 `dev_dir` 值
 3. 回显确认后才能调用 artifact-manager。**不猜测不缩写。**
 
@@ -66,7 +66,7 @@ Skill({skill: "game-dev:artifact-manager", args: "--task-dir {dev_dir}/fix-{N} -
 mkdir -p {task_dir}/.work
 ```
 
-将 Step 0b 提取的字段写入 `references/{tech}/config.md`（格式同 orchestrator 阶段 0）。所有后续阶段只读此文件。
+将 Step 0b 提取的字段写入 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md`（格式同 orchestrator 阶段 0）。所有后续阶段只读此文件。
 
 ### 阶段 1：行为澄清（Behavior Clarification）
 

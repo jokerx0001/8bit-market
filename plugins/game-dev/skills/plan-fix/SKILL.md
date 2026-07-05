@@ -7,7 +7,7 @@ description: "Plan BUG fix development. trigger when fix-conductor calls plan ph
 
 分析 BUG 根因和修复方向，生成 plan.md。**铁律：只做分析和规划并输出文档，不写实现代码。**
 
-**文档查询：** 需要技术栈 API 语法、属性和最佳实践时，读 `references/{tech}/docs.md` 获取约定，用 `WebFetch` 查 config.md 中的 docs_url。
+**文档查询：** 需要技术栈 API 语法、属性和最佳实践时，读 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/docs.md` 获取约定，用 `WebFetch` 查 config.md 中的 docs_url。
 
 ---
 
@@ -36,20 +36,20 @@ mkdir -p {task_dir}/.work
 
 ### 3. 加载格式契约 + 技术栈上下文
 
-读取 `references/plan-format.md`。所有输出必须遵守此格式规范，exec skill 依赖此格式解析。
+读取 `${CLAUDE_PLUGIN_ROOT}/references/plan-format.md`。所有输出必须遵守此格式规范，exec skill 依赖此格式解析。
 
 **读取技术栈上下文（一份文件，所有信息在此）：**
 
 ```
-references/{tech}/config.md
+${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md
 ```
 
 **检测测试基础设施：**
 
-从 `references/{tech}/config.md` 提取 `test_runner`、`sdk_env_var`、`test_dir` 字段，执行对应的环境检测命令：
+从 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 提取 `test_runner`、`sdk_env_var`、`test_dir` 字段，执行对应的环境检测命令：
 
 ```bash
-# 示例（具体命令从 references/{tech}/config.md 拼接）
+# 示例（具体命令从 ${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md 拼接）
 echo ${SDK_ENV_VAR} && test -x "${SDK_ENV_VAR}" && echo "SDK_OK" || echo "SDK_MISSING"
 ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 ```
@@ -62,7 +62,7 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 | SDK_MISSING | **阻断** — 环境变量必须指向可执行的 SDK |
 | TESTS_MISSING | **必须**在任务列表最前面添加 `[AI-0]` bootstrap 任务 |
 
-**已知坑：** 从 `references/{tech}/config.md` 的 `known_pitfall` 字段读取。如 Ren'Py 的 `teardown: exit`、GUT 的 `-gexit`。这些硬门必须在 bootstrap 任务中处理。
+**已知坑：** 从 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 的 `known_pitfall` 字段读取。如 Ren'Py 的 `teardown: exit`、GUT 的 `-gexit`。这些硬门必须在 bootstrap 任务中处理。
 
 ### 4. 任务拆分与排序
 

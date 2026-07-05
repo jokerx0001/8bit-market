@@ -162,3 +162,4 @@ textbutton entry.name:
 3. 不同时使用互斥属性对
 4. 不给 textbutton 套 frame 做背景
 5. 同一个属性不在 named style 和 inline 两层同时定义
+6. **新增 screen 时必须给关键交互 widget 添加 `id` 属性** — `textbutton`、`button`、`imagebutton` 等可交互 widget 必须有 `id`。这是测试框架可访问性的硬要求：sensitive False 的 button 文本对测试框架的文本搜索器不可见，只能用 id 选择器定位

@@ -70,7 +70,7 @@ exec 不做:
 ls -d {dev_dir}/*/ 2>/dev/null | sort -V | tail -1
 ```
 
-dev_dir 从 `references/{tech}/config.md` 读取。
+dev_dir 从 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 读取。
 
 ### 2. 加载设计文档和进度
 
@@ -80,11 +80,11 @@ dev_dir 从 `references/{tech}/config.md` 读取。
 
 ### 3. 解析任务列表
 
-按 `references/plan-format.md` 的规则提取 `[AI-N]` 任务，识别类型（`logic` / `ui`），按依赖拓扑排序。logic 优先于 ui。`[HUMAN]` 任务收集但不执行。
+按 `${CLAUDE_PLUGIN_ROOT}/references/plan-format.md` 的规则提取 `[AI-N]` 任务，识别类型（`logic` / `ui`），按依赖拓扑排序。logic 优先于 ui。`[HUMAN]` 任务收集但不执行。
 
 ### 4. 确认测试环境
 
-读取 `references/{tech}/config.md`（一份文件，所有技术栈信息在此）
+读取 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md`（一份文件，所有技术栈信息在此）
 
 **硬门：** 测试运行器必须可用。测试目录必须存在。已知坑必须处理。
 
@@ -94,6 +94,21 @@ dev_dir 从 `references/{tech}/config.md` 读取。
 |----|----|--------|--------|
 | game-dev:test-agent | game-dev:coding | 行为级失败描述 + 具体失败 testcase 名称和错误信息、设计文档路径 | 测试源码、测试文件路径 |
 | game-dev:coding | game-dev:coding (REFACTOR) | 已修改文件列表、设计文档路径、边界违规清单 | — |
+
+### Spawn prompt 信息边界
+
+exec 只传任务上下文。agent 自己读自己的定义文件和参考文件。
+
+| exec 传入（任务上下文） | agent 自己读（静态参考 + 流程规则） |
+|---|---|
+| `project` — 用于填充 config.md 占位符 | `${CLAUDE_PLUGIN_ROOT}/references/{tech}/testing.md` |
+| `task_dir` — 任务目录路径 | `${CLAUDE_PLUGIN_ROOT}/references/{tech}/coding.md` |
+| 任务描述 `[AI-N]` + 类型 | `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` |
+| 行为/失败描述、testsuite、testcase 名 | `${CLAUDE_PLUGIN_ROOT}/references/{tech}/style-guide.md`（如有） |
+| 测试文件路径 | `${CLAUDE_PLUGIN_ROOT}/references/{tech}/project-organization.md`（如有） |
+| UI 任务的 html 路径 | 自身 agent 定义文件（`agents/*.md`） |
+| 已修改文件列表（REFACTOR） | `{task_dir}/plan.md`、`.work/design.md` 等任务文件 |
+| 边界违规清单（REFACTOR） | `game/` 下源文件 |
 
 **exec 传递失败信息时必须确保：**
 - 具体 testcase 名称，不只是 "N 个失败"
@@ -106,9 +121,11 @@ dev_dir 从 `references/{tech}/config.md` 读取。
 
 在开始循环前，一次性读取以下参考文件：
 - `references/exec-prompts.md` — agent spawn prompt 模板
-- `references/exec-logging.md` — TDD 迭代日志格式
-- `references/{tech}/coding.md` — 编码最佳实践
-- `references/{tech}/config.md` — 技术栈上下文（测试命令、路径等）
+- `references/exec-logging.md` — TDD 迭代日志格式（exec 主会话记录用）
+- `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` — 提取 project 名称、测试环境信息、已知坑
+- `${CLAUDE_PLUGIN_ROOT}/references/{tech}/coding.md` — 提取边界检查规则
+
+测试命令（test_cmd_full 等）由 agent 在 spawn 初始化时自行从 config.md 读取并用 project 参数填充。exec 不再提取和填充这些变量。
 
 每个任务走完整 RED → GREEN → VERIFY → 边界检查 → REFACTOR → VERIFY 循环。
 
@@ -136,21 +153,21 @@ mkdir -p {task_dir}/.work/coding
 
 #### 6c. GREEN — spawn game-dev:coding（含自验证）
 
-使用 **GREEN prompt** 模板。从 test-agent 的 RED report 提取行为级失败描述、testsuite 名称和 testcase 名称。
+使用 **GREEN prompt** 模板。从 test-agent 的 RED report 提取 testsuite 名称和 testcase 名称。
 
 **检查结果**：按 references/exec-prompts.md GREEN 检查规则验收。
-- 阻塞（>5 轮）→ 向用户报告
-- 通过 → 进入 VERIFY（6d）
+- 不合格 → 指出具体问题，重新 spawn
+- 合格 → 进入 VERIFY（6d）
 
 **记录日志**：按 exec-logging.md GREEN 格式追加。
 
 #### 6d. VERIFY — spawn game-dev:test-agent（实现后独立验证门）
 
-使用 **VERIFY（实现后）prompt**。
+使用 **VERIFY prompt**。
 
-**检查结果**：
-- 回退到 GREEN（6c）再修，同一错误反复出现 → exec 向用户报告
-- 全部通过 → 进入边界检查（6e）
+**检查结果**：按 references/exec-prompts.md VERIFY 检查规则验收。
+- 不合格 回退到 GREEN（6c）再修，同一错误反复出现 → exec 向用户报告
+- 合格 → 进入边界检查（6e）
 
 **记录日志**：按 exec-logging.md VERIFY 格式追加。
 
@@ -165,7 +182,7 @@ mkdir -p {task_dir}/.work/coding
 | 测试文件隔离 | coding agent 是否修改了测试文件？ |
 | 空代码/假代码 | 是否有 `pass`、`# TODO`、`NotImplemented` 残留？ |
 
-**技术栈专属检查（从 `references/{tech}/coding.md` 提取规则）：**
+**技术栈专属检查（从 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/coding.md` 提取规则）：**
 
 以 Godot 为例：
 - 资源引用完整性 — .tscn 中 `ExtResource("id")` 引用的资源是否已声明？
@@ -202,11 +219,11 @@ mkdir -p {task_dir}/.work/coding
 
 #### 6g. VERIFY — spawn game-dev:test-agent（重构后独立验证门）
 
-使用 **VERIFY（重构后）prompt**。
+使用 **VERIFY prompt**。
 
-**检查结果**：
-- 回退到 REFACTOR（6f）再修，最多 2 轮回退；仍失败 → 报告用户
-- 全部通过 → 标记 done（6h）
+**检查结果**：按 references/exec-prompts.md VERIFY（重构后）检查规则验收。
+- 不合格 → 回退到 REFACTOR（6f）再修，最多 2 轮回退；仍失败 → 报告用户
+- 合格 → 标记 done（6h）
 
 #### 6h. 标记完成
 
@@ -220,14 +237,14 @@ mkdir -p {task_dir}/.work/coding
 
 ### 8. 最终验证
 
-从 `references/{tech}/config.md` 读取 test_cmd_full 并执行。验证全部通过。
+从 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 读取 test_cmd_full 并执行。验证全部通过。
 
 ### 9. 收集开发经验
 
-调用 `game-dev:collect-lessons` skill：
+调用 `game-dev:collect-lessons` skill，传入 tech：
 
 ```
-Skill("game-dev:collect-lessons")
+Skill("game-dev:collect-lessons", "tech={tech}")
 ```
 
 ### 10. 编写教学文档

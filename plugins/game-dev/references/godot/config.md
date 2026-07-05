@@ -20,7 +20,7 @@ grep -i "rendering/renderer" project.godot 2>/dev/null
 | `mobile` | 2D 或 3D（同上） |
 | 无法自动判断 | 检查是否有关键词：`MeshInstance3D`、`CSG`、`NavigationRegion3D` → 3D |
 
-检测到维度后加载对应的 `references/godot/nodes-{2d,3d}.md`。
+检测到维度后加载对应的 `${CLAUDE_PLUGIN_ROOT}/references/godot/nodes-{2d,3d}.md`。
 
 ## 产物目录
 
@@ -43,23 +43,17 @@ ls addons/gut/ 2>/dev/null && echo "GUT_OK" || echo "GUT_MISSING"
 ls test/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 ```
 
-### 测试命令
+### 测试命令模板
+`{...}` 为必须替换的占位符。
 
-```bash
-# 全量运行
-godot --headless -s addons/gut/gut_cmdln.gd -gdir=test/ -gexit
-
-# 指定测试文件
-godot --headless -s addons/gut/gut_cmdln.gd -gselect=test_unit.gd -gexit
-
-# 指定单个测试
-godot --headless -s addons/gut/gut_cmdln.gd -gselect=test_unit.gd:test_method -gexit
-```
+- **test_runner**: `godot` — 测试运行器
+- **test_cmd_full**: `godot --headless -s addons/gut/gut_cmdln.gd -gdir=test/ -gexit` — 全量运行
+- **test_cmd_suite**: `godot --headless -s addons/gut/gut_cmdln.gd -gselect={suite} -gexit` — 指定测试文件
+- **test_cmd_single**: `godot --headless -s addons/gut/gut_cmdln.gd -gselect={suite}:{case} -gexit` — 单个测试方法
 
 ### 输出解析
 
-- 搜索 `Failed:` 和 `Pending:` 行
-- 搜索 `[FAILED]` 标记获取具体失败测试
+- **test_failure_grep**: `grep '\[FAILED\]' {log_path}` — 提取失败详情
 - 退出码: `0` = 全部通过
 
 ### 已知坑
@@ -79,8 +73,8 @@ godot --headless -s addons/gut/gut_cmdln.gd -gselect=test_unit.gd:test_method -g
 ## 文档
 
 - **本地全量建档**（直接 Read，不要 WebFetch）:
-  - 代码风格规范: `references/godot/style-guide.md`
-  - 项目组织规范: `references/godot/project-organization.md`
+  - 代码风格规范: `${CLAUDE_PLUGIN_ROOT}/references/godot/style-guide.md`
+  - 项目组织规范: `${CLAUDE_PLUGIN_ROOT}/references/godot/project-organization.md`
 - **在线文档**（API 语法等，用 WebFetch 查询）: `https://docs.godotengine.org/en/stable/`
 - **GDScript 参考**: `https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/`
-- **常用页面**: 见 `references/godot/docs.md`
+- **常用页面**: 见 `${CLAUDE_PLUGIN_ROOT}/references/godot/docs.md`

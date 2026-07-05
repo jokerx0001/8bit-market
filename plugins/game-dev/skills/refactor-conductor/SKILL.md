@@ -33,7 +33,7 @@ description: |
 
 **0b — 读 config 获取 dev_dir（硬门）：**
 
-1. 读 `references/{tech}/config.md` 的 `## 产物目录` 节
+1. 读 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 的 `## 产物目录` 节
 2. 提取 `dev_dir` 值
 3. 回显确认后才能调用 artifact-manager。**不猜测不缩写。**
 
@@ -43,7 +43,7 @@ description: |
 Skill({skill: "game-dev:artifact-manager", args: "--task-dir {dev_dir}/refactor-{N} --kind refactor --dev-dir {dev_dir}"})
 ```
 
-返回 `task_dir`。创建 `.work/` 并写入 `references/{tech}/config.md`（同 fix-conductor）。
+返回 `task_dir`。创建 `.work/` 并写入 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md`（同 fix-conductor）。
 
 ### 第一步：UI 检测
 

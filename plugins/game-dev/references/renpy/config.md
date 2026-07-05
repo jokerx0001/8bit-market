@@ -25,22 +25,18 @@ ls game/tests/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 grep -rl "teardown:" game/tests/ 2>/dev/null | xargs grep -l "exit" 2>/dev/null && echo "EXIT_OK" || echo "EXIT_MISSING"
 ```
 
-### 测试命令
+### 测试命令模板
 
-```bash
-# 全量运行
-renpy.sh <project> test --report-detailed
+`{...}` 为 exec 必须替换的占位符。
 
-# 指定 testsuite
-renpy.sh <project> test <testsuite> --report-detailed
-
-# 单个 testcase
-renpy.sh <project> test <testsuite>::<testcase> --report-detailed
-```
+- **test_runner**: `renpy.sh` — 测试运行器
+- **test_cmd_full**: `renpy.sh {project} test --report-detailed` — 全量运行
+- **test_cmd_suite**: `renpy.sh {project} test {suite} --report-detailed` — 指定 testsuite
+- **test_cmd_single**: `renpy.sh {project} test {suite}::{case} --report-detailed` — 单个 testcase
 
 ### 输出解析
 
-- 搜索 `During testcase execution:` 段落获取失败详情
+- **test_failure_grep**: `grep -A 80 "During testcase execution:" {log_path}` — 提取失败详情
 - 退出码: `0` = 全部通过
 
 ### 已知坑
@@ -58,4 +54,4 @@ renpy.sh <project> test <testsuite>::<testcase> --report-detailed
 
 - **官方文档**: `https://www.renpy.org/doc/html/`
 - **查询方式**: `WebFetch` + `curl` fallback
-- **常用页面**: 见 `references/renpy/docs.md`
+- **常用页面**: 见 `${CLAUDE_PLUGIN_ROOT}/references/renpy/docs.md`

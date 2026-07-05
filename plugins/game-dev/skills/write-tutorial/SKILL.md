@@ -74,7 +74,7 @@ description: |
 ls -d {dev_dir}/*/ 2>/dev/null | sort -V | tail -1
 ```
 
-dev_dir 从 `references/{tech}/config.md` 读取（`.godot-dev/` 或 `.renpy-dev/`）。
+dev_dir 从 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 读取（`.godot-dev/` 或 `.renpy-dev/`）。
 
 **只看 feat 和 refactor 任务，跳过 fix 任务。**
 
@@ -90,7 +90,7 @@ dev_dir 从 `references/{tech}/config.md` 读取（`.godot-dev/` 或 `.renpy-dev
 根据技术栈查阅官方文档，**不可凭记忆**——每次都要确认最新文档：
 
 **Godot**:
-- 本地全量建档（直接 Read）：`references/godot/style-guide.md`, `references/godot/project-organization.md`
+- 本地全量建档（直接 Read）：`${CLAUDE_PLUGIN_ROOT}/references/godot/style-guide.md`, `${CLAUDE_PLUGIN_ROOT}/references/godot/project-organization.md`
 - 在线文档（WebFetch）：`https://docs.godotengine.org/en/stable/tutorials/best_practices/`
 - 场景组织：`https://docs.godotengine.org/en/stable/tutorials/best_practices/scene_organization.html`
 - GDScript 风格：`https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_styleguide.html`
@@ -98,7 +98,7 @@ dev_dir 从 `references/{tech}/config.md` 读取（`.godot-dev/` 或 `.renpy-dev
 **Ren'Py**:
 - Screen 文档：`https://www.renpy.org/doc/html/screens.html`
 - Screen Actions：`https://www.renpy.org/doc/html/screen_actions.html`
-- 根据 plan.md 涉及的内容查询对应页面（参照 `references/renpy/docs.md`）
+- 根据 plan.md 涉及的内容查询对应页面（参照 `${CLAUDE_PLUGIN_ROOT}/references/renpy/docs.md`）
 
 ### 4. 判断首次写入 vs 追加
 

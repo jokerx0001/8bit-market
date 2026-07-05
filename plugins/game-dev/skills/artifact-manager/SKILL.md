@@ -51,4 +51,4 @@ conductor 中这样调用：
 Skill({skill: "game-dev:artifact-manager", args: "--kind feat --dev-dir .godot-dev"})
 ```
 
-返回 `task_dir`。后续阶段通过 `--task-dir` 参数定位任务，自行读 `references/{tech}/config.md`。
+返回 `task_dir`。后续阶段通过 `--task-dir` 参数定位任务，自行读 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md`。

@@ -7,7 +7,7 @@ description: "Plan game feature development. Use when asked to 'design a feature
 
 分析游戏开发需求，生成完整设计文档。**铁律：只做分析和规划并输出文档，不写实现代码。**
 
-**文档查询：** 需要技术栈 API 语法、属性和最佳实践时，读 `references/{tech}/docs.md` 获取约定，用 `WebFetch` 查 config.md 中的 docs_url。
+**文档查询：** 需要技术栈 API 语法、属性和最佳实践时，读 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/docs.md` 获取约定，用 `WebFetch` 查 config.md 中的 docs_url。
 
 ---
 
@@ -35,20 +35,20 @@ mkdir -p {task_dir}/.work
 
 ### 3. 加载格式契约 + 技术栈上下文
 
-读取 `references/plan-format.md`。所有输出必须遵守此格式规范，exec skill 依赖此格式解析。
+读取 `${CLAUDE_PLUGIN_ROOT}/references/plan-format.md`。所有输出必须遵守此格式规范，exec skill 依赖此格式解析。
 
 **读取技术栈上下文（一份文件，所有信息在此）：**
 
 ```
-references/{tech}/config.md
+${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md
 ```
 
 **检测测试基础设施：**
 
-从 references/{tech}/config.md 提取 `test_runner`、`sdk_env_var`、`test_dir` 字段，执行对应的环境检测命令：
+从 ${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md 提取 `test_runner`、`sdk_env_var`、`test_dir` 字段，执行对应的环境检测命令：
 
 ```bash
-# 示例（具体命令从 references/{tech}/config.md 拼接）
+# 示例（具体命令从 ${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md 拼接）
 echo ${SDK_ENV_VAR} && test -x "${SDK_ENV_VAR}" && echo "SDK_OK" || echo "SDK_MISSING"
 ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 ```
@@ -61,7 +61,7 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 | SDK_MISSING | **阻断** — 环境变量必须指向可执行的 SDK |
 | TESTS_MISSING | **必须**在任务列表最前面添加 `[AI-0]` bootstrap 任务 |
 
-**已知坑：** 从 references/{tech}/config.md 的 `known_pitfall` 字段读取。如 Ren'Py 的 `teardown: exit`、GUT 的 `-gexit`。这些硬门必须在 bootstrap 任务中处理。
+**已知坑：** 从 ${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md 的 `known_pitfall` 字段读取。如 Ren'Py 的 `teardown: exit`、GUT 的 `-gexit`。这些硬门必须在 bootstrap 任务中处理。
 
 ### 4. 收集需求并确认行为
 
@@ -242,7 +242,7 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 
 **输入：** 步骤 5 的 `{task_dir}/.work/domain-design.md`。架构设计的任务是把领域模型映射到引擎的 idiomatic 写法——不是从零设计，是**翻译**。
 
-**读取引擎映射指引：** `references/{tech}/patterns.md` 包含了该引擎的领域模式 → 引擎构造映射规则。映射时对照其中的规则，确保每个选择都是该引擎推荐的写法，不是"能跑就行"。
+**读取引擎映射指引：** `${CLAUDE_PLUGIN_ROOT}/references/{tech}/patterns.md` 包含了该引擎的领域模式 → 引擎构造映射规则。映射时对照其中的规则，确保每个选择都是该引擎推荐的写法，不是"能跑就行"。
 
 调用 `Skill` 工具加载 `superpowers:brainstorming`，基于领域模型做引擎层映射：
 
@@ -251,7 +251,7 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 - 领域模型中的边界规则 → 引擎中在哪里校验？
 - 总体结构：文件/模块如何组织以表达领域模型
 
-**映射时对照 `references/{tech}/coding.md` 中的规则**，确保每个映射都是该引擎推荐的写法，不是"能跑就行"。
+**映射时对照 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/coding.md` 中的规则**，确保每个映射都是该引擎推荐的写法，不是"能跑就行"。
 
 生成 Mermaid 架构图。保存到 `{task_dir}/.work/architecture.md`：
 
@@ -279,9 +279,9 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 
 继续使用 `superpowers:brainstorming`。
 
-**读 `references/{tech}/design.md`** 获取该引擎的详细设计指引。
-**读 `references/{tech}/nodes-{2d,3d}.md`**（仅 Godot）获取节点类型速查。
-**读 `references/{tech}/design-resources-{2d,3d}.md`**（如有）获取各资源类型的输出目录。
+**读 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/design.md`** 获取该引擎的详细设计指引。
+**读 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/nodes-{2d,3d}.md`**（仅 Godot）获取节点类型速查。
+**读 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/design-resources-{2d,3d}.md`**（如有）获取各资源类型的输出目录。
 
 **从设计中提取所有需要新生成的美术资源引用，写入 `{task_dir}/.work/resources.md`：**
 
@@ -299,7 +299,7 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 - **尺寸**: {W}x{H}
 - **格式**: {PNG/GLB/tres}
 - **风格要求**: {具体视觉要求}
-- **输出目录**: {从 references/{tech}/design-resources-{2d,3d}.md 获取}
+- **输出目录**: {从 ${CLAUDE_PLUGIN_ROOT}/references/{tech}/design-resources-{2d,3d}.md 获取}
 ```
 
 同时将资源需求摘要写入 plan.md 的 `## 资源需求` 节，供 orchestrator 判断是否触发 design-resources。
