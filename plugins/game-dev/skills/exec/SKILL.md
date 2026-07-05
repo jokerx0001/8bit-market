@@ -34,6 +34,32 @@ exec 不做:
 
 ---
 
+## Red Flags — 停下来，回到 spawn 流程
+
+如果你发现自己在想：
+
+- "--auto 模式下可以简化，直接实现更快"
+- "找不到 references/exec-prompts.md，我自己写 prompt 就行"
+- "这个任务简单，不需要 spawn agent，我自己写了再验证"
+- "我先写几个文件让 agent 参考"
+- "spawn agent 太慢了，我自己跑测试更快"
+- "agent 可能会写错，不如我自己写再让它检查"
+- "先实现完再让 test-agent 补测试也行"
+
+**以上任一条出现 → STOP。回到 6b，从 RED spawn 重新开始。**
+
+## 常见自我合理化
+
+| 借口 | 现实 |
+|------|------|
+| "--auto 就是全自动，我自己做也是自动" | `--auto` 只跳过人工审查（plan→exec），不跳过 agent 隔离。自己写代码会破坏 RED/GREEN 独立性。 |
+| "找不到参考文件，我自己拼 prompt 也一样" | 找不到 references/exec-prompts.md 说明路径有问题，应报错停止。自己编的 prompt 不会遵守隔离规则。 |
+| "自己做比 spawn agent 更快" | 快在一时。没有 agent 隔离 = test-agent 看到实现 = coding-agent 看到测试 = TDD 循环被污染。 |
+| "任务很简单，不需要完整流程" | 简单任务也有 RED/GREEN 边界。跳过 spawn = 回到"一个人又写测试又写实现"的非 TDD 模式。 |
+| "我先写个草稿让 agent 改" | agent 看到你的草稿会产生锚定效应——它会围绕你的实现修修补补，而不是从设计文档出发。 |
+
+---
+
 ## 工作流
 
 ### 1. 定位任务目录和模式
@@ -102,7 +128,7 @@ mkdir -p {task_dir}/.work/coding
 
 使用 `references/exec-prompts.md` 的 **RED prompt** 模板组装 spawn prompt。
 
-**检查结果**：按 exec-prompts.md RED 检查规则验收。
+**检查结果**：按 references/exec-prompts.md RED 检查规则验收。
 - 不合格 → 指出具体问题，重新 spawn
 - 合格 → 进入 GREEN（6c）
 
@@ -112,7 +138,7 @@ mkdir -p {task_dir}/.work/coding
 
 使用 **GREEN prompt** 模板。从 test-agent 的 RED report 提取行为级失败描述、testsuite 名称和 testcase 名称。
 
-**检查结果**：按 exec-prompts.md GREEN 检查规则验收。
+**检查结果**：按 references/exec-prompts.md GREEN 检查规则验收。
 - 阻塞（>5 轮）→ 向用户报告
 - 通过 → 进入 VERIFY（6d）
 
@@ -168,7 +194,7 @@ mkdir -p {task_dir}/.work/coding
 
 使用 **REFACTOR prompt** + 边界违规清单（如有）。
 
-**检查结果**：按 exec-prompts.md REFACTOR 检查规则验收。
+**检查结果**：按 references/exec-prompts.md REFACTOR 检查规则验收。
 - 阻塞（>5 轮）→ 报告用户，建议撤销重构保持 GREEN 状态
 - 全部通过 → 进入 VERIFY（6g）
 

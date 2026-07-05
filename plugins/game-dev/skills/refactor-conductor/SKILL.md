@@ -31,7 +31,11 @@ description: |
 
 **0a — 读 CLAUDE.md 确定 tech**（同 orchestrator）。
 
-**0b — 读 `references/{tech}/config.md`**，提取上下文字段。
+**0b — 读 config 获取 dev_dir（硬门）：**
+
+1. 读 `references/{tech}/config.md` 的 `## 产物目录` 节
+2. 提取 `dev_dir` 值
+3. 回显确认后才能调用 artifact-manager。**不猜测不缩写。**
 
 **0c — 创建任务目录：**
 
@@ -107,6 +111,14 @@ Skill({skill: "game-dev:exec", args: "--mode refactor --task-dir {dev_dir}/refac
 **重构额外约束：**
 - coding agent 必须保证所有已有测试继续通过
 - 已有测试被破坏 → 立即反馈修复，最高优先级
+
+## Red Flags
+
+- "dev_dir 大概就是 .dev 吧，不用读 config"
+- "记得是 .dev，不用再读 config"
+- 没有回显 dev_dir 值就直接调用 artifact-manager
+
+**以上任一条 → STOP。回到 0b，读 config 并回显。**
 
 
 

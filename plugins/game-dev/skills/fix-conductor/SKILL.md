@@ -46,7 +46,11 @@ description: |
 
 **Step 0a — 读 CLAUDE.md 确定 tech**（同 orchestrator 阶段 0）。
 
-**Step 0b — 读 `references/{tech}/config.md`**，提取上下文字段值。
+**Step 0b — 读 config 获取 dev_dir（硬门）：**
+
+1. 读 `references/{tech}/config.md` 的 `## 产物目录` 节
+2. 提取 `dev_dir` 值
+3. 回显确认后才能调用 artifact-manager。**不猜测不缩写。**
 
 **Step 0c — 创建任务目录：**
 
@@ -208,6 +212,14 @@ exec 完成后，主会话验证：
 - **用户无法确定预期行为**：暂停，建议用户先搞清楚功能需求再继续。给出基于代码推断的 2-3 个合理选项供参考
 - **exec 阶段任务失败**：不限重试，连续 5 轮无进展才报告
 - **用户中断**：progress.json 保存当前状态，下次启动可继续
+
+## Red Flags
+
+- "dev_dir 大概就是 .dev 吧，不用读 config"
+- "记得是 .dev，不用再读 config"
+- 没有回显 dev_dir 值就直接调用 artifact-manager
+
+**以上任一条 → STOP。回到 Step 0b，读 config 并回显。**
 
 ## 约束
 

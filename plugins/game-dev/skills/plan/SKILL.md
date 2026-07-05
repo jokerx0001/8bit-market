@@ -27,14 +27,11 @@ mkdir -p {task_dir}/.work
 
 ### 2. 读取模式约束
 
-根据 `kind` 读取对应的约束文件。三个 mode 互斥——只有一个约束文件会存在：
+**feat** — 无预约束，跳过。
 
-| kind | 约束文件 | 来源 | 提取内容 |
-|------|---------|------|---------|
-| feat | （无） | — | 无预约束，走完整 brainstorming 流程 |
-| refactor | `{task_dir}/impact.md` | refactor-conductor | 修改范围、排除范围、已有测试保护、风险点 |
+**refactor** — 读取 `{task_dir}/impact.md`，提取修改范围、排除范围、已有测试、风险点、特殊约束。这些是后续设计的硬约束。
 
-**refactor 约束：** 按 `references/impact-format.md` 格式解析 impact.md，其中的修改范围、排除范围、已有测试、风险点、特殊约束是 plan 的硬约束。
+**fix** — 读取 `{task_dir}/.work/debug-analysis.md`，提取根因、预期行为。计划必须围绕根因修复设计，不得偏离。
 
 ### 3. 加载格式契约 + 技术栈上下文
 

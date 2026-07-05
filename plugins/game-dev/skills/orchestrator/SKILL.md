@@ -72,7 +72,20 @@ grep -iE "(Ren'Py|renpy|Godot|godot)" CLAUDE.md 2>/dev/null | head -5
 
 **如果 CLAUDE.md 不存在或无关键词 →** 根据文件特征推断并向用户确认。
 
-**Step 0b — 读 `references/{tech}/config.md` 获取 `dev_dir`。** 用于 artifact-manager 创建任务目录。
+**Step 0b — 读 config 获取 dev_dir（硬门）：**
+
+1. 读 `references/{tech}/config.md` 的 `## 产物目录` 节
+2. 提取 `dev_dir` 值
+3. 回显确认后才能调用 artifact-manager：
+
+   ```
+   ## 技术栈确认
+   检测到: {tech}
+   dev_dir: {dev_dir}（从 config.md 产物目录节原样读取）
+   任务目录: {dev_dir}/{kind}-{N}
+   ```
+
+**不猜测不缩写。** config 写 `.godot-dev` 不能用 `.dev`，写 `.renpy-dev` 不能用 `.renpy`。
 
 **Step 0c — 传参，不复制文件。** `tech` 作为上下文传给所有 downstream skill。各 skill 自行读 `references/{tech}/config.md` 获取所需字段。不创建中间文件。
 
@@ -181,6 +194,14 @@ art-resources-conductor 读 resources.md → 逐个调用 art-resource-creator s
 - **exec 阶段任务失败**：不限重试，连续 5 轮无进展才报告
 - **边界检查违规**：作为 REFACTOR 输入自动修复（不阻塞）
 - **用户中断**：progress.json 保存当前状态，下次启动可继续
+
+## Red Flags
+
+- "dev_dir 大概就是 .dev 吧，不用读 config"
+- "记得是 .dev，不用再读 config"
+- 没有回显 dev_dir 值就直接调用 artifact-manager
+
+**以上任一条 → STOP。回到 Step 0b，读 config 并回显。**
 
 ## 约束
 

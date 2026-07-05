@@ -68,7 +68,6 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
    - `references/{tech}/config.md` — 技术栈上下文
    - `references/{tech}/coding.md` — 编码最佳实践
    - `references/{tech}/docs.md` — 文档 URL 和查询约定
-   - `references/exec-logging.md` — 日志格式和追加命令
 
 ---
 
@@ -137,6 +136,54 @@ plan.md 指出：{正确行为应该是什么}
 - 每个任务最多 5 轮
 - 每个 testcase 最多 3 轮子循环
 
+### 迭代日志格式
+
+每轮自验证必须追加日志到 `{task_dir}/.work/tdd-iterations.md`。
+
+**Phase 1 初始运行（testsuite 级别）：**
+
+```bash
+cat >> {task_dir}/.work/tdd-iterations.md << 'EOF'
+
+## [AI-N] GREEN — Test Run #{N} — $(date '+%Y-%m-%d %H:%M:%S')
+
+| Test Case | Result | Failure Reason | Solution |
+|-----------|--------|---------------|----------|
+| {case_name} | ✅ | - | - |
+| {case_name} | ❌ | {从 "During testcase execution:" 段落提取的失败原因} | {暂空 — Phase 2 逐个填写} |
+EOF
+```
+
+**Phase 2 逐个 Testcase 诊断记录（每个 case 追加一条）：**
+
+```bash
+cat >> {task_dir}/.work/tdd-iterations.md << 'EOF'
+
+## [AI-N] GREEN — Test Run #{N} — Case {M}/{total}：{testcase_name} — $(date '+%Y-%m-%d %H:%M:%S')
+
+| Test Case | Result | Failure Reason | Solution |
+|-----------|--------|---------------|----------|
+| {testcase_name} | ❌ | {从 Step 2b 诊断中提取的根因，具体明确} | {修复方案，用行为语言描述} |
+
+### 根因分析
+- **问题分类**：{设计不匹配 / API 用法 / 其他}
+- **根因**：{Step 2b 的诊断结论}
+- **文档参考**（如有）：{查阅的文档 URL + 关键发现}
+- **影响范围**：{此根因是否可能影响其他 case？}
+EOF
+```
+
+单 case 验证通过后，在同一标题下将 Result 更新为 ✅。
+
+**Phase 3 收尾：**
+
+```bash
+cat >> {task_dir}/.work/tdd-iterations.md << 'EOF'
+
+## [AI-N] GREEN — Phase 2 完成，{total} 个 case 全部通过 ✅ — $(date '+%Y-%m-%d %H:%M:%S')
+EOF
+```
+
 ---
 
 ## REFACTOR 模式 — 自验证协议
@@ -160,6 +207,21 @@ plan.md 指出：{正确行为应该是什么}
 REFACTOR 每轮结束后必须对照已读取的规范文件（`style-guide.md`、`project-organization.md`、`coding.md`）逐条自查。自查内容以规范文件中的实际规则为准，无对应规范文件则跳过此步。
 
 违规项必须在 REFACTOR 中修复，不能留到下一轮。
+
+### REFACTOR 迭代日志格式
+
+每轮自验证后追加日志：
+
+```bash
+cat >> {task_dir}/.work/tdd-iterations.md << 'EOF'
+
+### Iter {iter_N} — REFACTOR (coding-agent) — $(date '+%Y-%m-%d %H:%M:%S')
+- **Self-verification rounds**: {actual_rounds}/5
+- **Verdict**: {✅ 全部通过 → VERIFY / 🚫 阻塞，建议撤销重构}
+EOF
+```
+
+阻塞时补充 Key output + Analysis（同 GREEN 失败格式）。
 
 ---
 

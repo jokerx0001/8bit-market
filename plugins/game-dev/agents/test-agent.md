@@ -43,7 +43,6 @@ Check the task prompt for the `## 模式` field:
 **一次性读取以下文件：**
 - `references/{tech}/testing.md` — 测试框架完整 API 和已知坑
 - `references/{tech}/config.md` — 技术栈上下文（测试命令、路径、已知坑）
-- `references/exec-logging.md` — 日志格式（如需要）
 
 ---
 
