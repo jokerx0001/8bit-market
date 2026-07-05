@@ -38,31 +38,11 @@ mkdir -p {task_dir}/.work
 
 读取 `${CLAUDE_PLUGIN_ROOT}/references/plan-format.md`。所有输出必须遵守此格式规范，exec skill 依赖此格式解析。
 
-**读取技术栈上下文（一份文件，所有信息在此）：**
+**读取技术栈上下文：**
 
 ```
 ${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md
 ```
-
-**检测测试基础设施：**
-
-从 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 提取 `test_runner`、`sdk_env_var`、`test_dir` 字段，执行对应的环境检测命令：
-
-```bash
-# 示例（具体命令从 ${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md 拼接）
-echo ${SDK_ENV_VAR} && test -x "${SDK_ENV_VAR}" && echo "SDK_OK" || echo "SDK_MISSING"
-ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
-```
-
-**检测后的强制行为：**
-
-| 检测结果 | 强制行为 |
-|---------|---------|
-| SDK_OK + TESTS_OK | 测试文件写入 `{test_dir}/` |
-| SDK_MISSING | **阻断** — 环境变量必须指向可执行的 SDK |
-| TESTS_MISSING | **必须**在任务列表最前面添加 `[AI-0]` bootstrap 任务 |
-
-**已知坑：** 从 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 的 `known_pitfall` 字段读取。如 Ren'Py 的 `teardown: exit`、GUT 的 `-gexit`。这些硬门必须在 bootstrap 任务中处理。
 
 ### 4. 任务拆分与排序
 
@@ -73,22 +53,22 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 **好/坏对照：**
 
 ```
-❌ 坏: "修改 game/script.rpy，修复 select_character 中 index 越界"
+❌ 坏: "修改脚本文件，修复 select_character 中 index 越界"
      → 问题：描述了文件操作，不是功能修复。不知道修复后行为是什么。
 
-❌ 坏: "在 game/screens.rpy 中给 character_select 添加边界检查"
+❌ 坏: "在界面文件中给角色选择添加边界检查"
      → 问题：文件路径+技术方案，不是功能行为。
 
 ❌ 坏: "修改 QteController.on_key 方法，修复按键不匹配时没有标记 fail 的问题"
      → 问题：描述的是代码符号（class 名 QteController、方法名 on_key），不是玩家可感知的行为。
 
-❌ 坏: "在 qte_system.rpy 的 start() 中添加 keys 参数校验"
-     → 问题：文件路径+方法名，不是行为。
+❌ 坏: "在动画系统的 start() 中添加 keys 参数校验"
+     → 问题：方法名+参数，不是行为。
 
 ✅ 好: "修复角色列表越界：选中最后一个角色后不再触发 IndexError，回退到第一个角色"
      → 可验证：选中最后一个角色→不会崩溃，回退到第一个角色
 
-✅ 好: "修复空状态渲染：角色列表为空时显示 placeholder 文本而非空白 screen"
+✅ 好: "修复空状态渲染：角色列表为空时显示 placeholder 文本而非空白界面"
      → 可验证：角色列表为空→看到 placeholder 提示文本
 
 ✅ 好: "修复按键不匹配时的失败反馈：按错键后显示 MISS 而非无响应"
@@ -107,7 +87,6 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 | 回归优先 | 修复 BUG 的任务前，先有一个"锁定当前行为"的回归测试任务 |
 
 **排序规则：**
-- `[AI-0]` bootstrap（如需要）排最前
 - 回归测试任务（锁定现有行为）排在修复任务前面
 - 修复任务按依赖排序（先修根因，再修连锁影响）
 
@@ -115,66 +94,7 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 
 **自己编写，不委托外部 skill。** 基于步骤 2 读取的 debug-analysis.md（根因 + 预期行为 + 修复方向）直接编写。fix 不需要 architecture.md / design.md 中间产物。
 
-**结构：**
-
-```markdown
-# Plan: Fix {bug-summary}
-
-## 概述
-{根因描述 + 项目环境 + {sdk_env_var} 状态 + {test_dir}/ 状态}
-
-## 行为列表
-{从 debug-analysis.md 提取的预期行为，逐条列出}
-| # | 行为 |
-|---|------|
-| 1 | {行为 1 — 玩家可见/系统可感知} |
-| 2 | {行为 2} |
-
-## 修复方案
-{从 debug-analysis.md 修复方向展开：改什么文件、改什么逻辑、为什么这样改}
-
-## 影响范围
-| 类型 | 文件 | 操作 |
-|------|------|------|
-| ... | ... | ... |
-
-## 任务列表
-
-### [AI] 任务
-- `[AI-N]` (type: logic) {描述} (依赖: ...)
-
-### [HUMAN] 任务
-- `[HUMAN]` ...
-
-## 测试策略
-| 覆盖 |
-|------|
-| {交互行为简述} |
-```
-
-**硬约束：**
-
-- 每个 `[AI-N]` 有唯一编号 + 类型标注 + 依赖标注
-- 测试在各功能模块的 TDD 循环中自然产出，不作为独立 AI 任务
-- fix 模式下类型几乎总是 `logic`——极少涉及 visual 精调
-- 回归测试（锁定现有行为、覆盖 BUG 场景）囊括在第一个任务中
-- 先锁定行为（回归测试），再修复根因
-
-**测试策略"覆盖"列约束：**
-
-每条覆盖描述**只能**写高层次的玩家可感知功能简述，**不能**写验证技术手段，**不能**写测试文件名。test agent 自己决定文件名。
-
-```
-✅ 正确: "角色选择交互（选中/取消/确认）; 边界：空列表不崩溃"
-✅ 正确: "数据层读写 + 状态机转换"
-❌ 错误: "源码中查找 screen qte_screen(keys, hit_window, x, y): 声明"
-❌ 错误: "default xxx = yyy 变量初始化"
-❌ 错误: "test_bug_123.gd | 回归保护" — 不写文件名
-```
-
-**禁止写入 plan.md 的内容：** 见 `plan-format.md` 的"禁止内容清单"节——禁止短语列表 + 全部 grep 自检命令（plan-fix 不使用 UI 任务，跳过 "plan 专属" 的 html: 标注 grep）。
-
-**验证手段始终且唯一为 `{test_runner} project test`。**
+**模板和格式约束：** 以 `${CLAUDE_PLUGIN_ROOT}/references/plan-format.md` 为唯一权威来源。使用其中的 "plan.md 模板（fix 模式）"，遵守格式校验清单和禁止内容清单（跳过 "plan 专属" 段的 html: 标注检查）。
 
 ### 6. 格式自检
 
