@@ -40,15 +40,15 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
 **所有代码必须严格遵循对应技术栈的规范文件。违反规范 = 不合格代码。**
 
 启动时检查并读取以下文件（文件不存在则跳过，不影响启动）:
-- `references/{tech}/style-guide.md` — 代码风格规范
-- `references/{tech}/project-organization.md` — 目录结构、文件组织
-- `references/{tech}/coding.md` — 团队特定约定
+- `${CLAUDE_PLUGIN_ROOT}/references/{tech}/style-guide.md` — 代码风格规范
+- `${CLAUDE_PLUGIN_ROOT}/references/{tech}/project-organization.md` — 目录结构、文件组织
+- `${CLAUDE_PLUGIN_ROOT}/references/{tech}/coding.md` — 团队特定约定
 
 **已读取的规范文件中的规则均为强制。不准凭记忆写代码。** 不确定时，必须回到规范文件核对。REFACTOR 阶段必须自查代码是否符合已读取规范中的规则。
 
 ## 文档查阅
 
-需要 API 语法、参数时，查阅 `references/{tech}/docs.md` 定位文档页面。**本地全量建档文件直接 Read，不要 WebFetch。**
+需要 API 语法、参数时，查阅 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/docs.md` 定位文档页面。**本地全量建档文件直接 Read，不要 WebFetch。**
 
 ## 模式检测
 
@@ -59,15 +59,37 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
 
 **UI 任务检测：** 如果 prompt 包含 `## UI 任务` 及 `html:` 路径，激活 UI 翻译模式（见下文）。
 
+### Spawn 初始化
+
+**启动后立即执行——在任何其他操作之前。**
+
+1. 从 prompt 提取 `## project`、`## task_dir`、`## 模式` 字段
+2. 读取 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md`
+3. 用 `{project}` 填充 config.md 中所有 `{project}` 占位符，得到可用的命令
+4. 打印初始化摘要（用 markdown 代码块，方便排查）：
+
+```
+[coding-agent] spawned — {timestamp}
+  mode:        GREEN (或 REFACTOR)
+  tech:        {renpy|godot}
+  task_dir:    {task_dir}
+  project:     {project}
+  resolved:
+    test_cmd_full:    renpy.sh {project} test --report-detailed
+    test_cmd_suite:   renpy.sh {project} test {suite} --report-detailed
+    test_cmd_single:  renpy.sh {project} test {suite}::{case} --report-detailed
+    test_failure_grep: grep -A 80 "During testcase execution:" {log_path}
+```
+
 ### 启动初始化
 
 1. 从 prompt 的 `## task_dir` 字段获取任务目录路径
 2. 一次性读取以下文件（不存在的文件跳过，不影响流程继续）：
-   - `references/{tech}/style-guide.md` — 代码风格规范（全量建档，存在则必须遵守）
-   - `references/{tech}/project-organization.md` — 项目组织规范（全量建档，存在则必须遵守）
-   - `references/{tech}/config.md` — 技术栈上下文
-   - `references/{tech}/coding.md` — 编码最佳实践
-   - `references/{tech}/docs.md` — 文档 URL 和查询约定
+   - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/style-guide.md` — 代码风格规范（全量建档，存在则必须遵守）
+   - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/project-organization.md` — 项目组织规范（全量建档，存在则必须遵守）
+   - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` — 技术栈上下文。**用 exec 传入的 project 参数填充所有 `{project}` 占位符后使用**
+   - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/coding.md` — 编码最佳实践
+   - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/docs.md` — 文档 URL 和查询约定
 
 ---
 
@@ -232,23 +254,23 @@ EOF
 ### Step 0：阅读 UI 参考文件（强制执行）
 
 ```
-references/{tech}/ui.md  — UI 编码约束和 HTML → 引擎翻译映射
+${CLAUDE_PLUGIN_ROOT}/references/{tech}/ui.md  — UI 编码约束和 HTML → 引擎翻译映射
 ```
 
 ### Step 1：阅读 HTML 标准
 打开 `html:` 指向的文件。这是视觉真相。
 
 ### Step 2：不确定的映射查阅文档
-参见 `references/{tech}/docs.md`。
+参见 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/docs.md`。
 
 ### Step 3：设计样式层
 识别重复视觉模式 → 提取为命名样式/Theme。
 
 ### Step 4：逐元素翻译
-按 `references/{tech}/ui.md` 的映射表翻译。
+按 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/ui.md` 的映射表翻译。
 
 ### Step 5：自查
-逐条检查 `references/{tech}/ui.md` 中的规则清单。
+逐条检查 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/ui.md` 中的规则清单。
 
 ---
 
