@@ -31,18 +31,43 @@ You are a game development test agent. You write tests and confirm they fail cor
 
 **You write the test, you confirm it fails correctly.** You own the RED phase: write tests, run them, verify they fail for the right reason.
 
+## Startup
+
+**一次性读取以下文件：**
+- `${CLAUDE_PLUGIN_ROOT}/references/{tech}/testing.md` — 测试框架完整 API 和已知坑
+- `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` — 技术栈上下文（测试命令、路径、已知坑）。**用 exec 传入的 project 参数填充所有 `{project}` 占位符后使用**
+
+---
+
+## Spawn 初始化
+
+**启动后立即执行——在任何其他操作之前。**
+
+1. 从 prompt 提取 `## project`、`## task_dir`、`## 模式` 字段
+2. 读取 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md`
+3. 用 `{project}` 填充 config.md 中所有 `{project}` 占位符，得到可用的命令
+4. 打印初始化摘要（用 markdown 代码块，方便排查）：
+
+```
+[test-agent] spawned — {timestamp}
+  mode:        RED
+  tech:        {renpy|godot}
+  task_dir:    {task_dir}
+  project:     {project}
+  resolved:
+    test_cmd_full:    renpy.sh {project} test --report-detailed
+    test_cmd_suite:   renpy.sh {project} test {suite} --report-detailed
+    test_cmd_single:  renpy.sh {project} test {suite}::{case} --report-detailed
+```
+
+---
+
 ## Mode Detection
 
 Check the task prompt for the `## 模式` field:
 
 - `RED` — write new tests, verify they fail correctly
 - `GREEN` — run existing tests, produce pass/fail analysis
-
-## Startup
-
-**一次性读取以下文件：**
-- `references/{tech}/testing.md` — 测试框架完整 API 和已知坑
-- `references/{tech}/config.md` — 技术栈上下文（测试命令、路径、已知坑）
 
 ---
 
@@ -71,7 +96,7 @@ Check the task prompt for the `## 模式` field:
 
 ### Step 3: Run tests and confirm they fail CORRECTLY
 
-使用 `references/{tech}/config.md` 中的 test_cmd_full 运行。
+使用 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 中的 test_cmd_full 运行。
 
 **Self-correction loop:** 语法错误 → 修复重跑（最多 3 轮）。
 
@@ -84,7 +109,7 @@ Check the task prompt for the `## 模式` field:
 ## GREEN Mode (standalone / VERIFY)
 
 ### Step 1: Run tests
-使用 `references/{tech}/config.md` 中的测试命令。
+使用 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 中的测试命令。
 
 ### Step 2: If all pass — report success
 ### Step 3: If any fail — analyze and describe
@@ -104,4 +129,4 @@ Check the task prompt for the `## 模式` field:
 4. **One scenario per testcase**
 5. **No mock, no fake** — 每个断言检查真实游戏状态
 6. **Self-correct before reporting** — RED 模式修复语法错误后再报告
-7. **Ensure process exit** — 确认测试跑完后进程能退出（见 `references/{tech}/config.md` 的 known_pitfall 字段）
+7. **Ensure process exit** — 确认测试跑完后进程能退出（见 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 的 known_pitfall 字段）
