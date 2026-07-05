@@ -147,9 +147,9 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 - `[HUMAN]` ...
 
 ## 测试策略
-| 测试文件 | 覆盖 |
-|---------|------|
-| ... | behavior: ... |
+| 覆盖 |
+|------|
+| {交互行为简述} |
 ```
 
 **硬约束：**
@@ -162,13 +162,14 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 
 **测试策略"覆盖"列约束：**
 
-"覆盖"列**只能**写高层次的玩家可感知功能简述，**不能**写验证技术手段。
+每条覆盖描述**只能**写高层次的玩家可感知功能简述，**不能**写验证技术手段，**不能**写测试文件名。test agent 自己决定文件名。
 
 ```
 ✅ 正确: "角色选择交互（选中/取消/确认）; 边界：空列表不崩溃"
 ✅ 正确: "数据层读写 + 状态机转换"
 ❌ 错误: "源码中查找 screen qte_screen(keys, hit_window, x, y): 声明"
 ❌ 错误: "default xxx = yyy 变量初始化"
+❌ 错误: "test_bug_123.gd | 回归保护" — 不写文件名
 ```
 
 **禁止写入 plan.md 的内容：** 见 `plan-format.md` 的"禁止内容清单"节——禁止短语列表 + 全部 grep 自检命令（plan-fix 不使用 UI 任务，跳过 "plan 专属" 的 html: 标注 grep）。

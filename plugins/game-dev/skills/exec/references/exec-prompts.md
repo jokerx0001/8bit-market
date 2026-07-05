@@ -33,9 +33,6 @@ RED
 ## 要验证的行为
 {从 plan.md 测试策略表提取的覆盖内容}
 
-## 测试文件
-{从 plan.md 测试策略表提取的测试文件路径}
-
 ## 需要读取的文件
 - {task_dir}/plan.md  — 设计摘要、影响范围
 - {task_dir}/.work/design.md  — widget 树、变量定义、交互流程（仅 feat/refactor 模式）

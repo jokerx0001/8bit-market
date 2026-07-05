@@ -362,9 +362,9 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 | 1 | ... | ... | ... | ... |
 
 ## 测试策略
-| 测试文件 | 覆盖 |
-|---------|------|
-| ... | behavior: ... |
+| 覆盖 |
+|------|
+| {交互行为简述}; visual: {视觉状态简述} |
 ```
 
 **硬约束：**
@@ -378,7 +378,7 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 
 **测试策略"覆盖"列约束：**
 
-"覆盖"列**只能**写高层次的玩家可感知功能简述，**不能**写验证技术手段。test agent 自己读 `.work/design.md` 获取细节来设计具体测试。
+每条覆盖描述**只能**写高层次的玩家可感知功能简述，**不能**写验证技术手段，**不能**写测试文件名。test agent 自己读 `.work/design.md` 获取细节来设计具体测试，自己决定文件名。
 
 ```
 ✅ 正确: "角色选择交互（选中/取消/确认）; visual: 默认布局基线"
@@ -386,9 +386,10 @@ ls {test_dir}/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 ❌ 错误: "数据层：default 变量初始化、qte_phase 初始 'waiting'"
 ❌ 错误: "modal True 源码契约、zorder 200 源码契约、4 参数签名契约"
 ❌ 错误: "源码中查找 screen qte_screen(keys, hit_window, x, y): 声明"
+❌ 错误: "test_enemy_health.gd | 敌人受击扣血" — 不写文件名
 ```
 
-规则：如果"覆盖"列里出现了"源码"、"正则"、"查找"、"契约"、"default"、"声明"、"变量初始化"，那就是在指挥 test agent 怎么测——这是越界。test agent 有完整的测试哲学（`agents/test-agent.md`），不需要 plan 告诉它用什么技术手段。
+规则：如果覆盖描述里出现了"源码"、"正则"、"查找"、"契约"、"default"、"声明"、"变量初始化"、测试文件路径（`.gd`、`.rpy`），那就是在指挥 test agent 怎么测——这是越界。test agent 有完整的测试哲学（`agents/test-agent.md`），不需要 plan 告诉它用什么技术手段。
 
 **禁止写入 plan.md 的内容：** 见 `plan-format.md` 的"禁止内容清单"节——禁止短语列表 + 全部 grep 自检命令。plan 在此基础之上额外检查：
 
