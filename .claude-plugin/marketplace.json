@@ -79,6 +79,18 @@
       },
       "tags": ["renpy", "godot", "game-dev", "tdd", "art-generation"],
       "keywords": ["renpy", "godot", "game-development", "tdd", "orchestration", "art-resources"]
+    },
+    {
+      "name": "plugin-improve",
+      "description": "Plugin 诊断改善工具 — 链路追踪分析，Harness 方法论检查，结构标准验证，有依据地改善 Claude Code plugin 的行为质量",
+      "version": "0.1.0",
+      "source": "./plugins/plugin-improve",
+      "category": "development",
+      "author": {
+        "name": "jokerx001"
+      },
+      "tags": ["plugin", "diagnosis", "improve", "harness"],
+      "keywords": ["plugin", "improve", "diagnosis", "harness", "skill", "agent", "quality"]
     }
   ]
 }
