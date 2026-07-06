@@ -258,6 +258,19 @@ All of these mean: Delete code. Start over with TDD.
 
 **放置位置的讲究**：Red Flags 放在流程步骤**之后**。如果放在开头，模型会过早自我审查，导致流程不启动。模型需要先读完流程知道该做什么，再读 Red Flags 知道什么算偏离。
 
+**非英文 Skill 的双语规则**：如果 skill body 使用非英文（如中文）编写，Red Flags 必须**每条中英双语对照**。原因：多数大模型的内部推理（thinking/reasoning）使用英文，即使 skill body 是中文的。只写中文 Red Flags 匹配不上模型内部的英文自述，导致红旗信号失效。
+
+双语 Red Flags 推荐使用表格格式：
+
+```
+| 中文 | English |
+|------|---------|
+| "我已经懂了，不需要读" | "I already understand, no need to read" |
+| "这次不一样..." | "This is different because..." |
+```
+
+**来源**：plugin-improve self-diagnosis 实战验证——纯中文 Red Flags 对 deepseek-v4 等模型命中率不足，双语表格格式显著提高命中率。
+
 ---
 
 ### 第 2 层：流程控制
@@ -734,12 +747,6 @@ Can't check all boxes? You skipped TDD. Start over.
 ```
 
 `verification-before-completion` 的 Red Flags 中包含 "Tired and wanting work over"。
-
----
-
-### 第 5 层：增强
-
-可选但显著提升 harness 效果的机制。
 
 ---
 

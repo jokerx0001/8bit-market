@@ -1,6 +1,6 @@
 ---
 name: plugin-improve
-description: Diagnose and improve Claude Code plugins. Use when the user provides a plugin path and wants to find why its skills/agents aren't behaving correctly, or when the user has execution logs and incorrect outputs from a plugin.
+description: 当用户要求改善、诊断或修复 Claude Code 插件时使用。也适用于插件行为不正确、skill 或 agent 产出错误结果、用户提供了插件执行日志和产物供分析的场景。
 disable-model-invocation: true
 argument-hint: <plugin-path> [--chain <chain-name>] [--entry <skill-or-agent-path>] [--log <log-path>] [--artifact <artifact-path>]
 allowed-tools: Read, Write, Grep, Glob, Bash, WebFetch
@@ -8,134 +8,429 @@ allowed-tools: Read, Write, Grep, Glob, Bash, WebFetch
 
 # Plugin Improve
 
-Diagnose a plugin by tracing its behavior chain, comparing what each node claims to do against what it actually does, and producing an evidence-based improvement plan.
+通过读取插件的实际文件和产物，将每个节点的自我声明与实际行为逐条对照，产出有证据支持的改善方案。
 
-## Parameters
+**铁律（Iron Law）：**
 
-- `<plugin-path>` (required): Path to the plugin directory
-- `--chain <name>`: Name of the chain to analyze (e.g. `fix`, `feat`, `refactor`)
-- `--entry <path>`: Entry point within the plugin. If omitted, ask the user
-- `--log <path>`: Execution log file showing the plugin's actual behavior
-- `--artifact <path>`: Incorrect output the user received
+```
+不读产物，不得诊断。
 
-## Workflow
+每条发现必须引用你实际读过的文件中的具体行或段落。
+没有读过节点的文件，就不能声称该节点"声明了"什么。
+没有对比过实际的日志或产物，就不能声称哪里出了问题。
+```
 
-### Phase 1: Identify the Chain
+没读目标插件的文件，你就没有诊断——你只有猜测。猜测不是修复。
 
-1. If `--entry` is provided, use it as the starting node
-2. If only `--chain` is provided, search the plugin for the likely entry:
+**违反任何阶段的字面规则，就是违反插件改善的精神。**
+
+## 适用场景
+
+适用于：
+- 用户提供了插件路径，想理解其 skill/agent 为什么行为不正确
+- 用户有展示插件实际行为的执行日志（`--log`）
+- 用户有插件产出的错误产物（`--artifact`）
+- 用户想修复一条产出错误结果的插件链路
+
+**不适用于：**
+- 从零创建新插件（使用 plugin-dev:create-plugin）
+- 做通用代码审查（使用 coderabbit:code-review）
+- 调试应用代码（使用 superpowers:systematic-debugging）
+- 问题是一个单行笔误或明显的语法错误
+
+## 参数
+
+- `<plugin-path>`（必需）：插件目录的路径
+- `--chain <name>`：要分析的链路名称（如 `fix`、`feat`、`refactor`）
+- `--entry <path>`：插件内的入口点。如果省略，询问用户
+- `--log <path>`：展示插件实际行为的执行日志文件
+- `--artifact <path>`：用户收到的错误产物
+
+## 工作流
+
+每个阶段必须完整执行后才能进入下一阶段。每个阶段都有硬检查点（Hard Gate），在出口条件全部满足之前阻止前进。
+
+---
+
+### 阶段 1：识别链路
+
+**入口条件：** 已提供 `<plugin-path>`。
+
+**目标：** 构建完整的链路拓扑树，展示从入口到叶子的所有节点。
+
+**执行步骤：**
+
+1. 如果提供了 `--entry`，将其作为起始节点
+2. 如果只提供了 `--chain`，在插件中搜索可能的入口：
    - `skills/<chain>-conductor/SKILL.md`
    - `commands/<chain>.md`
    - `skills/<chain>/SKILL.md`
-3. If neither is provided, list the plugin's top-level skills and commands, and ask the user which chain/entry to analyze
+3. 如果两者都未提供，列出插件的顶级 skill 和 command，询问用户要分析哪条链路/入口
+4. **读取入口文件。** 完整读取——不要略读，不要从文件名推断。
+5. **追踪下游节点**，搜索入口文件内容中的：
+   - 显式 skill 引用（如 `skills/xxx/SKILL.md`、`/xxx` 引用）
+   - Agent 引用（如 `agents/xxx.md`、`plugin-name:agent-name`）
+   - Reference 文件路径（如 `references/xxx.md`）
+6. 对每个发现的下游节点，**读取该文件**，重复追踪直到没有新节点被发现。
 
-**Trace downstream nodes** by searching the entry file's content for:
-- Explicit skill names (e.g. `skills/xxx/SKILL.md`, `/xxx` references)
-- Agent names (e.g. `agents/xxx.md`, `game-dev:xxx`)
-- Reference file paths (e.g. `references/xxx.md`)
+**出口验证：**
+- [ ] 入口文件已被读取（你拥有文件内容，不只是路径）
+- [ ] 每个下游 skill 已被读取
+- [ ] 每个下游 agent 已被读取
+- [ ] 每个下游 reference 已被读取
+- [ ] 链路拓扑树已写下，包含所有发现的节点
 
-Build the chain topology as a tree: `entry → skill → skill → agent → reference`.
+**进入阶段 2 之前：** 验证以上全部出口条件。如果链路中有任何文件未被读取，不得继续。返回去读取它。
 
-### Phase 2: Extract Self-Claims
+**→ 下一阶段：阶段 2**（仅当所有出口条件通过）
 
-For each node in the chain, extract what it **claims** to do:
+---
 
-**Skill (SKILL.md):**
-- What workflow/steps does it describe?
-- What outputs does it promise?
-- What behavior does its description claim?
+### 阶段 2：提取自我声明
 
-**Agent (agents/*.md):**
-- What does "Core Responsibilities" say?
-- What process steps are defined?
-- What output format is specified?
-- What boundaries are declared?
+**入口条件：** 链路中的所有节点已被读取（来自阶段 1 出口验证）。
 
-**Reference (references/*.md):**
-- What knowledge does it claim to provide?
-- Is the information verifiable against reality?
+**目标：** 对每个节点，记录它声称自己做什么，引用具体段落。
 
-### Phase 3: Diagnose Actual Behavior
+**执行步骤：**
 
-If `--log` is provided, compare claimed behavior against logged behavior. If `--artifact` is provided, compare claimed outputs against actual outputs.
+对链路中的每个节点，重新读取文件并提取：
 
-For each deviation found, classify the problem type and consult the corresponding reference:
+**Skill（SKILL.md）：**
+- 它描述了怎样的工作流/步骤？引用实际段落。
+- 它承诺了什么产出？引用实际文本。
+- 它的描述声称了什么行为？
 
-- **Harness missing** → `references/harness-methodology.md`
-- **Skill structure wrong** → `references/skill-structure.md`
-- **Agent structure wrong** → `references/agent-structure.md`
-- **Symptom unclear** → `references/diagnosis-guide.md`
-- **Reference doesn't cover it** → `references/diagnosis-guide.md` §3.3 for the official docs fallback procedure
+**Agent（agents/*.md）：**
+- "核心职责（Core Responsibilities）"说了什么？引用原文。
+- 定义了哪些流程步骤？列出并标注行号引用。
+- 指定了什么输出格式？引用格式块。
+- 声明了哪些边界？
 
-For each problem, state:
-1. The evidence (what the node claims vs what actually happened)
-2. The classification (Harness / Structure / Trigger / Unknown)
-3. The specific reference section that defines the correct behavior
-4. If no reference covers it, follow the fallback procedure in diagnosis-guide.md §3.3
+**Reference（references/*.md）：**
+- 它声称提供什么知识？总结每个章节。
+- 这些信息能否与外部来源验证？
 
-### Phase 4: Write Diagnosis Report
+**出口验证：**
+- [ ] 每个节点都有文档化的自我声明列表
+- [ ] 每条自我声明引用或标注了节点文件中的具体段落
+- [ ] 没有任何自我声明基于假设或文件名推断
 
-Write the diagnosis to the target plugin's `.plugin-improve/records/YYYY-MM-DD-<chain>-diagnosis.md`:
+**进入阶段 3 之前：** 验证全部出口条件。如果你不能为某条声明引用源段落，说明你并没有真正提取它。
 
-```markdown
-# [Plugin] - [Chain] Diagnosis Report
-## Date: YYYY-MM-DD
+**→ 下一阶段：阶段 3**（仅当所有出口条件通过）
 
-### Chain Topology
-[Tree from entry to all downstream nodes]
+---
 
-### Node-by-Node Diagnosis
+### 阶段 3：逐步骤诊断
 
-#### Node N: [path/to/file.md]
-**Claims:** [what this node says it does]
-**Actual:** [what the log/artifact shows]
-**Deviations:**
-1. [Specific deviation with evidence]
+**入口条件：** 所有节点的自我声明已用源文引用记录在案（来自阶段 2）。
 
-**Classification:**
-- [#] [Type] [Severity] — [Description]
-  - Evidence: [quote from self-claim vs quote from log/artifact]
-  - Reference: [specific section in specific reference file]
-  - Fix: [concrete change needed]
+**目标：** 将链路中每个步骤的"应有行为"与"实际行为"逐条对比，产出诊断表格。达标步骤必须有证据，不达标步骤必须明确指出问题点。
 
-### Summary
-- Critical: [count]
-- Major: [count]
-- Minor: [count]
+此阶段包含四个必须顺序执行的子步骤。每个子步骤有自己的硬检查点。
+
+---
+
+#### 子步骤 3.1：梳理应有步骤和要求
+
+**目标：** 从阶段 2 提取的 plugin 文件中，整理出链路中每个节点规定了哪些步骤、每步有什么要求。
+
+**执行：** 对阶段 2 中已读取的每个节点文件，逐节点梳理：
+
+```
+节点: skills/orchestrator/SKILL.md
+  步骤1: [步骤名称]
+    要求: [该步骤的产出/格式/行为约束，引用原文]
+  步骤2: [步骤名称]
+    要求: [该步骤的产出/格式/行为约束，引用原文]
+  ...
+
+节点: agents/coding.md
+  步骤1: [步骤名称]
+    要求: [引用原文]
+  ...
 ```
 
-### Phase 5: Apply Fixes
+**规则：**
+- 每条要求必须引用 plugin 文件中的原文，标注文件路径和行号/段落
+- Skill 的工作流步骤、Agent 的 Process 步骤、输出格式声明——这些都是"应有步骤"
+- 步骤颗粒度：一个 Phase/Stage 对应一行，不要合并多个阶段
 
-1. Read `.plugin-improve/repair-log.md` in the target plugin to understand prior fix attempts
-2. Present the fix plan from the diagnosis report
-3. Apply fixes one at a time, following these rules:
-   - Each fix references its source authority (reference file or official doc URL)
-   - After each fix, record what was changed in `repair-log.md`:
+**出口验证：**
+- [ ] 链路中每个节点的步骤已列出
+- [ ] 每个步骤的要求已从 plugin 文件中引用原文
+- [ ] 引用包含文件路径和段落位置（可以定位回去）
+
+**硬检查点：如果任何节点的步骤未梳理或有步骤但无引用原文，不得进入 3.2。** 返回去读取 plugin 文件。
+
+**→ 子步骤 3.2**（仅当出口验证全部通过）
+
+---
+
+#### 子步骤 3.2：提取实际执行步骤
+
+**目标：** 从 `--log` 中提取实际发生的步骤序列，与 3.1 的应有步骤建立对应关系。
+
+**执行：**
+1. **完整读取 `--log` 文件。** 从头到尾，不能跳读。
+2. 按时间顺序提取日志中实际发生的步骤：
+   - 每个 tool call / agent spawn / skill 调用 / 文件写入 都是一个实际步骤
+   - 标注每个步骤在 log 中的位置（行号或时间戳）
+3. 将实际步骤与 3.1 的应有步骤建立映射：
+   - 实际步骤 A 对应应有步骤 X → 标注
+   - 应有步骤 Y 在实际日志中找不到 → 标注"未执行"
+   - 实际步骤 B 不在应有步骤列表中 → 标注"额外步骤"
+
+**出口验证：**
+- [ ] `--log` 文件已从头到尾完整读取
+- [ ] 实际步骤已按时间顺序列出
+- [ ] 每个实际步骤标注了 log 中的位置（行号或时间戳）
+- [ ] 与 3.1 的应有步骤建立了映射（对应/未执行/额外步骤）
+
+**硬检查点：如果 log 未被完整读取，或任何实际步骤无法在 3.1 中找到对应，不得进入 3.3。** 先完成映射。
+
+**→ 子步骤 3.3**（仅当出口验证全部通过）
+
+---
+
+#### 子步骤 3.3：逐步骤对比
+
+**目标：** 对 3.1 中的每一个应有步骤，用 3.2 的实际执行情况逐条对比，判断是否达标。
+
+**执行：** 对 3.1 的每一个步骤：
+
+```
+步骤: [名称]
+  要求(来自3.1): [引用plugin文件中的原文]
+  实际(来自3.2): [引用log中的实际内容]
+  
+  判断:
+    ✅ 达标 → 提供证据: [引用产物/log中的具体内容，证明实际产出满足要求]
+    ❌ 不达标 → 指出问题: [具体哪里不满足，对比要求和实际的差异]
+```
+
+**判断标准：**
+- **达标 = 产物中的表格/文件/输出内容满足要求。** 必须有证据引用，不能只写"✅"。
+- **不达标 = 步骤未执行、执行不完整、产出不符合要求、格式错误。** 必须指明具体差异。
+- 对于"额外步骤"（3.2 中有但 3.1 中没有），标记为"❌ 未定义步骤"，说明该步骤不在 plugin 规定的链路中。
+
+**出口验证：**
+- [ ] 3.1 的每一个应有步骤都已经过对比（无遗漏）
+- [ ] 每个 ✅ 行有来自产物的证据引用
+- [ ] 每个 ❌ 行有具体的差异描述
+- [ ] 额外步骤（如有）已被标记
+
+**硬检查点：如果任何步骤未对比，或任何 ✅ 缺少证据引用，不得进入 3.4。** 证据不是"看起来对"，而是引用。
+
+**→ 子步骤 3.4**（仅当出口验证全部通过）
+
+---
+
+#### 子步骤 3.4：产出诊断表格
+
+**目标：** 将 3.3 的对比结果写入文件。这是阶段 3 的强制产出物。
+
+**执行：** 写入目标插件目录下的 `.plugin-improve/records/YYYY-MM-DD-{chain}-diagnosis-result.md`。
+
+**表格格式（强制，不可更改结构）：**
+
+```markdown
+# {插件名} - {链路名} 诊断结果
+## 日期：YYYY-MM-DD
+
+### 链路拓扑
+{从入口到所有下游节点的树}
+
+### 逐步骤诊断
+
+| # | 所属节点 | 应有步骤 | 要求(来自plugin文件) | 实际步骤(来自log) | 达标? | 达标证据 / 不达标点 |
+|---|---------|---------|---------------------|------------------|-------|-------------------|
+| 1 | skills/xxx.md | {步骤名称} | {引用plugin原文} | {引用log原文} | ✅ | {引用产物中证明达标的具体内容} |
+| 2 | agents/xxx.md | {步骤名称} | {引用plugin原文} | {引用log原文} | ❌ | {要求 vs 实际的具体差异} |
+| 3 | skills/xxx.md | {步骤名称} | {引用plugin原文} | 未执行 | ❌ | 该步骤在log中完全未出现 |
+```
+
+**列填充规则：**
+- **应有步骤**: 来自 3.1。写步骤名称，不是整个流程描述。
+- **要求**: 来自 3.1。**引用 plugin 文件原文**，标注段落位置。
+- **实际步骤**: 来自 3.2。**引用 log 原文或描述实际行为+标注log行号**。
+- **达标?**: ✅ 或 ❌。
+- **达标证据/不达标点**: 
+  - ✅ 行 → **必须引用产物中的具体内容**，证明实际产出满足要求。仅写"✅"不算证据，整行无效。
+  - ❌ 行 → 具体要求是什么 vs 实际是什么，具体差异在哪。
+
+**出口验证：**
+- [ ] 文件已写入正确的目标插件目录
+- [ ] 表格每一行都有数据（无空行）
+- [ ] 表格每一列都有内容（无空单元格）
+- [ ] 每个 ✅ 行的"达标证据"列有产物内容的引用（不只有"✅"符号）
+- [ ] 每个 ❌ 行的"不达标点"列有具体的差异描述
+- [ ] 所有引用包含文件路径和段落/行号
+
+**硬检查点：如果任何单元格为空，或任何 ✅ 行缺少产物证据引用，不得进入阶段 4。** 返回 3.3 补全。
+
+**→ 阶段 4**（仅当出口验证全部通过且诊断表格文件已存在）
+
+---
+
+### 阶段 4：分析根因并出具解决方案
+
+**入口条件：** `diagnosis-result.md` 已写入且所有单元格已填充（来自阶段 3 出口验证）。
+
+**目标：** 读取诊断表格，对每个 ❌ 行分析根因和解决方案，并将三个新列追加到同一个表格中。
+
+**执行：**
+
+1. **读取 `diagnosis-result.md`** 中刚写入的表格。
+2. 对表格中每个 ❌ 行，分析：
+   - **根因**：为什么会发生这个问题？是护栏缺失？结构错误？触发问题？引用过期？流程设计缺陷？
+   - **解决方案**：具体要改什么？改哪个文件的哪部分？
+   - **解决方案来源**：方案依据什么？必须是 reference 文件的具体章节或官方文档 URL。
+
+3. **在原表格后追加三列**，写入同一个文件 `diagnosis-result.md`：
+
+```markdown
+### 根因分析与解决方案
+
+| # | 应有步骤 | 达标? | 根因 | 解决方案 | 解决方案来源 |
+|---|---------|-------|------|---------|-------------|
+| 1 | {步骤名称} | ❌ | {为什么会出现这个偏离} | {具体要改什么} | {reference文件§章节 或 官方文档URL} |
+| 2 | {步骤名称} | ❌ | {根因} | {方案} | {来源} |
+```
+
+**根因分析规则：**
+- 必须从现象追溯到机制层。不能说"模型没有做X"，要说"缺失哪个护栏机制/结构规范导致模型没有做X"
+- 护栏问题 → 引用 harness-methodology.md 的具体机制编号
+- 结构问题 → 引用 skill-structure.md 或 agent-structure.md 的具体章节
+- 两者都不覆盖 → 引用 diagnosis-guide.md §3.3 回退流程获取的官方文档 URL
+
+**解决方案规则：**
+- 每个方案必须是可执行的：改哪个文件、加什么内容、参考哪个模板
+- 方案来源必须可验证：读过去就能确认"对，这是标准做法"
+
+**出口验证：**
+- [ ] 每个 ❌ 行都有根因分析（无遗漏）
+- [ ] 每个根因追溯到机制/结构层面（不只是"模型没做"）
+- [ ] 每个解决方案有具体文件路径和改动描述
+- [ ] 每个解决方案来源可验证（reference 章节或官方 URL）
+- [ ] 更新后的表格已写回 `diagnosis-result.md`
+
+**硬检查点：如果任何 ❌ 行缺少根因、解决方案或来源，不得进入阶段 5。**
+
+**→ 阶段 5**（仅当出口验证全部通过）
+
+---
+
+### 阶段 5：实施修复
+
+**入口条件：** 诊断报告已撰写并完成自检（来自阶段 4）。
+
+**目标：** 逐个实施修复，每次修复记录到 repair-log.md。
+
+**执行步骤：**
+
+1. **读取目标插件中的 `.plugin-improve/repair-log.md`**，了解之前的修复尝试。如果不存在，注明这是第一轮修复。
+2. 向用户展示诊断报告中的修复计划
+3. 逐个实施修复，遵循以下规则：
+   - 每个修复引用其来源权威（reference 文件或官方文档 URL）
+   - 每次修复后，记录变更到 `repair-log.md`：
      ```markdown
-     ### Round N (YYYY-MM-DD)
-     - **Node:** [path]
-     - **Problem:** [from diagnosis]
-     - **Fix:** [what was changed]
-     - **Source:** [reference section or URL]
-     - **Result:** [pending verification / confirmed / reverted because...]
+     ### 第 N 轮（YYYY-MM-DD）
+     - **节点：** [路径]
+     - **问题：** [来自诊断]
+     - **修复：** [变更了什么]
+     - **来源：** [reference 章节或 URL]
+     - **结果：** [待验证 / 已确认 / 已回退 原因：...]
      ```
-   - If a fix fails, do NOT retry more than 3 times on the same node. After 3 attempts, flag it as architectural and escalate
-4. After all fixes, update the diagnosis report with a "Fixed: ✅" marker on each resolved item
+   - 完全修复一个节点后再进入下一个。不要批量处理不相关的修复。
+4. 全部修复完成后，更新诊断报告：在每个已解决项上标注"已修复：✅"。
 
-## Key Rules
+**三次失败规则：** 如果同一节点的修复尝试达到 3 次仍然失败，停止。该节点的架构很可能有问题。标记为架构性问题并升级给用户。不要尝试第 4 次修复。
 
-- Each diagnosis item MUST cite its source. No "I think this is wrong" — every finding must reference a specific section of a reference file or an official doc URL
-- When a reference doesn't cover the issue, fetch the official docs URL. Do not guess at standards
-- Read repair-log.md before fixing to avoid repeating failed approaches
-- Fix one node completely before moving to the next. Do not batch unrelated fixes
-- If 3+ fix attempts on the same node fail, stop and question whether the node's architecture is wrong
+**出口验证：**
+- [ ] repair-log.md 在修复前已被读取（或已注明不存在）
+- [ ] 每次修复已记录到 repair-log.md 并附来源引用
+- [ ] 诊断报告已解决项标注了"已修复：✅"
+- [ ] 没有任何节点在不升级的情况下被修复超过 3 次
+
+## 红旗信号（Red Flags）——停止并返回阶段 1
+
+如果你发现自己在想 / If you catch yourself thinking:
+
+| 中文 | English |
+|------|---------|
+| "我已经理解插件结构了，不需要每个文件都读" | "I already understand the plugin structure, no need to read every file" |
+| "从链路拓扑就看出来了" | "It's obvious from the chain topology" |
+| "我不读也能推断出节点有什么步骤" | "I can infer the steps without reading the node" |
+| "用户给的总结就够了" | "The user's summary is enough" |
+| "log 太长了，大概扫一下就行" | "The log is too long, I'll just skim it" |
+| "这个步骤显然是达标的，不用找证据" | "This step is clearly passing, no need to find evidence" |
+| "先写表格，证据回头补" | "Let me write the table first, I'll add evidence later" |
+| "不需要逐步骤对比，看个大概就知道问题了" | "No need to compare step by step, I can see the problem" |
+| "达标写个 ✅ 就行，不需要引用产物" | "A ✅ is enough for passing rows, no need to quote the artifact" |
+| "根因很明显，不需要查 reference" | "The root cause is obvious, no need to check references" |
+| "先把报告写了，再回头验证" | "Let me write the report first, then verify" |
+| "这次不一样，用户已经解释过问题了" | "This is different because the user already explained the problem" |
+| "来不及了，先给结论" | "No time, let me just give the conclusion" |
+| "我已经读了大部分，剩下的可以推断" | "I've read most of it, I can infer the rest" |
+
+以上全部意味着 / ALL of these mean：**停止 / STOP。** 你正在理性化偷懒 / You are rationalizing。返回阶段 1。读取文件 / Return to Phase 1. Read the files.
+
+如果你在当前对话轮次中没有 Read 过某个文件，你就不知道它里面有什么 / If you haven't Read a file in this conversation turn, you don't know what's in it.
+
+表格中任何空单元格 = 你跳过了某些内容 / Any empty cell in the table = you skipped something.
+任何只有 "✅" 没有引用原文的达标行 = 你没有证据 / Any passing row with only "✅" and no quote = you have no evidence.
+
+## 常见理性化借口（Rationalizations）
+
+| 借口 | 现实 |
+|------|------|
+| "我已经知道这个 skill/agent 文件里有什么了" | 文件会变。你的记忆是陈旧的。现在就读取。 |
+| "链路拓扑已经告诉我足够多了" | 拓扑是结构，不是内容。诊断需要读每步的具体要求。 |
+| "用户已经描述过问题了" | 用户的描述是症状，不是证据。读取 log 和产物。 |
+| "这很简单，我能快速诊断" | 看似简单的问题也有根因。逐步骤对比。 |
+| "细节等会儿再读，先把表格写了" | 没有证据的表格是虚构。先读 log，后写表格。 |
+| "从节点名就能推断出它的步骤" | 名字不是步骤。读取 plugin 文件正文。 |
+| "这个步骤显然达标，写个 ✅ 就够了" | ✅ 不是证据。必须有产物内容的引用。 |
+| "log 太长了，没法仔细读" | 那你就没法逐步骤对比。向用户要更短的 log 或指定范围。 |
+| "紧急，用户想立刻修好" | 跳过诊断一开始更快但结果是错的。你会重做。 |
+| "我确信我理解这个问题" | 信心不是证据。照样逐步骤对比、引用原文。 |
+| "根因很明显不需要查 reference" | 方案必须有来源依据。不能靠"我觉得"。 |
+| "达标行就简单标记一下" | 达标行同样需要证据引用，否则不算达标。 |
+
+## 验证清单
+
+在标记工作完成之前：
+
+- [ ] 链路中的每个节点都被读取过（不只是列出，不只是从名字推断）
+- [ ] 每个节点规定的步骤已梳理，每条要求引用了 plugin 文件原文
+- [ ] `--log` 已从头到尾完整读取，实际步骤已按时间顺序列出
+- [ ] 每个应有步骤都已与实际执行逐条对比
+- [ ] 诊断表格已写入 `diagnosis-result.md`，位置正确
+- [ ] 表格中零空单元格，零占位符（无 "[...]"、"TODO"、"TBD"）
+- [ ] 每个 ✅ 行的"达标证据"列有产物内容的引用（不只有"✅"符号）
+- [ ] 每个 ❌ 行有具体的差异描述
+- [ ] 每个 ❌ 行有根因分析，追溯到机制/结构层面
+- [ ] 每个解决方案有具体改动描述和可验证的来源依据
+- [ ] repair-log.md 记录了每次修复尝试及其来源和结果
+- [ ] 没有任何发现基于"我认为"或"可能"——只基于引用的证据
+
+**有框勾不上？** 你跳过了诊断。从阶段 1 重新开始。
+
+## 关键规则
+
+- 每条诊断项必须引用其来源——reference 文件的具体章节或官方文档 URL
+- 当 reference 无法覆盖问题时，获取官方文档 URL。不要猜测标准
+- 修复前先读取 repair-log.md，避免重复失败的方案
+- 完全修复一个节点后再进入下一个。不要批量处理不相关的修复
+- 如果同一节点修复尝试达到 3 次以上仍失败，停止并质疑该节点的架构是否正确
 
 ## References
 
-Load these as needed during diagnosis:
+诊断过程中按需加载：
 
-- **`references/harness-methodology.md`** — 16 harness mechanisms
-- **`references/skill-structure.md`** — Skill file structure standards
-- **`references/agent-structure.md`** — Agent file structure standards  
-- **`references/diagnosis-guide.md`** — Symptom-to-root-cause decision tree + official docs fallback (§3.3)
-
+- **`references/harness-methodology.md`** — 16 个护栏机制
+- **`references/skill-structure.md`** — Skill 文件结构标准
+- **`references/agent-structure.md`** — Agent 文件结构标准
+- **`references/diagnosis-guide.md`** — 症状到根因的决策树 + 官方文档回退流程（§3.3）
