@@ -84,14 +84,46 @@ allowed-tools: Read, Write, Grep, Glob, Bash, WebFetch
    - 同理适用于 agent 文件（`agents/<name>.md`）中的相对路径引用
    - **插件根目录的 `references/` 不能通过裸相对路径引用**，必须写 `${CLAUDE_PLUGIN_ROOT}/references/xxx`
 
-6. 对每个发现的下游节点，**按路径解析规则计算实际路径**，读取该文件，重复追踪直到没有新节点被发现。
+6. 对每个发现的下游节点，**强制执行以下 3 步机械流程**——不完成则视为未发现该节点：
+
+   **第 1 步 — 确定源文件所在目录：**
+   ```
+   源文件: skills/exec/SKILL.md → 源目录: skills/exec/
+   源文件: agents/coding.md    → 源目录: agents/
+   源文件: SKILL.md (根)       → 源目录: . (插件根目录)
+   ```
+
+   **第 2 步 — 将相对路径拼接到源目录，计算实际路径：**
+   ```
+   源文件 skills/exec/SKILL.md 中的 references/exec-prompts.md
+     → 实际路径: skills/exec/references/exec-prompts.md
+
+   源文件 skills/exec/SKILL.md 中的 references/godot/config.md
+     → 实际路径: skills/exec/references/godot/config.md
+
+   源文件 agents/coding.md 中的 references/godot/coding.md
+     → 实际路径: agents/references/godot/coding.md（如果 agents/ 目录结构支持）
+     或 → references/godot/coding.md（如果 agent 的引用指向插件根）
+
+   源文件中的 ${CLAUDE_PLUGIN_ROOT}/references/xxx.md
+     → 实际路径: references/xxx.md（插件根目录）
+   ```
+
+   **第 3 步 — 用 Bash 验证实际路径是否存在：**
+   ```bash
+   ls <plugin-path>/<实际路径> 2>/dev/null && echo "EXISTS" || echo "NOT FOUND"
+   ```
+   只在实际路径得到文件系统确认后，才能将该节点写入拓扑树。未经过 bash 验证的路径不得出现在拓扑中。
+
+   **重复以上 3 步**追踪下游节点的下游，直到没有新节点被发现。
 
 **出口验证：**
 - [ ] 入口文件已被读取（你拥有文件内容，不只是路径）
 - [ ] 每个下游 skill 已被读取
 - [ ] 每个下游 agent 已被读取
 - [ ] 每个下游 reference 已被读取
-- [ ] 链路拓扑树已写下，包含所有发现的节点
+- [ ] 每个 reference 的实际路径已经过 bash `ls` 验证（拓扑中出现的路径必须是解析后经文件系统确认的路径，不能是未解析的原始引用字符串）
+- [ ] 链路拓扑树已写下，包含所有发现的节点，且拓扑中每条路径都是解析后的实际路径
 
 **进入阶段 2 之前：** 验证以上全部出口条件。如果链路中有任何文件未被读取，不得继续。返回去读取它。
 
@@ -172,10 +204,37 @@ allowed-tools: Read, Write, Grep, Glob, Bash, WebFetch
 - **子步骤归属：** 每条要求必须标注它属于哪个节点。不能创建"无主步骤"。当同一指令（如"记录日志"）在父步骤的多个子步骤中重复出现时，每个子步骤单独列一行，标注子步骤编号（如 "6b: 记录日志(RED)"、"6c: 记录日志(GREEN)"）。不得合并为一个步骤——每个子步骤的时机、格式、对象不同，合并会抹掉这些差异。
 - **子规则展开：** 当步骤包含规则表格、好/坏对照示例、编号清单、强制门检查项时，每一条都是独立的"要求"，必须在"要求"列中单独列出。不得将多条规则合并为一条。例如：某步骤的"描述写作规则"表有 5 条规则 → 产出 5 行要求，而非 1 行。某步骤有 6 对 ✅/❌ 示例 → 每对的约束含义是一条独立要求。
 
+**子规则展开示例（必须照此格式展开）：**
+
+假设源文件 `skills/plan/SKILL.md` 步骤6 包含以下好/坏对照表：
+
+```
+❌ 坏: "创建角色选择界面文件，定义 CharacterSelect 类"
+❌ 坏: "在脚本文件中添加 select_character 入口函数"
+✅ 好: "实现角色卡片列表：头像、名称、状态标签的组件排列和默认布局"
+✅ 好: "实现角色选中交互：点击卡片高亮、再次点击取消、选中状态更新"
+```
+
+**错误做法（合并）：**
+```
+| N | skills/plan/SKILL.md | 步骤6: 描述写作规则 | "不含 class 名、方法名、文件路径" | ... |
+```
+→ 把 4 条独立的约束合并成 1 条，丢失了每条的具体约束含义。
+
+**正确做法（展开）：**
+```
+| N   | skills/plan/SKILL.md | 步骤6: 描述不含 class 名 | "class 名不出现在任务描述中"（来自 ❌ 例1） | ... |
+| N+1 | skills/plan/SKILL.md | 步骤6: 描述不含方法名 | "方法名/函数名不出现在任务描述中"（来自 ❌ 例2） | ... |
+| N+2 | skills/plan/SKILL.md | 步骤6: 描述用行为语言 | "描述 = 可验证的功能行为，用户操作后能看到什么"（来自 ✅ 例1） | ... |
+| N+3 | skills/plan/SKILL.md | 步骤6: 交互描述含反馈 | "交互描述必须包含视觉/状态反馈"（来自 ✅ 例2） | ... |
+```
+→ 4 条独立的约束 = 4 行。每行有独立的约束描述和来源引用。
+
 **出口验证：**
 - [ ] 链路中每个节点的步骤已列出
 - [ ] 每个步骤的要求已从 plugin 文件中引用原文
 - [ ] 引用包含文件路径和段落位置（可以定位回去）
+- [ ] **子规则展开计数检查：** 对源文件中包含规则表格/好/坏对照/编号清单的步骤，逐项计数：源文件中有 N 条独立规则 → 3.1 产出中必须有 N 行，不得少。如果源文件的步骤6有 6 对 ❌/✅ 示例 + 2 条独立原则 = 至少 8 条独立要求，则 3.1 中该步骤必须至少有 8 行。
 
 **硬检查点：如果任何节点的步骤未梳理或有步骤但无引用原文，不得进入 3.2。** 返回去读取 plugin 文件。
 
@@ -394,11 +453,14 @@ allowed-tools: Read, Write, Grep, Glob, Bash, WebFetch
 | "不需要逐步骤对比，看个大概就知道问题了" | "No need to compare step by step, I can see the problem" |
 | "达标写个 ✅ 就行，不需要引用产物" | "A ✅ is enough for passing rows, no need to quote the artifact" |
 | "grep 一下没有文件后缀名，说明任务描述不含代码符号" | "A grep for file extensions proves the task descriptions are behavioral" |
-| "这几个子步骤都有'记录日志'，合并成一步就行" | "These sub-steps all say 'log', let me merge them into one row" |
+| "这几个子步骤都有类似的指令，合并成一行更简洁" | 合并会抹掉子步骤之间的时机和格式差异。每个子步骤单独列。 |
+| "这个步骤的几条规则差不多，写一行就够了" | 子规则展开是铁律。源文件有 N 条独立规则，诊断就必须有 N 行。合并 = 丢失约束 = 诊断不完整。 |
 | "根因很明显，不需要查 reference" | "The root cause is obvious, no need to check references" |
 | "先把报告写了，再回头验证" | "Let me write the report first, then verify" |
 | "这次不一样，用户已经解释过问题了" | "This is different because the user already explained the problem" |
+| "references/xxx.md 一看就是插件根目录路径" | "references/xxx.md looks like a plugin-root path" |
 | "来不及了，先给结论" | "No time, let me just give the conclusion" |
+| "references/xxx.md 肯定是插件根目录的" | 相对路径以源文件目录为基准解析。`skills/exec/SKILL.md` 中的 `references/xxx.md` → `skills/exec/references/xxx.md`，不是 `<plugin-root>/references/xxx.md`。必须用 bash ls 验证解析后的路径。 |
 | "我已经读了大部分，剩下的可以推断" | "I've read most of it, I can infer the rest" |
 
 以上全部意味着 / ALL of these mean：**停止 / STOP。** 你正在理性化偷懒 / You are rationalizing。返回阶段 1。读取文件 / Return to Phase 1. Read the files.
@@ -443,6 +505,8 @@ allowed-tools: Read, Write, Grep, Glob, Bash, WebFetch
 - [ ] 每个 ❌ 和 ⚠️ 行有根因分析，追溯到机制/结构层面
 - [ ] 每个解决方案有具体改动描述和可验证的来源依据
 - [ ] repair-log.md 记录了每次修复尝试及其来源和结果
+- [ ] 拓扑树中每条 reference 路径都是解析后的实际路径（经过了 bash ls 验证），不是原始引用字符串
+- [ ] 每个含规则表格/好/坏对照的步骤已展开为 N 行（源文件 N 条独立规则 = 诊断 N 行）
 - [ ] 没有任何发现基于"我认为"或"可能"——只基于引用的证据
 
 **有框勾不上？** 你跳过了诊断。从阶段 1 重新开始。
