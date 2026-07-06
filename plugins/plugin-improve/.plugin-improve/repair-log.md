@@ -71,3 +71,42 @@
   - 红旗信号+理性化借口各增加1条规则合并相关条目
 - **Source:** harness-methodology.md §机制5(Hard Gate) — 计数检查是不可跳过的硬门；harness-methodology.md §机制13(Checklist with Consequences) — 计数不匹配=工作无效
 - **Result:** pending verification
+
+### Round 5 (2026-07-06)
+
+- **Node:** `skills/plugin-improve/SKILL.md` — 诊断范围边界缺失
+- **Problem:** [CRITICAL] 诊断结果严重偏离核心目标。plugin-improve 应诊断"插件 skill/agent 是否按声明步骤执行、产物格式是否符合要求"，但实际产出的 `2026-07-06-feat-diagnosis-result.md` 根因分析部分（5个❌/⚠️行中的4个）聚焦在：
+  - config.md 已知坑列表是否完整（reference 内容维护问题）
+  - GUT engine error 处理机制（framework 限制）
+  - 测试 fixture 写法质量（目标项目代码质量）
+  - coding.md pass 规则覆盖不完整（reference 内容完善问题）
+  
+  这些全是 game-dev 具体开发效果问题，不是插件工程问题。用户反馈："结果最后列出的问题怎么都是game-dev具体开发的效果问题？那不是我们关心的，偏离的太离谱了"。
+- **Evidence:** `game-dev/.plugin-improve/records/2026-07-06-feat-diagnosis-result.md` 根因分析第14、16、18、20、30行。其中第14行建议"在 config.md 增加已知坑"、第18行建议"增加 framework limitation 豁免"——这些修改的是 reference 内容，不会改变插件自身行为。
+- **Root cause:** SKILL.md 缺少"诊断范围边界"约束。阶段3.1 无差别提取 plugin 文件中的所有要求（包括 reference 中的业务内容规范），阶段3.3 无差别评价所有要求的达标情况，阶段4 对所有不达标行进行根因分析。没有机制区分"插件工程问题"和"目标项目内容质量问题"。
+- **Fix:**
+  - 新增"诊断范围边界"章节（在"适用场景"之后、"参数"之前），包含：
+    - 核心判定法则："改了这个问题会让插件自身更可靠地按声明步骤执行吗？"
+    - 在范围内/不在范围内的明确列表
+    - 边界区分示例表（6个场景对照）
+    - 区分标准（改插件文件 vs 改 reference 内容 vs 改目标项目代码）
+  - 阶段3.1 新增"范围过滤"规则：提取要求后逐条过核心判定法则，丢弃业务内容要求
+  - 阶段3.3 新增"范围自检"判断标准 + 4个具体示例
+  - 阶段4 新增步骤3："跳过不在范围的项"
+  - 红旗信号新增4条范围偏离条目（中英双语）
+  - 理性化借口新增2条范围偏离条目
+  - 验证清单新增3条范围检查项
+- **Source:** 用户反馈 + 诊断范围边界设计；harness-methodology.md §机制1(Iron Law) — 范围边界本质上是诊断流程的 Iron Law
+- **Result:** pending verification
+
+### Round 6 (2026-07-06) — 精简版
+
+- **Node:** `skills/plugin-improve/SKILL.md`"决定 plugin 路径"
+- **Problem:** Round 5 的修改被写入了 cache 目录而非源目录。
+- **精确诱因:** 系统注入了两个不同的目录锚点——`Base directory for this skill` 指向 cache，`Primary working directory` 指向源目录。而 SKILL.md 的"决定 plugin 路径"只写了"当前目录"三个字，模型在歧义下选错了。
+- **Fix（精准打击）:** 将"决定 plugin 路径"从模糊的"当前目录"改为：
+  > `<plugin-path> = 当前工作目录（Primary working directory）。如果当前目录是 market 根目录，则是 plugins/<plugin-name>。`
+  > 注意：系统注入的 `Base directory for this skill` 指向 cache（路径含 `plugins/cache`），这是 skill 自身的存储位置，不是你要诊断的目标插件路径。
+- **去掉了:** Iron Law 加 cache 条款、阶段 5 步骤 0 hard gate、阶段 3.4 cache 写入检查、cache 相关 Red Flags(2条)、cache 相关理性化借口(1条)——所有这些对于防止一个路径歧义而言都是过度布防。
+- **Source:** 系统提示中 `Base directory for this skill` vs `Primary working directory` 的双锚点分析
+- **Result:** pending verification
