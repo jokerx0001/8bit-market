@@ -1,6 +1,6 @@
 {
   "name": "plugin-improve",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Diagnose and improve Claude Code plugins by analyzing behavior chains against harness methodology and structural standards. Identifies missing behavioral guardrails (Iron Law, Rationalization Tables, Red Flags) and structural issues (frontmatter, progressive disclosure, system prompt design).",
   "author": {
     "name": "jokerx001"

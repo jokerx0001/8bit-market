@@ -24,6 +24,10 @@ allowed-tools: Read, Write, Grep, Glob, Bash, WebFetch
 
 **违反任何阶段的字面规则，就是违反插件改善的精神。**
 
+## 决定 plugin 路径
+
+当前目录。如果当前目录是 market 的根目录，则是 `plugins/<plugin-name>`。
+
 ## 适用场景
 
 适用于：
@@ -165,6 +169,8 @@ allowed-tools: Read, Write, Grep, Glob, Bash, WebFetch
 - 每条要求必须引用 plugin 文件中的原文，标注文件路径和行号/段落
 - Skill 的工作流步骤、Agent 的 Process 步骤、输出格式声明——这些都是"应有步骤"
 - 步骤颗粒度：一个 Phase/Stage 对应一行，不要合并多个阶段
+- **子步骤归属：** 每条要求必须标注它属于哪个节点。不能创建"无主步骤"。当同一指令（如"记录日志"）在父步骤的多个子步骤中重复出现时，每个子步骤单独列一行，标注子步骤编号（如 "6b: 记录日志(RED)"、"6c: 记录日志(GREEN)"）。不得合并为一个步骤——每个子步骤的时机、格式、对象不同，合并会抹掉这些差异。
+- **子规则展开：** 当步骤包含规则表格、好/坏对照示例、编号清单、强制门检查项时，每一条都是独立的"要求"，必须在"要求"列中单独列出。不得将多条规则合并为一条。例如：某步骤的"描述写作规则"表有 5 条规则 → 产出 5 行要求，而非 1 行。某步骤有 6 对 ✅/❌ 示例 → 每对的约束含义是一条独立要求。
 
 **出口验证：**
 - [ ] 链路中每个节点的步骤已列出
@@ -223,6 +229,7 @@ allowed-tools: Read, Write, Grep, Glob, Bash, WebFetch
 - **达标 = 产物中的表格/文件/输出内容满足要求。** 必须有证据引用，不能只写"✅"。
 - **不达标 = 步骤未执行、执行不完整、产出不符合要求、格式错误。** 必须指明具体差异。
 - 对于"额外步骤"（3.2 中有但 3.1 中没有），标记为"❌ 未定义步骤"，说明该步骤不在 plugin 规定的链路中。
+- **语义要求不能只靠机械检查：** "用行为语言"、"不含代码符号"、"可独立验证"等语义要求，机械检查（grep、文件存在性）可以作为初步筛选，但不能作为唯一证据。必须阅读产物的实际内容，引用具体段落来证明合规或违规。例如：验证"不含代码符号"时，grep 检查文件后缀名是初步筛选，但必须额外引用任务描述原文，标注其中出现的 class 名、方法名、引擎类型名等代码符号。零内容引用 = 你并没有真正验证，不得标记 ✅。
 
 **路径引用问题的分级判定：** 不能仅凭"插件文件中的引用写法可能存在歧义"就判定为错误。必须依据 log 证据：
 - ❌ **确认问题**：log 中确实出现了文件未找到的错误（如 "No such file"、"cannot read"、读取失败），或 log 显示该文件从未被读取而后续步骤因此出错
@@ -386,6 +393,8 @@ allowed-tools: Read, Write, Grep, Glob, Bash, WebFetch
 | "先写表格，证据回头补" | "Let me write the table first, I'll add evidence later" |
 | "不需要逐步骤对比，看个大概就知道问题了" | "No need to compare step by step, I can see the problem" |
 | "达标写个 ✅ 就行，不需要引用产物" | "A ✅ is enough for passing rows, no need to quote the artifact" |
+| "grep 一下没有文件后缀名，说明任务描述不含代码符号" | "A grep for file extensions proves the task descriptions are behavioral" |
+| "这几个子步骤都有'记录日志'，合并成一步就行" | "These sub-steps all say 'log', let me merge them into one row" |
 | "根因很明显，不需要查 reference" | "The root cause is obvious, no need to check references" |
 | "先把报告写了，再回头验证" | "Let me write the report first, then verify" |
 | "这次不一样，用户已经解释过问题了" | "This is different because the user already explained the problem" |
@@ -410,6 +419,8 @@ allowed-tools: Read, Write, Grep, Glob, Bash, WebFetch
 | "细节等会儿再读，先把表格写了" | 没有证据的表格是虚构。先读 log，后写表格。 |
 | "从节点名就能推断出它的步骤" | 名字不是步骤。读取 plugin 文件正文。 |
 | "这个步骤显然达标，写个 ✅ 就够了" | ✅ 不是证据。必须有产物内容的引用。 |
+| "grep 一下没找到文件后缀名，就算验证过了" | grep 只能找字符串，不能判断语义。"不含代码符号"需要读内容找 class 名/方法名/引擎类型名。 |
+| "这几个子步骤都有类似的指令，合并成一行更简洁" | 合并会抹掉子步骤之间的时机和格式差异。每个子步骤单独列。 |
 | "log 太长了，没法仔细读" | 那你就没法逐步骤对比。向用户要更短的 log 或指定范围。 |
 | "紧急，用户想立刻修好" | 跳过诊断一开始更快但结果是错的。你会重做。 |
 | "我确信我理解这个问题" | 信心不是证据。照样逐步骤对比、引用原文。 |
