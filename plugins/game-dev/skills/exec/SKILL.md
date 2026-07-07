@@ -45,6 +45,10 @@ exec 不做:
 - "spawn agent 太慢了，我自己跑测试更快"
 - "agent 可能会写错，不如我自己写再让它检查"
 - "先实现完再让 test-agent 补测试也行"
+- "首跑全绿，不需要 VERIFY 了"
+- "这个任务只改了一个文件，不需要边界检查"
+- "代码很简单不需要 REFACTOR"
+- "spawn 返回了我先看看结果再记日志"
 
 **以上任一条出现 → STOP。回到 6b，从 RED spawn 重新开始。**
 
@@ -127,7 +131,21 @@ exec 只传任务上下文。agent 自己读自己的定义文件和参考文件
 
 测试命令（test_cmd_full 等）由 agent 在 spawn 初始化时自行从 config.md 读取并用 project 参数填充。exec 不再提取和填充这些变量。
 
+**回显确认（硬门）：** 读取完成后必须回显：
+
+```
+## exec 初始化确认
+- exec-prompts.md: RED/GREEN/VERIFY/REFACTOR 模板已加载
+- exec-logging.md: 日志格式已加载
+- {tech}/config.md: test_cmd_full={cmd}, project={project}
+- {tech}/coding.md: 边界检查规则 {N} 条
+```
+
+**日志铁律：spawn 返回后第一件事是追加日志。不等检查结果。先记日志，再检查。**
+
 每个任务走完整 RED → GREEN → VERIFY → 边界检查 → REFACTOR → VERIFY 循环。
+
+**硬门：每个阶段不可跳过。GREEN 首跑全绿不是跳过 VERIFY 的理由。简单任务不是跳过边界检查的理由。**
 
 #### 6a. 标记开始
 
@@ -145,42 +163,60 @@ mkdir -p {task_dir}/.work/coding
 
 使用 `references/exec-prompts.md` 的 **RED prompt** 模板组装 spawn prompt。
 
-**检查结果**：按 references/exec-prompts.md RED 检查规则验收。
-- 不合格 → 指出具体问题，重新 spawn
-- 合格 → 进入 GREEN（6c）
+**记录日志**：spawn 返回后立即按 exec-logging.md RED 格式追加日志。先记日志，再检查。
 
-**记录日志**：按 exec-logging.md RED 格式追加。
+**检查结果**（逐项打勾，缺一不可）：
+
+- [ ] 测试文件已创建（路径：___）
+- [ ] RED report 中所有 testcase 都失败了且原因正确（非语法错误、非标识符错误——语法错误和错误的标识符不算 RED）
+- [ ] 没有 mock、假代码
+
+- 全部打勾 → 进入 GREEN（6c）
+- 任一未打勾 → 指出具体问题，重新 spawn（不限重试，但同问题 >3 轮报告用户）
 
 #### 6c. GREEN — spawn game-dev:coding（含自验证）
 
 使用 **GREEN prompt** 模板。从 test-agent 的 RED report 提取 testsuite 名称和 testcase 名称。
 
-**检查结果**：按 references/exec-prompts.md GREEN 检查规则验收。
-- 不合格 → 指出具体问题，重新 spawn
-- 合格 → 进入 VERIFY（6d）
+**记录日志**：spawn 返回后立即按 exec-logging.md GREEN 格式追加日志。先记日志，再检查。
 
-**记录日志**：按 exec-logging.md GREEN 格式追加。
+**检查结果**（逐项打勾，缺一不可）：
+
+- [ ] coding-agent 自验证报告显示目标 testsuite 全部通过
+- [ ] 未修改 test/ 下文件（检查 coding agent 的已修改文件列表）
+- [ ] 无 pass / TODO / NotImplemented 残留（grep 已修改的源文件）
+
+- 全部打勾 → 进入 VERIFY（6d）
+- 任一未打勾 → 指出具体问题，重新 spawn
+
+**硬门：GREEN 全绿不是跳过 VERIFY 的理由。** VERIFY 验证的是"独立测试环境下的全量测试"，不是 coding agent 自己跑的测试。无论 GREEN 结果如何，必须执行 VERIFY。
 
 #### 6d. VERIFY — spawn game-dev:test-agent（实现后独立验证门）
 
 使用 **VERIFY prompt**。
 
-**检查结果**：按 references/exec-prompts.md VERIFY 检查规则验收。
-- 不合格 回退到 GREEN（6c）再修，同一错误反复出现 → exec 向用户报告
-- 合格 → 进入边界检查（6e）
+**记录日志**：spawn 返回后立即按 exec-logging.md VERIFY 格式追加日志。先记日志，再检查。
 
-**记录日志**：按 exec-logging.md VERIFY 格式追加。
+**检查结果**：
 
-#### 6e. 边界检查 — exec 主会话执行
+- [ ] 全量测试全部通过（`test_cmd_full` 退出码 0）
+- [ ] 如有失败，报告包含具体 testcase 名称和错误行（禁止只有 Summary 数字）
 
-**VERIFY 全部通过后、REFACTOR 之前执行。** 检查 agent 是否越界或留下定时炸弹。
+- 全部通过 → 进入边界检查（6e）
+- 有失败 → 回退到 GREEN（6c）再修。同一错误反复出现（>2 轮）→ exec 向用户报告，不自动循环
+
+#### 6e. 边界检查 — exec 主会话执行（独立质量门）
+
+**对每个任务强制执行。不是 REFACTOR 的子步骤——即使跳过 REFACTOR，边界检查也必须执行。**
+
+检查 agent 是否越界或留下定时炸弹。
 
 **通用检查（所有技术栈）：**
 
 | 检查项 | 检测方式 |
 |--------|---------|
-| 测试文件隔离 | coding agent 是否修改了测试文件？ |
-| 空代码/假代码 | 是否有 `pass`、`# TODO`、`NotImplemented` 残留？ |
+| 测试文件隔离 | coding agent 是否修改了测试文件？`git diff --name-only` 检查是否包含 test/ 路径 |
+| 空代码/假代码 | `grep -rn 'pass\|# TODO\|NotImplemented' {修改的源文件}` 零命中？（@abstract 方法的 `pass` stub 除外） |
 
 **技术栈专属检查（从 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/coding.md` 提取规则）：**
 
@@ -190,11 +226,21 @@ mkdir -p {task_dir}/.work/coding
 - 信号连接有效性 — `.connect("signal_name", method)` 的目标方法是否已定义？
 - 文件路径有效性 — ext_resource 的 `path` 是否指向存在的文件？
 
+**记录日志**：追加到 tdd-iterations.md，格式：
+
+```
+### Iter {iter_N} — BOUNDARY-CHECK (exec) — {timestamp}
+- 测试文件隔离: ✅ / ❌ {详情}
+- 空代码/假代码: ✅ / ❌ {详情}
+- 技术栈专属: ✅ / ❌ {详情}
+- Verdict: ✅ clean → 进入 REFACTOR 判定 / ❌ {N} 项违规 → 必须 REFACTOR
+```
+
 **检查结果处理：**
 
 ```
-├── 零违规 → 直接进入 REFACTOR（6f）
-└── 有违规 → 将违规清单写入 REFACTOR prompt 的 "## 边界违规" 节，进入 6f
+├── 零违规 → 进入 REFACTOR 判定（6f）
+└── 有违规 → 必须进入 REFACTOR（6f），将违规清单写入 REFACTOR prompt
 ```
 
 违规清单格式：
@@ -209,6 +255,17 @@ mkdir -p {task_dir}/.work/coding
 
 #### 6f. REFACTOR — spawn game-dev:coding
 
+**REFACTOR 触发规则（逐条判定）：**
+
+| 条件 | 判定 |
+|------|------|
+| 边界检查有违规 | **必须 REFACTOR** |
+| GREEN 阶段修改了 >1 个文件 | **必须 REFACTOR**（需要检查跨文件一致性） |
+| GREEN 阶段有 >1 轮自我验证 | **必须 REFACTOR**（代码有迭代痕迹，需清理） |
+| 以上均不满足 | REFACTOR 可选，标记为"跳过 REFACTOR：{原因}" |
+
+**跳过 REFACTOR 时：** 追加日志 `### Iter {iter_N} — REFACTOR (skip) — 原因：{条件} — {timestamp}`，直接进入 6h（标记完成）。
+
 使用 **REFACTOR prompt** + 边界违规清单（如有）。
 
 **检查结果**：按 references/exec-prompts.md REFACTOR 检查规则验收。
@@ -221,9 +278,15 @@ mkdir -p {task_dir}/.work/coding
 
 使用 **VERIFY prompt**。
 
-**检查结果**：按 references/exec-prompts.md VERIFY（重构后）检查规则验收。
-- 不合格 → 回退到 REFACTOR（6f）再修，最多 2 轮回退；仍失败 → 报告用户
-- 合格 → 标记 done（6h）
+**记录日志**：spawn 返回后立即按 exec-logging.md VERIFY 格式追加日志。先记日志，再检查。
+
+**检查结果**：
+
+- [ ] 全量测试全部通过
+- [ ] 边界违规清单逐条已修复
+
+- 全部通过 → 标记 done（6h）
+- 有失败 → 回退到 REFACTOR（6f）再修，最多 2 轮回退；仍失败 → 报告用户
 
 #### 6h. 标记完成
 
@@ -250,6 +313,8 @@ Skill("game-dev:collect-lessons", "tech={tech}")
 ### 10. 编写教学文档
 
 **仅 feat 和 refactor 任务执行此步骤。fix 任务跳过。**
+
+**硬门：** 步骤 9 (collect-lessons) 和步骤 10 (write-tutorial) 必须全部完成才能声明 Completion Gate 通过。步骤 9 完成后立即进入步骤 10，不得在步骤 9 之后、步骤 10 之前输出完成报告。
 
 调用 `game-dev:write-tutorial` skill：
 

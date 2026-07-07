@@ -1,6 +1,17 @@
 # Exec TDD Iteration Log
 
-`{task_dir}/.work/tdd-iterations.md` 是 TDD 循环的全量迭代日志。每轮 agent spawn 返回后追加一条记录。该文件是 `.work/` 下的中间产物，供人工排查 TDD 循环卡点使用。
+`{task_dir}/.work/tdd-iterations.md` 是 TDD 循环的全量迭代日志。
+
+## 日志职责分离
+
+**tdd-iterations.md 由 exec 和 agent 共同写入，各司其职：**
+
+| 谁写 | 写什么 | 何时写 |
+|------|--------|--------|
+| **exec** | spawn 参数、每次 spawn 后的检查结果（checkbox 逐项打勾）、阶段判定（合格/不合格/重试）、重试决策 | spawn 返回后**立即**追加（先记日志，再进入下一阶段） |
+| **coding agent** | GREEN/REFACTOR 诊断过程：testcase 失败原因、根因分析、修复方案、自我验证轮数 | 按照 agent 定义文件中的自我验证协议追加 |
+
+**exec 不依赖 agent 的日志来做判定。** agent 的日志是工作记录，exec 的日志是判定记录。两者写同一个文件但职责不重叠。
 
 ## 初始化
 

@@ -47,18 +47,19 @@ ls test/ 2>/dev/null && echo "TESTS_OK" || echo "TESTS_MISSING"
 `{...}` 为必须替换的占位符。
 
 - **test_runner**: `godot` — 测试运行器
-- **test_cmd_full**: `godot --headless -s addons/gut/gut_cmdln.gd -gdir=test/ -gexit` — 全量运行
-- **test_cmd_suite**: `godot --headless -s addons/gut/gut_cmdln.gd -gselect={suite} -gexit` — 指定测试文件
-- **test_cmd_single**: `godot --headless -s addons/gut/gut_cmdln.gd -gselect={suite}:{case} -gexit` — 单个测试方法
+- **test_cmd_full**: `godot --headless -s addons/gut/gut_cmdln.gd -gdir=test/ -glog=1 -gexit` — 全量运行
+- **test_cmd_suite**: `godot --headless -s addons/gut/gut_cmdln.gd -gdir=test/ -gselect={suite} -glog=1 -gexit` — 指定测试文件（`-gselect` 子串匹配文件名）
+- **test_cmd_single**: `godot --headless -s addons/gut/gut_cmdln.gd -gdir=test/ -gselect={suite} -gunit_test_name={case} -glog=1 -gexit` — 单个测试方法
 
 ### 输出解析
 
-- **test_failure_grep**: `grep '\[FAILED\]' {log_path}` — 提取失败详情
+- **test_failure_grep**: `grep -E '\[Failed\]|\[Fail\]' {log_path}` — 提取失败详情（GUT 输出格式：`[Failed]: test_name` + `[Fail]: assert_eq(...)`）
 - 退出码: `0` = 全部通过
 
 ### 已知坑
 
 - **-gexit 必须存在** — 没有则 Godot 进程不退出，TDD 循环卡死
+- **-gselect 是子串匹配** — `-gselect=test_foo` 会同时匹配 `test_foo.gd` 和 `test_foo_extra.gd`。testsuite 命名必须唯一，避免一个名字是另一个的子串
 - **headless 模式下无法访问 DisplayServer** — 涉及窗口操作的测试需要 mock
 - **GUT 的 `assert_not_null($NodeName)` 在节点不存在时行为不确定** — 用 `assert_not_null(get_node_or_null("NodeName"))`
 
