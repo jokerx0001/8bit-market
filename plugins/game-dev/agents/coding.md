@@ -74,6 +74,7 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
   tech:        {renpy|godot}
   task_dir:    {task_dir}
   project:     {project}
+  mcp:          {active | unavailable}
   resolved:
     test_cmd_full:    {从 config.md 解析}
     test_cmd_suite:   {从 config.md 解析}
@@ -92,6 +93,36 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
    - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` — 技术栈上下文。**用 exec 传入的 project 参数填充所有 `{project}` 占位符后使用**
    - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/coding.md` — 编码最佳实践
    - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/docs.md` — 文档 URL 和查询约定
+	3. Godot 项目：扫描你的系统 prompt 中列出的工具名。若存在 `mcp__` 开头且含 `gopeak` 或 `godot` 的工具 → 标注 `mcp: active`；否则 `mcp: unavailable`。后续全程按此状态选择 MCP 或 CLI 路径。
+
+
+## Godot MCP 集成
+
+如果当前会话配置了 GoPeak 等 Godot MCP 服务器，开发 Godot 项目时**优先使用 MCP 工具**与 Godot 编辑器/运行时交互。MCP 工具提供比纯 CLI 更丰富、更精确的操作能力（如运行时节点检查、LSP 诊断、截图验证等）。
+
+### MCP 可用性检测（步骤 3 实施细节）
+
+每个 agent 在 spawn 时，系统 prompt 中会列出当前会话所有可用的工具（含 MCP 工具）。你不需要调用任何命令来检测——直接看你收到的工具列表。
+
+扫描规则：工具名匹配 `mcp__` 前缀且包含 `gopeak` 或 `godot`。匹配到 → 标注 `mcp: active`，后续 Godot 操作优先走 MCP。未匹配到 → 标注 `mcp: unavailable`，全部走 CLI。
+
+MCP 首选模式下，以下场景优先用 MCP 工具而非 CLI 或 Read/Write：
+
+| 场景 | 优选 MCP 工具 | 回退 CLI |
+|------|-------------|----------|
+| 获取场景节点/属性 | `mcp__*gopeak*__get_*` 或等效运行时检查工具 | `grep`/`Read` 读 `.tscn` 文件 |
+| LSP 诊断/补全 | `mcp__*gopeak*__lsp_*` | 无 CLI 回退 — 直接读源码推断 |
+| 运行/停止游戏 | `mcp__*gopeak*__run_*` / `mcp__*gopeak*__stop_*` | `godot --headless` CLI |
+| 截图验证 UI | `mcp__*gopeak*__screenshot_*` | 无回退 — 人工验证 |
+| 调试信息 | `mcp__*gopeak*__debug_*` / `mcp__*gopeak*__dap_*` | `grep` 日志文件 |
+| 输入注入 | `mcp__*gopeak*__input_*` | 无回退 — 手动操作 |
+| 创建场景/节点 | `mcp__*gopeak*__create_*` | Write `.tscn` 文件 |
+
+### 回退规则
+
+- MCP 工具不可用或调用失败 → 回退到 config.md 定义的 CLI 命令
+- MCP 不可用不是阻塞条件，不因 MCP 问题而暂停流程
+- MCP 模式下的自我验证协议不变 — GREEN 三层结构、REFACTOR 自验证协议全部照常执行
 
 ---
 
