@@ -22,7 +22,6 @@ exec 只做:
   VERIFY:    spawn game-dev:test-agent → 独立验证门（跑测试，不分析）
   边界检查:  exec 主会话执行 → 违规写入 REFACTOR prompt
   REFACTOR:  spawn game-dev:coding → 收集 REFACTOR report（含边界修复+代码质量）
-  VERIFY:    spawn game-dev:test-agent → 独立验证门
   最终:      全量测试做全局确认
 
 exec 不做:
@@ -144,7 +143,7 @@ exec 只传任务上下文。agent 自己读自己的定义文件和参考文件
 
 **日志铁律：spawn 返回后第一件事是追加日志。不等检查结果。先记日志，再检查。**
 
-每个任务走完整 RED → GREEN → VERIFY → 边界检查 → REFACTOR → VERIFY 循环。
+每个任务走完整 RED → GREEN → VERIFY → 边界检查 → REFACTOR 循环。
 
 **硬门：每个阶段不可跳过。GREEN 首跑全绿不是跳过 VERIFY 的理由。简单任务不是跳过边界检查的理由。**
 
@@ -271,23 +270,9 @@ mkdir -p {task_dir}/.work/coding
 
 **检查结果**：按 references/exec-prompts.md REFACTOR 检查规则验收。
 - 阻塞（>5 轮）→ 报告用户，建议撤销重构保持 GREEN 状态
-- 全部通过 → 进入 VERIFY（6g）
+- 全部通过 → 标记 done（6h）
 
 **记录日志**：按 exec-logging.md REFACTOR 格式追加。
-
-#### 6g. VERIFY — spawn game-dev:test-agent（重构后独立验证门）
-
-使用 **VERIFY prompt**。
-
-**记录日志**：spawn 返回后立即按 exec-logging.md VERIFY 格式追加日志。先记日志，再检查。
-
-**检查结果**：
-
-- [ ] 全量测试全部通过
-- [ ] 边界违规清单逐条已修复
-
-- 全部通过 → 标记 done（6h）
-- 有失败 → 回退到 REFACTOR（6f）再修，最多 2 轮回退；仍失败 → 报告用户
 
 #### 6h. 标记完成
 
