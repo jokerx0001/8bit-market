@@ -146,16 +146,40 @@ Check the task prompt for the `## 模式` field:
 
 当任务类型为 `visual` 或 `ui`（prompt 含 `## visual 任务` + `spec:` 或 `## UI 任务` + `html:`）时触发。验证方式：截图 + `game-dev:visual-compare` skill。
 
-### Step V1: 读取截图方法
+### Step V1: 读取截图参考
 
-读取 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/screenshot.md`。不同技术栈截图方式不同，按 screenshot.md 的指引操作。
+读取 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/screenshot.md`，获取截图方法、参考模式和 CLI 命令。
 
-### Step V2: 截图到目标文件夹
+### Step V2: 理解任务
 
-- 需要在 testcase 中先用 `$` 创建目录或确认目录存在（Ren'Py `screenshot` 的路径相对于 `_test.screenshot_directory`，需要调整 `_test.screenshot_directory` 指向 `.work/screenshots/`）
-- 按 testing.md 的方法截图，保存到 `{task_dir}/.work/screenshots/{testcase_name}.png`。
+读 `{task_dir}/plan.md` 的任务描述和 `.work/design.md`，理解：
+- 目标视觉状态是什么（哪个界面、什么交互后的状态）
+- 需要加载哪个场景
+- 截图前是否需要交互、交互步骤是什么
 
-### Step V3: 调用 visual-compare skill
+是否交互、怎么交互由 agent 根据任务自行判断。
+
+### Step V3: 编写截图脚本
+
+参考 screenshot.md 中的模式和已验证示例，针对当前任务编写定制截图脚本。写入测试目录：
+
+```
+{test_dir}/visual/test_{testcase_name}.{ext}
+```
+
+每个 visual testcase 对应一个截图脚本。脚本命名遵循 testing.md 的命名规则。
+
+### Step V4: 执行截图
+
+按 screenshot.md 的 CLI 命令执行截图脚本，base64 解码保存到：
+
+```
+{task_dir}/.work/screenshots/{testcase_name}.png
+```
+
+检查退出码 `0` 且输出文件非空 → 成功。
+
+### Step V5: 调用 visual-compare skill
 
 调用 `Skill` 工具 `game-dev:visual-compare`，传入：
 - `screenshot`: `{task_dir}/.work/screenshots/{testcase_name}.png`
@@ -163,7 +187,7 @@ Check the task prompt for the `## 模式` field:
 
 visual-compare 返回 PASS/FAIL。**不自己做视觉对比。**
 
-### Step V4: 报告
+### Step V6: 报告
 
 ```
 ## RED report — visual/ui 任务
@@ -190,7 +214,7 @@ visual-compare 返回 PASS/FAIL。**不自己做视觉对比。**
 
 **visual / ui 任务：同上述RED visual章节方法一致
 
-### Step 3: If any fail — analyze and describe
+### Step 3: If any fail — find error from log
 
 **必须提取具体 testcase 名称和错误信息，禁止只给 Summary 数字。**
 
@@ -206,7 +230,7 @@ visual-compare 返回 PASS/FAIL。**不自己做视觉对比。**
 ### 失败详情（如有）
 | # | Testcase | 错误信息 |
 |---|----------|---------|
-| 1 | {testcase_name} | {错误行} |
+| 1 | {testcase_name} | 具体错误信息 |
 ```
 
 ---
@@ -220,4 +244,4 @@ visual-compare 返回 PASS/FAIL。**不自己做视觉对比。**
 5. **No mock, no fake** — 每个断言检查真实游戏状态
 6. **Self-correct before reporting** — RED 模式修复语法错误后再报告
 7. **Ensure process exit** — 确认测试跑完后进程能退出（见 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 的 known_pitfall 字段）
-8. **visual / ui 任务：截图 + visual-compare** — 按 testing.md 方法截图保存到 `.work/screenshots/`，调用 `Skill("game-dev:visual-compare")` 传入截图路径和 spec/HTML 路径。不内联对比。
+8. **visual / ui 任务：截图 + visual-compare** — 按 screenshot.md 方法编写截图脚本放入测试目录、执行截图保存 PNG 到 `.work/screenshots/`，调用 `Skill("game-dev:visual-compare")` 传入截图路径和 spec/HTML 路径。不内联对比。
