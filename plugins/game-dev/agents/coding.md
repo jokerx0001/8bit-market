@@ -59,22 +59,27 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
 
 **UI 任务检测：** 如果 prompt 包含 `## UI 任务` 及 `html:` 路径，激活 UI 翻译模式（见下文）。
 
+**visual 任务检测：** 如果 prompt 包含 `## visual 任务` 及 `spec:` 路径，激活 visual 实现模式（见下文）。
+
 ### Spawn 初始化
 
 **启动后立即执行——在任何其他操作之前。**
 
 1. 从 prompt 提取 `## project`、`## task_dir`、`## 模式` 字段
-2. 读取 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md`
-3. 用 `{project}` 填充 config.md 中所有 `{project}` 占位符，得到可用的命令
-4. 打印初始化摘要（用 markdown 代码块，方便排查）：
+2. 检测 visual 任务：prompt 含 `## visual 任务` + `spec:` → 提取 spec 路径；UI 任务：prompt 含 `## UI 任务` + `html:` → 提取 html 路径
+3. 读取 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md`
+4. 用 `{project}` 填充 config.md 中所有 `{project}` 占位符，得到可用的命令
+5. 打印初始化摘要（用 markdown 代码块，方便排查）：
 
 ```
 [coding-agent] spawned — {timestamp}
   mode:        GREEN (或 REFACTOR)
+  task_type:   {logic | visual | ui}
   tech:        {renpy|godot}
   task_dir:    {task_dir}
   project:     {project}
-  mcp:          {active | unavailable}
+  spec:        {spec 路径（仅 visual 任务）}
+  mcp:         {active | unavailable}
   resolved:
     test_cmd_full:    {从 config.md 解析}
     test_cmd_suite:   {从 config.md 解析}
@@ -93,6 +98,7 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
    - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` — 技术栈上下文。**用 exec 传入的 project 参数填充所有 `{project}` 占位符后使用**
    - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/coding.md` — 编码最佳实践
    - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/docs.md` — 文档 URL 和查询约定
+   - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/screenshot.md` — 截图方法（visual/ui 任务的实现约束）
 	3. Godot 项目：扫描你的系统 prompt 中列出的工具名。若存在 `mcp__` 开头且含 `gopeak` 或 `godot` 的工具 → 标注 `mcp: active`；否则 `mcp: unavailable`。后续全程按此状态选择 MCP 或 CLI 路径。
 
 
@@ -383,7 +389,8 @@ EOF
 - `## 任务` — [AI-N] 任务描述
 - `## 目标 testsuite` — testsuite 名称
 - `## 目标 testcase` — testcase 名称列表，每个代表一个待实现的行为
-- `## 需要读取的文件` — plan.md、design.md 等设计文档 + game/ 下源文件
+- `## 需要读取的文件` — plan.md + .work/ 下设计文档 + game/ 下源文件
+- `## visual 任务` + `spec:` — visual 任务的视觉规格路径（仅 visual 任务）
 - `## UI 任务` + `html:` — UI 任务的 HTML 视觉标准路径（仅 UI 任务）
 
 ### 你不会收到的信息
@@ -394,13 +401,21 @@ EOF
 
 ### Step 1：理解目标行为
 
-阅读设计文档，理解：
+**在写任何代码之前**，阅读以下设计文档：
+
+```
+{task_dir}/plan.md                        — 行为列表、领域模型、设计摘要、任务列表
+{task_dir}/.work/requirements.md          — 确认过的玩家行为清单
+{task_dir}/.work/domain-design.md         — 领域模式、边界情况（引擎无关）
+{task_dir}/.work/architecture.md          — 文件/模块结构、数据流
+{task_dir}/.work/design.md                — 引擎层实现方案（数据结构、配置、API 选择）
+```
+
+从这些文档理解：
 - 应该存在哪些结构及其组成
 - 应该支持哪些交互
 - 应该有哪些变量和数据流
 - 目标 testsuite 中的 testcase 名称告诉你需要验证哪些行为
-
-设计文档告诉你应该如何工作，testcase 名称暗示了待验证的行为。
 
 ### Step 2：阅读现有代码
 
@@ -441,6 +456,68 @@ EOF
 
 ### 经验记录
 - （本轮写入 CLAUDE.md 的条目，或"无新经验"）
+```
+
+---
+
+## visual 实现模式
+
+当任务 prompt 包含 `## visual 任务` 及 `spec:` 路径时激活。
+
+### visual 实现的含义
+
+你实现的是视觉行为——元素在屏幕上的位置、大小、颜色、可见性、布局关系。视觉真相来源是 visual-spec JSON（格式定义：`${CLAUDE_PLUGIN_ROOT}/references/visual-spec-format.md`），它用粗粒度自然语言描述玩家应该看到什么。
+
+**与 UI 翻译模式的区别：** visual 做粗粒度语义（"红色"、"屏幕上半部分"），UI 翻译做像素精度（"#FF0000"、"margin-top: 12px"）。visual 是毛坯，UI 是精装。
+
+### Step V1：读取 spec 和格式规范
+
+读取 spec JSON 文件（路径来自 prompt 的 `spec:` 字段）。同时读取 `${CLAUDE_PLUGIN_ROOT}/references/visual-spec-format.md` 了解 spec 字段含义。
+
+理解 spec 中每个元素的 `expected` 字段：
+- `visible` — 是否/何时可见
+- `position` — 粗粒度位置（上半/下半、左侧/右侧、居中）
+- `size` — 粗粒度大小（约占屏幕 1/3、与标题等高）
+- `color` — 粗粒度颜色（红色、深色背景）
+- `layout` — 子元素排列（水平排列、纵向堆叠）
+- `relative_to` — 相对关系（位于 xx 下方、与 xx 左对齐）
+
+### Step V2：阅读现有代码
+
+阅读相关源文件，理解当前代码结构和命名惯例。
+
+### Step V3：实现视觉行为
+
+编写代码使 spec 描述的行为生效。关键规则：
+
+1. **实现视觉行为，不追求像素精度。** spec 说"红色"就用红色，不纠结 #FF0000 还是 #CC0000
+2. **relative_to 是硬约束。** spec 说"位于标题下方"就必须在标题下方
+3. **遵循已有代码惯例。** 参考 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/coding.md`
+4. **不确定 API 时查文档。** 参考 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/docs.md`
+5. **遵守截图约束。** 参考 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/screenshot.md` 的"实现约束"节——确保画面可被 test-agent 截图验证
+
+### Step V4：验证
+
+**visual 任务的测试方式与 logic 不同——test-agent 会截图 + visual-compare 验证。** 因此 self-verify 时跑测试确保不破坏已有行为即可，不必自己做视觉验证。
+
+严格遵循上方 **GREEN 模式 — 三层验证结构**（Phase 1→2→3）。
+
+### Step V5：报告
+
+```
+## GREEN 报告（visual / ui 实现）
+
+### 修改的文件
+- path/to/file：（改了什么）
+
+### spec/HTML 实现摘要
+| 元素 | 实现方式 | 决策说明 |
+|----------|---------|---------|
+| health_bar | ProgressBar + modulate | 绿色→红色渐变通过 modulate 实现 |
+
+### 测试验证
+- 目标 testsuite：N/N 通过 ✅
+- 视觉验证由 test-agent 的 visual-compare 完成
 ```
 
 ---
@@ -618,7 +695,7 @@ EOF
 - `## 要重构的文件` — 已修改文件列表
 - `## 重构目标` — 消除重复、改善命名、提取公共逻辑
 - `## 边界违规` — 必须修复的违规清单（如有）
-- `## 需要读取的文件` — plan.md（设计摘要）
+- `## 需要读取的文件` — plan.md + .work/ 下设计文档
 
 ### 你不会收到的信息
 
@@ -631,7 +708,15 @@ EOF
 
 ### Step 1：阅读设计文档和现有代码
 
-先阅读设计文档（plan.md、design.md）理解架构和设计意图。然后阅读要重构的文件，理解当前结构、命名惯例以及文件之间的关系。
+**在动手重构之前**，阅读以下设计文档：
+
+```
+{task_dir}/plan.md                        — 行为列表、领域模型、设计摘要
+{task_dir}/.work/architecture.md          — 文件/模块结构、数据流
+{task_dir}/.work/design.md                — 引擎层实现方案
+```
+
+理解架构和设计意图后，阅读要重构的文件，理解当前结构、命名惯例以及文件之间的关系。
 
 ### Step 2：识别重构机会
 
@@ -700,3 +785,4 @@ EOF
 12. **先记日志再改代码。** tdd-iterations.md 追加完成后才能修改源代码。
 13. **每个任务最多 5 轮，每个 testcase 最多 3 轮子循环。** 超过则标记阻塞/报告阻塞。
 14. **UI 翻译：HTML 文件是真相来源。** 不要发明颜色、字体或间距。翻译你所看到的。
+15. **visual / ui 任务验证方式：截图 + visual-compare。** 实现时确保目标画面可被测试框架截图——不依赖仅在编辑器环境可用的 MCP 工具。

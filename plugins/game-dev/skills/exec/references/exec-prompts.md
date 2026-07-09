@@ -28,7 +28,7 @@ RED
 {task_dir}
 
 ## 任务
-为 [AI-N] {任务描述} 编写测试。
+[AI-N] {任务描述}
 
 ## 要验证的行为
 {从 plan.md 测试策略表提取的覆盖内容}
@@ -38,15 +38,35 @@ RED
 - {task_dir}/.work/design.md  — widget 树、变量定义、交互流程（仅 feat/refactor 模式）
 - {task_dir}/impact.md  — 修改范围约束（仅 refactor 模式）
 - {task_dir}/.work/debug-analysis.md  — 根因分析（仅 fix 模式）
+{若任务类型为 visual，在此插入 visual 任务标记块}
+{若任务类型为 ui，在此插入 UI 任务标记块}
+  `
 })
 ```
 
+### visual 任务标记块
+
+仅当 plan.md 中任务类型为 `visual` 时插入：
+
+```
+## visual 任务
+spec: {task_dir}/{spec_path}
+```
+
+### UI 任务标记块
+
+仅当 plan.md 中任务类型为 `ui` 时插入：
+
+```
+## UI 任务
+html: {task_dir}/{html_path}
+```
+
 **exec 检查 RED 结果：**
-- 测试文件已创建
-- RED report 中所有 testcase 都失败了且原因正确
-- 没有 mock、假代码
-合格: 全部条件达成
-不合格: 任一条件未达到
+- logic 任务：测试文件已创建、所有 testcase 失败且原因正确、无 mock/假代码
+- visual/ui 任务：截图已保存到 `.work/screenshots/`、visual-compare 结果 PASS/FAIL 明确
+- 合格: 全部条件达成
+- 不合格: 任一条件未达到
 ---
 
 ## GREEN — coding-agent
@@ -81,10 +101,22 @@ GREEN
 - {task_dir}/impact.md  — 修改范围约束（仅 refactor 模式）
 - {task_dir}/.work/debug-analysis.md  — 根因分析、预期行为（仅 fix 模式）
 - game/ 下相关的源文件 — 了解已有代码模式
-{若 plan.md 中任务标记为 type: ui，在此插入 UI 任务标记块}
+{若 plan.md 中任务类型为 visual，在此插入 visual 任务标记块}
+{若 plan.md 中任务类型为 ui，在此插入 UI 任务标记块}
   `
 })
 ```
+
+### visual 任务标记块
+
+仅当 plan.md 中任务类型为 `visual` 时，在 GREEN prompt 的 "需要读取的文件" 段后插入：
+
+```
+## visual 任务
+spec: {task_dir}/{spec_path}
+```
+
+coding-agent 检测到 `## visual 任务` + `spec:` 后自动进入 visual 实现模式。
 
 ### UI 任务标记块
 
@@ -122,6 +154,7 @@ GREEN
 
 ## 任务
 独立验证 — 跑全量测试确认当前代码状态。
+{若任务类型为 visual 或 ui，在此插入 visual 验证标记}
 
 ## 测试文件
 {test-agent RED 阶段创建的测试文件路径}
@@ -129,9 +162,20 @@ GREEN
 })
 ```
 
+### visual 验证标记
+
+仅当任务类型为 `visual` 或 `ui` 时插入：
+
+```
+## visual 任务
+spec: {task_dir}/{spec_path}
+
+全量测试通过后，对截图 testcase 捕获的截图调用 game-dev:visual-compare skill 做视觉验证。
+```
+
 **exec 检查 VERIFY 结果：**
-合格: 全量测试全部通过
-不合格: 有失败时，报告是否包含具体 testcase 名称和错误行（禁止只有 Summary 数字）
+- 合格: 全量测试全部通过，visual/ui 任务额外通过 visual-compare
+- 不合格: 有失败时，报告是否包含具体 testcase 名称和错误行（禁止只有 Summary 数字）
 
 ---
 

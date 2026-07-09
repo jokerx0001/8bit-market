@@ -84,7 +84,7 @@ dev_dir 从 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 读取。
 
 ### 3. 解析任务列表
 
-按 `${CLAUDE_PLUGIN_ROOT}/references/plan-format.md` 的规则提取 `[AI-N]` 任务，识别类型（`logic` / `ui`），按依赖拓扑排序。logic 优先于 ui。`[HUMAN]` 任务收集但不执行。
+按 `${CLAUDE_PLUGIN_ROOT}/references/plan-format.md` 的规则提取 `[AI-N]` 任务，识别类型（`logic` / `visual` / `ui`），按依赖拓扑排序。logic → visual → ui。`[HUMAN]` 任务收集但不执行。
 
 ### 4. 确认测试环境
 
@@ -110,6 +110,7 @@ exec 只传任务上下文。agent 自己读自己的定义文件和参考文件
 | 任务描述 `[AI-N]` + 类型 | `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` |
 | 行为/失败描述、testsuite、testcase 名 | `${CLAUDE_PLUGIN_ROOT}/references/{tech}/style-guide.md`（如有） |
 | 测试文件路径 | `${CLAUDE_PLUGIN_ROOT}/references/{tech}/project-organization.md`（如有） |
+| visual 任务的 spec JSON 路径 | visual-spec 格式定义（agent 自己读） |
 | UI 任务的 html 路径 | 自身 agent 定义文件（`agents/*.md`） |
 | 已修改文件列表（REFACTOR） | `{task_dir}/plan.md`、`.work/design.md` 等任务文件 |
 | 边界违规清单（REFACTOR） | `game/` 下源文件 |

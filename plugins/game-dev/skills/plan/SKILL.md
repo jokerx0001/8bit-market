@@ -33,15 +33,19 @@ mkdir -p {task_dir}/.work
 
 **fix** — 读取 `{task_dir}/.work/debug-analysis.md`，提取根因、预期行为。计划必须围绕根因修复设计，不得偏离。
 
-### 3. 加载格式契约 + 技术栈上下文
-
+### 3. 加载必须文件
+**格式契约**
 读取 `${CLAUDE_PLUGIN_ROOT}/references/plan-format.md`。所有输出必须遵守此格式规范，exec skill 依赖此格式解析。
+读取 `${CLAUDE_PLUGIN_ROOT}/references/visual-spec-format.md`。该文件定义了 visual-spec JSON 的完整结构——plan 在步骤 8 产出 visual-spec 时遵循此格式。
 
-**读取技术栈上下文（一份文件，所有信息在此）：**
+**技术栈上下文**
+- 读取`${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md`
+- 读取`${CLAUDE_PLUGIN_ROOT}/references/{tech}/docs.md`
 
-```
-${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md
-```
+**视觉设计稿**
+- 读取`{task_dir}/.work/style-decision`。这是视觉的精确风格决策。文件不存在必须明确输出使用的查找命令和结果,确实是空才能证明不存在
+- 读取`{task_dir}/.work/layouts`目录下的html格式文件。这些是视觉相关的html设计稿。文件不存在必须明确输出使用的查找命令和结果,文件夹不存在或者文件夹下是空才能证明不存在。
+
 
 ### 4. 收集需求并确认行为
 
@@ -91,6 +95,9 @@ ${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md
 - 领域设计让你先想清楚"做什么"，再决定"怎么写"——顺序不能反
 - 引擎 API 不会提醒你漏了边界情况，但领域模型会——状态机少了一个 transition、资源管理少了回滚策略，在领域层就能发现
 - 领域模型是评判后续架构设计质量的标尺——没有它，架构设计没有参照基准
+
+**必须阅读文件**
+{task_dir}/.work/requirements.md
 
 **对每个功能行为，分析三层：**
 
@@ -143,7 +150,7 @@ ${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md
 **要求：**
 - 每个功能行为都要做领域分析，不能跳过
 - 领域描述中不出现引擎概念（不写 "Screen"、"Label"、"Node"、"Signal"、"@export"）
-- 边界情况清单是重点——这是领域模型的核心价值
+- 边界情况清单
 - 如果某个功能的领域模式很明显（如"显示一个按钮"→ 无复杂领域逻辑），简写即可，不需要强行拔高
 
 ### 6. 任务拆分与排序
@@ -186,6 +193,15 @@ ${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md
 
 ✅ 好: "实现按键失败反馈：玩家按错键 → 红色粒子 + MISS 文字 + 界面关闭"
      → 可验证：按错键后看到红色粒子、MISS 文字、界面关闭
+
+✅ 好: "实现敌人血条显示：血条跟随敌人位置、长度随血量比例变化、颜色按比例渐变(绿→黄→红)、死亡后隐藏"
+     → visual 任务，可验证：受击后血条缩短变色，死亡后消失
+
+✅ 好: "实现角色卡片默认布局：头像、名称、状态标签的水平排列和间距"
+     → visual 任务，可验证：打开界面看到排列整齐的卡片
+
+❌ 坏: "实现敌人血条显示 + 受击扣血逻辑"
+     → 问题：visual 和 logic 混在一起。应拆为 logic（血量数据层）和 visual（血条显示）
 ```
 
 **描述写作规则：**
@@ -197,18 +213,43 @@ ${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md
 | 不含文件路径 | 文件名不出现在描述中。同一个文件被多个任务修改是正常的 |
 | 不含代码符号 | class 名、方法名、函数名、动画名不出现在描述中——那些是实现方案，不是行为 |
 | 不含"测试" | 没有"编写/更新测试"任务——测试在各模块的 TDD 循环中自然产出 |
+| 类型标注 | 每个任务必须标注类型——logic / visual / ui。visual 标注 spec:，ui 标注 html: |
 
 任务列表将在步骤 9 写入 plan.md，届时按以下规则分类和排序：
 
+**分类判定流程（对行为清单逐条判定）：**
+
+```
+1. 该行为有玩家不可见的计算/状态/数据部分？
+   → 拆为 logic 任务
+
+2. 该行为有玩家可见的新内容或更改？
+   → 拆为 visual 任务（必然——任何视觉产出都有 visual 任务）
+   → 检查 {task_dir}/.work/layouts/ 是否有对应 HTML 设计稿
+      → 有 → 追加 ui 任务（在 visual 基础上做像素级精调）,ui回归任务以设计稿为维度,一个设计稿一个
+```
+
+判定辅助——行为描述中的信号词：
+
+| 指向 logic | 指向 visual |
+|------------|-------------|
+| 计算、判定、存储、传递、转换、校验 | 显示、看到、出现、消失、动画播放 |
+| 状态切换、条件判断、数据读写 | 粒子、颜色变化、位置移动、大小变化 |
+| 触发、通知、广播 | 跟随、排列、遮挡、层级 |
+
 **分类定义：**
 
-| 类型 | 含义 |
-|------|------|
-| `logic` | 行为/交互/数据逻辑——完成标准来自行为清单，不依赖 HTML 设计稿 |
-| `ui` | 视觉还原——完成标准来自 HTML 设计稿，必须标注 `html:` |
+| 类型 | 含义 | 关系 |
+|------|------|------|
+| `logic` | 行为/交互/数据逻辑——完成标准来自行为清单 | 地基 |
+| `visual` | 视觉行为实现——完成标准来自 visual-spec JSON，必须标注 `spec:` | 视觉 | 
+| `ui` | 视觉还原——完成标准来自 HTML 设计稿，必须标注 `html:` | 精装 |
 
-**排序：** 所有 `logic` 任务排在 `ui` 任务前面。`ui` 任务依赖同界面的最后一个 `logic` 任务。
+`logic` → `visual` → `ui`。同一界面元素可同时有 visual 和 ui 两个任务。`visual` 是必然层——只要有玩家可见的新内容或更改，就有 visual 任务。`ui` 是条件层——只有存在 HTML 设计稿时才追加。
 
+**排序：** `logic` → `visual` → `ui`。`visual` 任务依赖同界面的最后一个 `logic` 任务（如 logic 存在）。`ui` 任务依赖由 plan 根据实际情况决定——visual 可能已存在，ui 直接在已有视觉上做还原。
+
+**visual 任务标记：** 编写 plan.md 时，`visual` 任务必须标注对应的 spec 文件：`(type: visual, spec: .work/visual-specs/{name}.json)`
 **UI 任务标记：** 编写 plan.md 时，`ui` 任务必须标注对应的 HTML 文件：`(type: ui, html: .work/layouts/{name}.html)`
 
 ### 7. 架构设计
@@ -291,15 +332,31 @@ ${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md
 
 同时将资源需求摘要写入 plan.md 的 `## 资源需求` 节，供 orchestrator 判断是否触发 design-resources。
 
+**visual-spec 产出：** 对每个 visual 任务，生成对应的 visual-spec JSON 文件。格式遵循 `${CLAUDE_PLUGIN_ROOT}/references/visual-spec-format.md`。
+
+```bash
+mkdir -p {task_dir}/.work/visual-specs
+```
+
+对每个 visual 任务涉及的界面/场景，生成一个 spec JSON：
+
+```
+{task_dir}/.work/visual-specs/{name}.json
+```
+
+spec 描述该 visual 任务中**玩家应该看到什么**——元素的位置、大小、颜色、布局关系。用粗粒度自然语言，不做像素精度。像素精度是 ui 任务的职责。
+
+每个 visual 任务对应一个 spec JSON。如果一个界面有多个 visual 任务，分别生成各自的 spec（每个任务关注不同的视觉行为）。
+
 保存到 `{task_dir}/.work/design.md`。
 
 ### 8b. 加载 UI 视觉标准（如有）
 
 **检查 `{task_dir}/.work/layouts/` 是否存在 HTML 文件。**
 
-如果有：读取 `style-decision.md` + HTML 文件，纳入详细设计的视觉参考。
+如果有：读取 `style-decision.md` + HTML 文件，纳入详细设计的视觉参考。对应 visual 任务之后追加 ui 任务做像素级精调。
 
-如果没有但涉及新画面视觉布局 → 异常。纯逻辑功能 → 跳过。
+如果没有 HTML 但涉及新画面视觉布局 → 正常——visual 任务通过 visual-spec JSON 定义视觉标准，无需 HTML 设计稿。纯逻辑功能且无视觉产出 → 跳过此步。
 
 ### 9. 编写 plan.md
 
@@ -312,6 +369,9 @@ ${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md
 plan 在此基础之上额外检查：
 
 ```bash
+# 检查所有 visual 任务都有 spec: 标注（plan 专属，plan-fix 不需要）
+grep -n '(type: visual' {task_dir}/plan.md | grep -v 'spec:'
+
 # 检查所有 UI 任务都有 html: 标注（plan 专属，plan-fix 不需要）
 grep -n '(type: ui' {task_dir}/plan.md | grep -v 'html:'
 ```
