@@ -167,9 +167,14 @@ mkdir -p {task_dir}/.work/coding
 
 **检查结果**（逐项打勾，缺一不可）：
 
+**logic 任务：**
 - [ ] 测试文件已创建（路径：___）
 - [ ] RED report 中所有 testcase 都失败了且原因正确（非语法错误、非标识符错误——语法错误和错误的标识符不算 RED）
 - [ ] 没有 mock、假代码
+
+**visual / ui 任务：**
+- [ ] 截图已保存到 `.work/screenshots/`（路径：___）
+- [ ] visual-compare 结果 FAIL 明确（各元素 `expected` vs `observed` 不达标项清晰）
 
 - 全部打勾 → 进入 GREEN（6c）
 - 任一未打勾 → 指出具体问题，重新 spawn（不限重试，但同问题 >3 轮报告用户）
@@ -182,7 +187,13 @@ mkdir -p {task_dir}/.work/coding
 
 **检查结果**（逐项打勾，缺一不可）：
 
+**logic 任务：**
 - [ ] coding-agent 自验证报告显示目标 testsuite 全部通过
+
+**visual 任务：**
+- [ ] coding-agent 自验证报告显示 visual-compare PASS（所有元素）
+
+**所有任务：**
 - [ ] 未修改 test/ 下文件（检查 coding agent 的已修改文件列表）
 - [ ] 无 pass / TODO / NotImplemented 残留（grep 已修改的源文件）
 
@@ -200,6 +211,7 @@ mkdir -p {task_dir}/.work/coding
 **检查结果**：
 
 - [ ] 全量测试全部通过（`test_cmd_full` 退出码 0）
+- [ ] visual / ui 任务：额外通过 visual-compare PASS
 - [ ] 如有失败，报告包含具体 testcase 名称和错误行（禁止只有 Summary 数字）
 
 - 全部通过 → 进入边界检查（6e）
