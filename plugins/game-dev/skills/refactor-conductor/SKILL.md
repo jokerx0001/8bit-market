@@ -112,6 +112,16 @@ Skill({skill: "game-dev:exec", args: "--mode refactor --task-dir {dev_dir}/refac
 - coding agent 必须保证所有已有测试继续通过
 - 已有测试被破坏 → 立即反馈修复，最高优先级
 
+### 第六步：架构文档更新
+
+重构涉及架构变更（重命名、重组、责任迁移），完成后合并到项目架构文档。
+
+```
+Skill({skill: "game-dev:architecture", args: "--update --from {task_dir} --tech {tech}"})
+```
+
+`--auto` 模式透传。
+
 ## Red Flags
 
 - "dev_dir 大概就是 .dev 吧，不用读 config"

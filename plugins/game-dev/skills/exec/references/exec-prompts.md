@@ -8,6 +8,7 @@ exec 在 TDD 循环每个 phase 使用以下模板组装 agent spawn prompt。`{
 |------|------|
 | `{project}` | 项目名称（传给 agent 用于填充 config.md 中的占位符） |
 | `{task_dir}` | 任务目录路径 |
+| `{dev_dir}` | 产物目录路径（从 config.md 的 `## 产物目录` 节获取） |
 | `{tech}` | 技术栈标识（renpy / godot） |
 
 ---
@@ -101,6 +102,7 @@ GREEN
 - {task_dir}/impact.md  — 修改范围约束（仅 refactor 模式）
 - {task_dir}/.work/debug-analysis.md  — 根因分析、预期行为（仅 fix 模式）
 - game/ 下相关的源文件 — 了解已有代码模式
+- {dev_dir}/architecture.md — 项目架构文档（如存在）
 {若 plan.md 中任务类型为 visual，在此插入 visual 任务标记块}
 {若 plan.md 中任务类型为 ui，在此插入 UI 任务标记块}
   `

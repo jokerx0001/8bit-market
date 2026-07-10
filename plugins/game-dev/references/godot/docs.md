@@ -5,7 +5,8 @@
 ## 查询优先级
 
 1. **代码风格 / 项目组织** — 直接 Read 本地全量建档文件，**禁止 WebFetch 在线文档**
-2. **API 语法 / 类参考 / 其他** — Context7 → WebFetch → curl
+2. **API 语法 / 类参考** — 优先 `Skill(skill="game-dev:godot-api")`（本地 850+ 类索引 + 128 个常用类完整文档）→ 不足时回退 Context7 → WebFetch → curl
+3. **其他** — Context7 → WebFetch → curl
 
 ## 在线文档地址
 

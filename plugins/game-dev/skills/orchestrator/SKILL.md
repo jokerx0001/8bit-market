@@ -154,6 +154,18 @@ Skill({skill: "game-dev:art-resources-conductor", args: "--task-dir {task_dir} -
 2. 支持断点续跑（读取 progress.json）
 3. 全部 AI 任务完成后输出完成报告
 
+### 阶段 5b：架构文档更新
+
+feat 完成后，将新的架构知识合并到项目级架构文档。
+
+```
+Skill({skill: "game-dev:architecture", args: "--update --from {task_dir} --tech {tech}"})
+```
+
+**执行条件：** 仅 feat 和 refactor 模式执行（fix 模式跳过）。`--auto` 模式透传给 architecture --update。
+
+**失败处理：** architecture.md 不存在（首次更新）→ 降级为 --init 模式自动建立。其他错误不阻塞工作流，输出警告继续。
+
 ### 阶段 6：Completed — 完成
 
 ```

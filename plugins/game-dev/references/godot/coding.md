@@ -3,27 +3,21 @@
 coding agent 在编写 Godot 代码时**必须严格遵守**本文件及全量建档规范中的所有约定。
 
 > **全量建档规范（强制，不准凭记忆，必须 Read 核对）**:
-> - [Style Guide](style-guide.md) — 命名、格式化、代码顺序、静态类型
-> - [Project Organization](project-organization.md) — 目录结构、文件命名、导入流程
+> - `${CLAUDE_PLUGIN_ROOT}/references/godot/style-guide.md` — 命名、格式化、代码顺序、静态类型
+> - `${CLAUDE_PLUGIN_ROOT}/references/godot/project-organization.md` — 目录结构、文件命名、导入流程
 >
 > 本文件是团队特定约定，与上述规范互补。任何冲突以全量建档规范为准。
 > **三个文件中的所有规则均为强制，不存在建议/可选。**
 
+## Godot API 查档
+
+按 `${CLAUDE_PLUGIN_ROOT}/references/godot/docs.md` 的查询约定执行。
+
+**引擎坑位**在写代码前读 `${CLAUDE_PLUGIN_ROOT}/references/godot/quirks.md`。
+
 ---
 
 ## GDScript 规范
-
-### 命名
-
-| 类型 | 规范 | 示例 |
-|------|------|------|
-| 文件名 | snake_case | `player_controller.gd` |
-| 类名 | PascalCase | `class_name PlayerController` |
-| 函数名 | snake_case | `func take_damage(amount):` |
-| 变量名 | snake_case | `var max_health: int` |
-| 常量 | UPPER_SNAKE_CASE | `const MAX_SPEED := 500` |
-| 信号 | snake_case (过去式) | `signal health_changed(new_health)` |
-| 私有成员 | `_` 前缀 | `var _internal_state` |
 
 ### 布尔变量
 
