@@ -49,6 +49,10 @@ Core Subject → Environment / Scene → Composition → Camera / Lens → Light
 | 4:3 | balanced composition |
 | 21:9 | ultra wide panoramic, cinematic letterbox |
 
+### 步骤 3b：按资产类型追加技术约束
+
+读 `${CLAUDE_PLUGIN_ROOT}/references/godot/asset-gen.md` 的快捷参考表。根据输入中的 `type`（背景/纹理/精灵/物品套件/3D参考），在已组装的 prompt **末尾**追加该类型特有的技术约束词。这些是生成可行性要求，不是美学要求。
+
 ### 步骤 4：追加 Negative Prompt
 
 从规则中提取默认负向词 + 按类型追加 → 单独一行输出。
