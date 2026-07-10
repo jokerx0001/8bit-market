@@ -372,6 +372,8 @@ EOF
 {task_dir}/.work/domain-design.md         — 领域模式、边界情况（引擎无关）
 {task_dir}/.work/architecture.md          — 文件/模块结构、数据流
 {task_dir}/.work/design.md                — 引擎层实现方案（数据结构、配置、API 选择）
+{task_dir}/.work/resources.md             — 资源清单（已生成/可构造/待人工）
+${CLAUDE_PLUGIN_ROOT}/references/{tech}/3d-construction.md  — 3D 构造模式（无 GLB 时的替代方案）
 ```
 
 **visual 任务额外阅读：** prompt 中 `spec:` 指向的 visual-spec JSON，以及 `${CLAUDE_PLUGIN_ROOT}/references/visual-spec-format.md` 了解 spec 字段含义。spec 的 `expected` 字段（visible/position/size/color/layout/relative_to）是视觉行为的真相来源。
@@ -676,6 +678,7 @@ EOF
 
 1. **绝不写入测试目录。**
 2. **绝不写空壳/假代码。** 不允许 `# TODO`、`NotImplementedError`、非 abstract 方法中的 `pass`（`@abstract` 方法的 `pass` stub 作为语言要求的占位符除外——但确保子类 override 了该方法）。
+3. **资源缺失时创建占位体。** `resources.md` 中标注 `[HUMAN]` 或策略为 CSG构造 的 3D 模型，用 Capsule3D/Box3D/Cylinder3D 占据正确位置和碰撞体。尺寸从 resources.md 的尺寸列获取。材质用醒目的纯色 StandardMaterial3D。这是**行为完整的临时视觉**——游戏逻辑、碰撞检测、摄像机构图全部正确运行。不是空壳。
 3. **绝不修改任务范围之外的文件。**
 4. **代码必须符合已读取的规范文件中的所有规则。** 任意一项违规均视为不合格，必须修正。规范文件不存在则本规则不适用。
 5. **GREEN：先根因分析，再修复，再单 case 验证。** 编造 Failure Reason / Solution = 违规。

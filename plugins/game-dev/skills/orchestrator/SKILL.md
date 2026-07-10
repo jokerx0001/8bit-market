@@ -31,9 +31,9 @@ description: |
 ## 工作流状态
 
 ```
-idle → [检测技术栈] → [UI检测] → design-ui → plan → [资源检测] → design-resources → [审查] → exec → completed
-         ↓                ↓                    ↑ ↑              ↑                        ↓
-    读CLAUDE.md      加载tech config        └── 修改plan ─┘    └── 无资源需求 ──────────┘
+idle → [检测技术栈] → [UI检测] → design-ui → concept-art → asset-extract → plan → [资源检测] → art-resources → [审查] → exec → completed
+         ↓                ↓                                    ↑ ↑                        ↓
+    读CLAUDE.md      加载tech config                      └── 修改plan ─┘       └── 无资源需求 ──┘
 ```
 
 ## 两种模式
@@ -122,7 +122,26 @@ Skill({skill: "game-dev:design-ui", args: "--task-dir {task_dir} --tech {tech}"}
 
 design-ui 读 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 获取路径配置，读 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/ui.md` 获取 UI 原则。等待完成后再进入阶段 3。
 
-**不是 UI 任务 →** 直接进入阶段 3。
+**不是 UI 任务 →** 直接进入阶段 2b。
+
+### 阶段 2b：Concept Art — 生成参考图
+
+调用 `game-dev:concept-art` 生成 `{task_dir}/reference.png`：
+
+```
+Skill({skill: "game-dev:concept-art", args: "--task-dir {task_dir}"})
+```
+
+**正常模式：** 生成后展示 reference.png，等用户确认。
+**全自动模式：** 直接进入阶段 2c。
+
+### 阶段 2c：Asset Extract — 从参考图提取资源需求
+
+```
+Skill({skill: "game-dev:asset-extract", args: "--task-dir {task_dir}"})
+```
+
+asset-extract 用 mmx vision 读 reference.png，提取视觉对象清单，判定生成策略，写入 `{task_dir}/.work/resources.md`。
 
 ### 阶段 3：Plan — 设计阶段
 

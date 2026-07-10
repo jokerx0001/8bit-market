@@ -41,7 +41,18 @@ tools: ["Read", "Write", "Bash", "Grep"]
 | 简单几何 UI（圆角矩形、渐变、纯色块、边框、阴影） | **跳过步骤 3-4，直接用 Python Pillow 生成** |
 | 复杂视觉内容（角色、场景、插画、纹理） | 走步骤 3-5 |
 | 3D 材质/着色器（.tres/.gdshader） | 直接写入文件 |
-| 3D 模型（.glb/.fbx） | 返回 `[HUMAN]` |
+| 3D 模型（.glb/.fbx） | **先判定构造策略**（见下），不可构造时返回 `[HUMAN]` |
+
+**3D 模型构造策略判定：**
+
+读 `${CLAUDE_PLUGIN_ROOT}/references/godot/3d-construction.md`。判断该模型能否用 Godot 内置能力构造：
+
+| 条件 | 策略 | 标注 |
+|------|------|------|
+| Box/Sphere/Cylinder/Capsule/CSG 组合可完成 | 不生成 GLB 文件 | `策略: CSG构造` + 构造要点（几何体类型、大致参数范围） |
+| 需要自定义顶点/有机形状/骨骼动画 | 无法自动生成 | `[HUMAN]` |
+
+**CSG 构造时不生成任何文件。** 将构造策略和参数建议写入 resources.md。coding agent 在 GREEN 时读 `3d-construction.md` 自行构造。
 
 ### 步骤 3：构建 Visual Spec
 
