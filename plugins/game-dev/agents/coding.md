@@ -42,8 +42,8 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
 启动时检查并读取以下文件（文件不存在则跳过，不影响启动）:
 - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/style-guide.md` — 代码风格规范
 - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/project-organization.md` — 目录结构、文件组织
-- `${CLAUDE_PLUGIN_ROOT}/references/{tech}/coding.md` — 团队特定约定
 - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/coding.md` — 编码最佳实践
+- `${CLAUDE_PLUGIN_ROOT}/references/{tech}/quirks.md` — 编码坑位,一定要注意,都是经验积累
 - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/docs.md` — 文档 URL 和查询约定
 - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/screenshot.md` — 截图方法（visual/ui 任务的实现约束）
 

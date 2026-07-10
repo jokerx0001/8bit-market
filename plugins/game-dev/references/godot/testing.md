@@ -166,6 +166,57 @@ func test_addition(params = use_parameters([
 
 ---
 
+## Headless 模式下的输入模拟
+
+在 `--headless` 模式下无法使用键盘/鼠标，需要代码模拟玩家输入。
+
+### 定时触发
+
+```gdscript
+var timer := Timer.new()
+timer.wait_time = 1.0
+timer.one_shot = true
+timer.timeout.connect(func(): Input.action_press("jump"))
+root.add_child(timer)
+timer.start()
+```
+
+### 持续移动：闭环控制（不要开环输入）
+
+开环输入（定时 press → 定时 release）在长时间运行时，每帧误差会累积，导致角色漂移、卡边、轨迹螺旋偏离。
+
+使用闭环控制——每帧根据实际位置计算目标方向：
+
+```gdscript
+var _targets: Array[Vector3] = []
+var _current_target_idx: int = 0
+
+func _process(delta: float) -> bool:
+    if _current_target_idx >= _targets.size():
+        # 所有目标到达
+        return false
+    
+    var target := _targets[_current_target_idx]
+    var to_target := target - player.global_position
+    var dist := to_target.length()
+    
+    if dist < 0.5:
+        # 到达当前目标 → 下一个
+        _current_target_idx += 1
+    else:
+        # 根据实际位置计算输入方向（不是固定时间）
+        var direction := to_target.normalized()
+        Input.action_press("move_forward")
+        # 调整朝向...
+    
+    return false
+```
+
+开环和闭环的区别：开环说"按住 W 2 秒再松手"，闭环说"朝 X 目标前进直到到达"。后者不受帧率、物理 tick 偏差和误差累积的影响。
+
+---
+
+
 ## 更多细节
 
 完整文档: https://gut.readthedocs.io/en/latest/
