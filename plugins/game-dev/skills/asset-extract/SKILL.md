@@ -23,7 +23,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/references/godot/asset-gen.md` for prompt templates 
 ```bash
 mmx vision describe --image {task_dir}/reference.png \
   --prompt "Analyze this game reference image in detail. For every distinct visual object visible in the frame, identify:
-1. What type of asset it is (3D model, texture, sprite, background, UI element)
+1. What type of asset it is (3D model, texture, sprite, background)
 2. Its approximate size relative to the screen/playfield
 3. Its position and spatial role in the scene
 4. Whether it could be constructed with simple geometry (boxes, cylinders, planes) or requires a custom model
@@ -32,7 +32,6 @@ Also describe:
 - The camera angle, distance, and perspective
 - The environment layers (background, midground, foreground)
 - The art style and color palette
-- Any HUD/UI elements and their screen positions
 
 Be specific about proportions and spatial relationships. Every object you mention should become a resource requirement."
 ```
