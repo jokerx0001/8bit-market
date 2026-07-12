@@ -75,6 +75,18 @@ ls -d {dev_dir}/*/ 2>/dev/null | sort -V | tail -1
 
 dev_dir 从 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 读取。
 
+**硬门 — 锁定项目根，绝对化 task_dir：** 后续所有 Bash 命令不依赖 CWD。获取 task_dir 后立即执行：
+
+```bash
+PROJECT_ROOT=$(pwd)
+case "{task_dir}" in
+  /*) task_dir="{task_dir}" ;;
+  *) task_dir="$PROJECT_ROOT/{task_dir}" ;;
+esac
+```
+
+之后所有 `{task_dir}` 引用均为绝对路径，`mkdir`、`cat >>` 等操作不受 CWD 偏移影响。传给 agent 的 `## task_dir` 也使用绝对化后的值。
+
 ### 2. 加载设计文档和进度
 
 **只读 `{task_dir}/plan.md`。** 不读 `.work/` 下的任何文件——plan.md 是 exec 读取的唯一设计文档。

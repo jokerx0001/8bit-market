@@ -294,10 +294,22 @@ grep -nP '\[AI-\d+\].*\.(rpy|gd|tscn|tres)\b' {task_dir}/plan.md
 grep -nP '\[AI-\d+\].*\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b' {task_dir}/plan.md
 ```
 
+**扫描任务描述中的引擎类型名**（Godot: Node3D/MeshInstance3D 等；Ren'Py: Screen/Label 等）：
+
+```bash
+grep -nPi '\[AI-\d+\].*\b(Node3D|Node2D|MeshInstance3D|CharacterBody3D|CharacterBody2D|CollisionShape3D|CollisionShape2D|Area3D|Area2D|RigidBody3D|RigidBody2D|StaticBody3D|StaticBody2D|AnimationPlayer|Sprite3D|Sprite2D|Camera3D|Camera2D|Timer|NavigationRegion3D|NavigationRegion2D|CSG|Screen|Label|Imagebutton|Textbutton|Frame|Vbox|Hbox|Grid|Fixed|Viewport)\b' {task_dir}/plan.md
+```
+
 **扫描任务描述中的 snake_case 标识符**（方法名/变量名信号）：
 
 ```bash
 grep -nP '\[AI-\d+\].*\b[a-z]+_[a-z]+(?:_[a-z]+)*\b' {task_dir}/plan.md
+```
+
+**扫描测试类任务**（"编写测试"/"回归测试" 等——测试应在各模块 TDD 循环中自然产出，不应作为独立 AI 任务）：
+
+```bash
+grep -nPi '\[AI-\d+\].*\b(编写.*测试|回归测试|单元测试|集成测试|测试覆盖|测试.*schema|测试.*完整性)\b' {task_dir}/plan.md
 ```
 
 ### plan 专属（feat/refactor，plan-fix 不需要）
