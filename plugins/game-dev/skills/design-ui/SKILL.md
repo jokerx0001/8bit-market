@@ -22,7 +22,15 @@ description: |
 mkdir -p {task_dir}/.work/layouts
 ```
 
-### 2. 探索项目现有 UI 风格
+### 2. 读取需求上下文
+
+从以下文档获取本次 UI 设计的输入：
+
+- `{task_dir}/.work/grill-interview.md` — 用户原始描述（需求侧：功能描述、玩法设想、体验目标；技术侧：引擎选择、技术约束）
+- `{dev_dir}/requirements.md` — 项目级全量需求文档（如果存在），了解游戏全貌
+- `{task_dir}/.work/requirements.md` — 本次 feat 的行为清单和边界规则
+
+### 3. 探索项目现有 UI 风格
 
 > **前置条件：** conductor 已通过三问分析判断此任务涉及 UI。design-ui 不再重复检测，直接开始风格探索。
 
@@ -81,7 +89,7 @@ grep -rn "style " {source_dir}/ --include="*.rpy" | head -30
 {暗黑+金色点缀 / 明亮扁平 / 日系轻小说 / ...}
 ```
 
-### 3. 风格确认门
+### 4. 风格确认门
 
 将风格摘要呈现给用户，提出选择：
 
@@ -120,7 +128,7 @@ grep -rn "style " {source_dir}/ --include="*.rpy" | head -30
 {调整的额外诉求: "在现有基础上需要调整：{用户描述}"}
 ```
 
-### 4. 需求澄清 — brainstorming
+### 5. 需求澄清 — brainstorming
 
 调用 `superpowers:brainstorming` skill 澄清 UI 行为需求。
 
@@ -148,7 +156,7 @@ brainstorming 完成后保存输出：
 - 画面清单 + 每个画面的交互状态 → `{task_dir}/.work/requirements.md`（行为部分）
 - 如果是全新风格，风格方向 → 追加到 `{task_dir}/.work/style-decision.md`
 
-### 5. 产出 HTML 设计稿 — frontend-design
+### 6. 产出 HTML 设计稿 — frontend-design
 
 为每个涉及视觉设计的逻辑屏幕调用 `frontend-design` skill 生成 HTML。
 
@@ -178,7 +186,7 @@ brainstorming 完成后保存输出：
 
 每个画面输出到 `{task_dir}/.work/layouts/{screen_name}.html`。
 
-### 6. 设计稿确认门
+### 7. 设计稿确认门
 
 确认门是循环，直到用户满意才退出：
 
@@ -197,7 +205,7 @@ brainstorming 完成后保存输出：
    - **"OK"** → 用户确认，退出循环，进入步骤 7
    - **调整诉求** → 将诉求传回 frontend-design，重新生成对应 HTML，回到步骤 1
 
-### 7. 输出摘要
+### 8. 输出摘要
 
 ```
 ## Design UI 完成

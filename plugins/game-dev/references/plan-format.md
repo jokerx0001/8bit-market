@@ -8,22 +8,17 @@
 
 ```
 {dev_dir}/{kind}-{N}/
-├── plan.md          ← 自包含，exec 唯一读取，人类唯一审查
-├── progress.json    ← exec 任务追踪，断点续跑
-├── impact.md        ← 仅 refactor，修改范围约束（根目录，不在 .work/ 里）
-└── .work/           ← 中间产物，可追溯但不审查
+├── plan.md
+├── progress.json
+├── impact.md        ← 仅 refactor
+└── .work/
+    ├── grill-interview.md
     ├── requirements.md
     ├── domain-design.md
     ├── architecture.md
     ├── design.md
     └── debug-analysis.md  ← 仅 fix，根因分析
 ```
-
----
-
-## plan.md 必须自包含
-
-exec 不读 `.work/` 下的任何文件。plan.md 必须包含 exec 需要的**全部信息**。
 
 ---
 

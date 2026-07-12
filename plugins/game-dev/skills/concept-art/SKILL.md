@@ -8,15 +8,15 @@ description: |
 
 # Concept Art — 参考图生成
 
-根据用户需求生成游戏参考图。锚定美术方向，供 plan、exec、visual-qa 阶段使用。
+根据用户需求生成游戏参考图。锚定美术方向。
 
 ## 输入来源
 
-从 `{task_dir}/.work/requirements.md` 读取：
-- 功能描述（用户需求原文）
-- 涉及界面/场景
-- 技术栈（Godot / Ren'Py）
-- 维度（2D / 3D）
+从以下文档读取需求上下文：
+
+- `{task_dir}/.work/grill-interview.md` — 用户原始描述
+- `{dev_dir}/requirements.md` — 项目级全量需求文档（如果存在），了解游戏全貌
+- `{task_dir}/.work/requirements.md` — 本次 feat 的行为清单和边界规则
 
 ## 已有资源分析（可选 `--from-assets`）
 
