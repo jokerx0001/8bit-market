@@ -80,20 +80,17 @@ Check the task prompt for the `## 模式` field:
 **在写任何测试代码之前**，读取以下设计文档：
 
 ```
-{task_dir}/plan.md                        — 行为清单、领域模型、设计摘要
-{task_dir}/.work/requirements.md          — 确认过的玩家行为清单
-{task_dir}/.work/domain-design.md         — 领域模式、边界情况
-{task_dir}/.work/architecture.md          — 界面/场景名称、跳转关系、label 名
-{task_dir}/.work/design.md                — widget id、组件名、节点路径
+{task_dir}/.work/requirements.md          — 玩家行为清单（含边界规则）
+{task_dir}/.work/design.md                — screen 名、widget id、组件名、节点路径
 ```
 
 **从这些文档中提取两类信息：**
 
-**1. 行为目标（来自 plan / requirements / domain-design）：** 玩家应该看到什么、做什么。这是写 testcase 的蓝图——每条行为对应一个 testcase。
+**1. 行为目标（来自 requirements）：** 玩家应该看到什么、做什么。每条行为对应一个 testcase。
 
-**2. 标识符（来自 architecture / design）：** screen 名、widget id、label 名、节点路径。这是 testcase 导航和操作需要的
+**2. 标识符（来自 design）：** screen 名、widget id、label 名、节点路径。testcase 导航和操作所需。
 
-**铁律：提取标识符的租用是写行为断言逻辑,永远不允许检验代码实现细节。** 从 architecture.md 拿 screen 名和跳转目标。从 design.md 拿 widget id 和组件标识。但不用 class 名、方法签名、变量名是否存在或者使用用了这个字符来做断言——`assert eval (obj._internal_var == x)` 永远不出现。用读取文档方式阅读代码文件,然后用字符处理方式对比某几行是否字符级相等逻辑永远不出现。
+**铁律：只检验玩家可见的行为和公共标识符，永远不检验代码实现细节。** `assert eval (obj._internal_var == x)` 永远不出现。用读取文档方式阅读代码文件然后用字符处理方式对比某几行是否字符级相等逻辑永远不出现。
 
 ### Step 1: Gather identifiers
 
