@@ -9,6 +9,19 @@ description: This skill should be used when the user asks to "design domain mode
 
 **格式契约：** `references/domain-design-format.md` 定义了 domain-design.md 的完整格式规范。所有输出必须遵守。
 
+## 参数
+
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| `--from {task_dir}` | 是 | 任务目录路径（如 `.godot-dev/feat-3`） |
+| `--tech {tech}` | 建议 | 技术栈标识（renpy / godot）。未传入时从项目 CLAUDE.md 检测 |
+| `--auto` | 可选 | 跳过人工确认 |
+
+## 前置步骤：确定 dev_dir
+
+1. 如果传入了 `--tech`，直接使用。否则 grep 项目 CLAUDE.md 检测技术栈关键词。
+2. 读取 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md`，从 `## 产物目录` 节提取 `dev_dir`。
+
 ## 领域建模是什么
 
 对每个独立模块回答：**这个模块应该用什么领域模型来建设？**

@@ -31,7 +31,7 @@ description: |
 ## 工作流状态
 
 ```
-idle → [检测技术栈] → grill → requirements → [UI检测] → design-ui → concept-art → asset-extract → plan → [资源检测] → art-resources → [审查] → exec → completed
+idle → [检测技术栈] → grill → requirements → concept-art → design-ui → asset-extract → plan → [资源检测] → art-resources → [审查] → exec → completed
          ↓              ↓         ↓                ↓                                    ↑ ↑                        ↓
     读CLAUDE.md     阶段2     阶段3        加载tech config                      └── 修改plan ─┘       └── 无资源需求 ──┘
 ```
@@ -164,27 +164,7 @@ requirements skill 产出：
 
 ### 阶段 4：视觉处理
 
-#### 阶段 4a: UI 设计
-分析用户的任务描述，判断是否涉及 UI 视觉设计。
-
-**触发条件（满足任一即为涉及 UI 视觉设计）：**
-- 涉及创建新模块且明显包含新界面
-- 涉及现有模块的ui视觉重设计
-- 用户明确说明具备UI设计
-
-**判定原则：宁可误判多调 design-ui（它会自己判断并跳过不需要的部分），也不要漏判。**
-
-**涉及 UI 视觉设计 →** 调用 design-ui：
-
-```
-Skill({skill: "game-dev:design-ui", args: "--task-dir {task_dir} --tech {tech}"})
-```
-
-design-ui 读 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 获取路径配置，读 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/ui.md` 获取 UI 原则。
-
-**不是 UI 任务 ** 跳过本子阶段
-
-#### 阶段 4b：Concept Art — 生成参考图
+#### 阶段 4a：Concept Art — 生成参考图
 
 **触发条件（满足任一即为涉及生成参考图）：**
 - 涉及创建新模块且明显包含新场景
@@ -201,20 +181,41 @@ Skill({skill: "game-dev:concept-art", args: "--task-dir {task_dir}"})
 ```
 AskUserQuestion({
   questions: [{
-    question: "概念参考图已生成。是否满意，继续进入 asset-extract？",
+    question: "概念参考图已生成。是否满意，继续进入 UI 设计？",
     header: "Concept Art",
     options: [
-      {label: "继续", description: "参考图满意，进入 asset-extract 资源提取阶段"},
+      {label: "继续", description: "参考图满意，进入 UI 设计阶段"},
       {label: "重新生成", description: "对参考图不满意，描述需要调整的方向"}
     ]
   }]
 })
 ```
 
-- 用户选择"继续" → 进入阶段 4c
+- 用户选择"继续" → 进入阶段 4b
 - 用户选择"重新生成" → 用户描述调整诉求，重新调用 concept-art
 
-**全自动模式（mode=auto）：** 跳过 AskUserQuestion，直接进入阶段 4c。
+**全自动模式（mode=auto）：** 跳过 AskUserQuestion，直接进入阶段 4b。
+
+#### 阶段 4b：UI 设计
+
+分析用户的任务描述，判断是否涉及 UI 视觉设计。
+
+**触发条件（满足任一即为涉及 UI 视觉设计）：**
+- 涉及创建新模块且明显包含新界面
+- 涉及现有模块的ui视觉重设计
+- 用户明确说明具备UI设计
+
+**判定原则：宁可误判多调 design-ui（它会自己判断并跳过不需要的部分），也不要漏判。**
+
+**涉及 UI 视觉设计 →** 调用 design-ui：
+
+```
+Skill({skill: "game-dev:design-ui", args: "--task-dir {task_dir} --tech {tech}"})
+```
+
+design-ui 自读取 grill-interview.md、requirements.md 获取需求上下文，并按优先级寻找风格参考（历史 layout.html → reference.png → 用户描述/指定文件 → 自行决定）。
+
+**不是 UI 任务 ** 跳过本子阶段
 
 #### 阶段 4c：Asset Extract — 从参考图提取资源需求
 
@@ -240,14 +241,14 @@ AskUserQuestion({
     question: "Plan 设计文档已生成，请审查 {task_dir}/plan.md。是否批准进入 exec 实现阶段？",
     header: "Plan Review",
     options: [
-      {label: "批准，进入 exec", description: "plan.md 审查通过，开始 TDD 实现"},
+      {label: "批准", description: "plan.md 审查通过"},
       {label: "需要修改", description: "plan.md 有问题，我会描述需要改什么"}
     ]
   }]
 })
 ```
 
-- 用户选择"批准，进入 exec" → 进入阶段 6
+- 用户选择"批准" → 进入阶段 6
 - 用户选择"需要修改" → 用户描述修改意见，orchestrator 将意见传回 plan skill 重新设计（带 `--revise` 参数），修改后重新提交审查
 
 **全自动模式（mode=auto）：** 跳过 AskUserQuestion，直接进入阶段 6。
