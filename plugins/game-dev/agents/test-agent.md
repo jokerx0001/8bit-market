@@ -75,28 +75,27 @@ Check the task prompt for the `## 模式` field:
 
 ## RED Mode
 
+### Iron Law
+
+```
+RED 测试失败原因必须正确。语法错误、错误的标识符、未验证环境和 fixture 就直接写全部 testcase——都不算 RED。
+每条行为的第一个 testcase 跑通，才能继续。
+```
+
+**Violating the letter of this rule is violating the spirit of RED.**
+
 ### Step 0: 读取设计文档
 
-**在写任何测试代码之前**，读取以下设计文档：
+**只读两个文件：**
 
 ```
-{task_dir}/.work/requirements.md          — 玩家行为清单（含边界规则）
-{task_dir}/.work/design.md                — screen 名、widget id、组件名、节点路径
+{task_dir}/.work/requirements.md          — 功能上下文 + 行为清单
+{task_dir}/.work/design.md                — 信号名、节点路径、数据流方向
 ```
-
-**从这些文档中提取两类信息：**
-
-**1. 行为目标（来自 requirements）：** 玩家应该看到什么、做什么。每条行为对应一个 testcase。
-
-**2. 标识符（来自 design）：** screen 名、widget id、label 名、节点路径。testcase 导航和操作所需。
 
 **铁律：只检验玩家可见的行为和公共标识符，永远不检验代码实现细节。** `assert eval (obj._internal_var == x)` 永远不出现。用读取文档方式阅读代码文件然后用字符处理方式对比某几行是否字符级相等逻辑永远不出现。
 
-### Step 1: Gather identifiers
-
 ### Test Philosophy: Integration-First, Public Interface
-
-**测试玩家/用户看到和操作的，不测试内部实现细节。**
 
 标识符（screen 名、widget id、label 名）是公共接口——测试框架靠它们导航和操作。实现细节（class 名、方法签名、私有变量）是实现者的领域——测试不碰。
 
@@ -106,21 +105,63 @@ Check the task prompt for the `## 模式` field:
 | `click id "confirm_button"` | 调用 `screen.confirm()` 方法 |
 | `assert screen "battle"` | 检查内部变量 `_selected_index` 的值 |
 
-### Step 2a: Tracer Bullet — prove the path works first
+### Step 1: 从行为清单推导 testcase 列表
 
-**写一个最小测试证明目标可达**（场景可加载、screen 可到达等）。跑通这个测试后再加交互测试。
+**先列清单，不写代码。**
 
-### Step 2b: Incremental Tests
+对 requirements.md 行为清单中的每条行为，按三层判断需要几个 testcase：
 
-**一次只写一个 testcase，每个覆盖一个用户可感知的行为。** 从简单到复杂：存在 → 交互 → 边界。
+| 层 | 含义 | 触发条件 |
+|----|------|---------|
+| 存在 | 被测对象能被创建 / 场景能加载 | 每条行为必须有 |
+| 交互 | 做了什么之后发生了什么 | 行为描述中有操作→结果的时序关系 |
+| 边界 | 行为描述中明确提到的异常或分支情况 | 行为本身描述了"如果 X 则 Y"的分支 |
 
-### Step 3: Run tests and confirm they fail CORRECTLY
+需要几层写几个，不需要的跳过。边界特指行为描述里出现的分支
+
+输出格式：
+
+```
+行为 1: "关卡启动 → 刷新点处于 IDLE,场景中无敌人"
+  - test_xxx (存在)
+
+行为 2: "延迟到达 → 出现配置数量的敌人"
+  - test_yyy (存在)
+  - test_zzz (交互: 延迟内无敌人 → 延迟后出现)
+
+...
+```
+
+**Hard Gate：** 列出 testcase 清单后才能进入 Step 2。清单中每条 testcase 标注它来自行为清单的哪一条、属于哪一层（存在/交互/边界）。
+
+### Step 2: 按行为逐个编写
+
+从行为清单的第一条开始，按 Step 1 输出的清单逐行为编写。
+
+**每条行为：先写第一个 testcase → 跑通 → 输出验证结果 → 再写该行为其余 case。**
+"跑通"指环境和 fixture 正确——testcase 因功能未实现而失败（非语法错误、非标识符错误、非 fixture 结构错误）。验证结果必须输出后才能继续该行为的其余 case。
+
+一条行为的所有 case 完成后，进入下一条行为。
+
+### Step 3: 全部完成后运行，确认失败原因正确
 
 使用 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 中的 test_cmd_full 运行。
 
-**Self-correction loop:** 语法错误 → 修复重跑（最多 3 轮）。
+**RED 判定：** 失败原因必须正确——语法错误和错误的标识符不算 RED。自修正最多 3 轮。
 
-### Step 4: Report
+### Red Flags — STOP 并回到 Step 0
+
+| 中文 | English |
+|------|---------|
+| "我先读一下 domain-design / architecture 确认边界情况" | "Let me read domain-design / architecture to check edge cases" |
+| "全部 testcase 写完再一起跑更高效" | "Write all testcases first, run them together — faster" |
+| "行为清单的这条边界没写清楚，我去边界条件表里找" | "This behavior's edge case isn't clear, let me check the boundary table" |
+| "这条行为太简单了，不需要先跑第一个 case" | "This behavior is too simple, no need to run the first case first" |
+| "我把所有行为的第一个 case 都写完再逐个跑" | "Let me write all behaviors' first cases, then run them all" |
+
+**任一条出现 → STOP。回到 Step 0 重读 requirements.md 的行为清单。testcase 的来源只有行为清单，不是 domain-design。**
+
+### Step 4: 报告
 
 ```
 ## RED report — logic 任务
@@ -149,7 +190,7 @@ Check the task prompt for the `## 模式` field:
 
 ### Step V2: 理解任务
 
-读 `{task_dir}/plan.md` 的任务描述和 `.work/design.md`，理解：
+读 `{task_dir}/.work/requirements.md` 和 `.work/design.md`，理解：
 - 目标视觉状态是什么（哪个界面、什么交互后的状态）
 - 需要加载哪个场景
 - 截图前是否需要交互、交互步骤是什么
