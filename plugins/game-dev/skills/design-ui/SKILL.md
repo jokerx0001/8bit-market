@@ -4,13 +4,35 @@ description: |
   This skill should be used when the user asks to design UI for a game project, produce HTML design mockups, create visual design drafts, or when a conductor detects the task involves visual interface work. Explores existing project UI style, confirms style direction with user, clarifies behavior requirements via brainstorming (with style context to avoid re-asking), then invokes frontend-design to produce HTML mockups. Produces `.work/layouts/*.html` files that become the visual standard for later plan and exec phases. This skill should be invoked BEFORE plan when the task involves new screens or visual redesign of existing screens.
 ---
 
-# game engine AI 开发 — UI 设计阶段
+# Game Dev AI — UI 设计阶段
 
 在 plan 之前执行，产出 HTML 设计稿作为后续所有阶段的视觉真相。**只产出 HTML/CSS 设计稿，不写 game engine 代码。**
 
 ---
 
 ## 工作流
+
+### 0. 加载技术栈配置
+
+从 `--tech` 参数获取技术栈标识。如果未传入，从 `{dev_dir}/current-state.json` 读取 `tech` 字段。如果仍为空，报错退出。
+
+```bash
+# 示例：tech = renpy | godot
+```
+
+加载以下技术栈参考文件：
+
+- `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` — 源码路径、文件扩展名、项目结构
+- `${CLAUDE_PLUGIN_ROOT}/references/{tech}/ui.md` — UI 原则 + 风格探索命令
+
+从 config.md 提取：
+
+| 字段 | 来源 | 用途 |
+|------|------|------|
+| `script_ext` | 脚本路径（如 `*.rpy` / `*.gd`） | 搜索 screen/page 定义 |
+| `source_dir` | 源码目录（如 `game/` / 项目根） | 限定搜索范围 |
+| `scene_ext` | 场景文件扩展名（如 `*.tscn`，Ren'Py 此项为空） | 搜索场景 UI |
+| `theme_ext` | 主题/资源文件扩展名（如 `*.tres`，Ren'Py 此项为空） | 搜索主题配置 |
 
 ### 1. 确定任务目录
 
@@ -32,42 +54,46 @@ mkdir -p {task_dir}/.work/layouts
 
 ### 3. 探索项目现有 UI 风格
 
-> **前置条件：** conductor 已通过三问分析判断此任务涉及 UI。design-ui 不再重复检测，直接开始风格探索。
+按以下优先级寻找风格参考。找到即停止，不继续后续优先级。
 
-扫描项目中的 game engine GUI 配置和已有 screen 定义，提取风格数据：
+**优先级 1 — 历史 design-ui 产出的 layout.html：**
 
-**扫描范围：**
+搜索 `{dev_dir}/` 下所有 `feat-*/` 和 `refactor-*/` 目录，找到 `.work/layouts/*.html` 文件。取最新（按目录编号降序）的 HTML 文件作为风格参考。
 
 ```bash
-# GUI 配置文件
-cat {gui_config} 2>/dev/null | head -200
-
-# 已有 screen 定义
-grep -rn "screen " {source_dir}/ --include="*.rpy" | head -30
-
-# 样式定义
-grep -rn "style " {source_dir}/ --include="*.rpy" | head -30
+find {dev_dir}/feat-* {dev_dir}/refactor-* -path "*/.work/layouts/*.html" 2>/dev/null | sort -r | head -5
 ```
 
-**提取内容：**
+**优先级 2 — concept-art 产出的 reference.png：**
 
-| 维度 | 提取内容 | 来源 |
-|------|---------|------|
-| 配色 | 背景色、文字色、按钮色、高亮/强调色、边框色 | `gui.rpy` 的 `gui.xxx_color` 变量 |
-| 字体 | 对话字体、标题字体、UI 标签字体、字号层级 | `gui.rpy` 的 `gui.xxx_font`/`gui.xxx_size` 变量 |
-| 布局 | vbox/hbox/fixed/grid 使用习惯、对齐方式、间距规律 | 已有 screen 的 widget 树 |
-| 交互 | hover 效果、选中态表达、按钮样式、过渡动画 | 已有 screen 的 button/imagebutton 定义 |
-| 插图 | 背景图、立绘、CG 等美术资源的风格倾向 | `image` 定义和实际图片文件 |
+如果无历史 layout.html，检查 `{task_dir}/reference.png`（orchestrator 阶段 4a 已生成）。用 mmx vision 提取风格信息：
 
-**输出风格摘要：**
+```bash
+mmx vision describe --image {task_dir}/reference.png \
+  --prompt "Describe the UI style in this screenshot: color palette, typography feel, layout patterns, button styling, and overall visual aesthetic. Describe in 3-5 sentences."
+```
+
+**优先级 3 — 用户描述或指定文件：**
+
+如果以上皆不存在，检查用户原始描述（`{task_dir}/.work/grill-interview.md`）中是否有风格相关的描述或指定的参考文件路径。如果有指定文件，用 mmx vision 读取其风格。
+
+**优先级 4 — 自行决定：**
+
+如果以上全部不存在，根据游戏类型和 genre convention 自行确定一个合适的 UI 风格方向。
+
+---
+
+**从找到的风格参考中提取以下维度，输出风格摘要：**
 
 ```markdown
 ## 项目 UI 风格摘要
 
+**来源：** {layout.html 路径 / reference.png / 用户描述 / 自行决定}
+
 ### 配色
-- 背景: #XXXXXX (来源: gui.background_color)
-- 文字: #XXXXXX (来源: gui.text_color)
-- 强调: #XXXXXX (来源: gui.accent_color)
+- 背景: #XXXXXX
+- 文字: #XXXXXX
+- 强调: #XXXXXX
 - 按钮: #XXXXXX / hover #XXXXXX
 
 ### 字体
@@ -76,8 +102,7 @@ grep -rn "style " {source_dir}/ --include="*.rpy" | head -30
 - UI 标签: {font_name} {size}px
 
 ### 布局习惯
-- 主菜单: vbox 居中 + 按钮纵向排列
-- 对话界面: 文本框底部 + 角色名顶部
+- {从参考中提取的布局模式}
 - ...
 
 ### 交互风格
@@ -160,10 +185,18 @@ brainstorming 完成后保存输出：
 
 为每个涉及视觉设计的逻辑屏幕调用 `frontend-design` skill 生成 HTML。
 
+**在生成 HTML 前，读取 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/ui.md` 的 UI 原则节**，确保 HTML 设计稿中的视觉表达与该引擎的能力边界对齐（如：某引擎不支持 `border-radius` 则 HTML 中避免使用圆角设计；某引擎按钮自带 padding 则 HTML 按钮遵循相同规则）。
+
 **传入 frontend-design 的上下文：**
 
 ```
 ## 设计约束
+
+### 技术栈
+{tech}
+
+### 引擎 UI 约束
+{从 {tech}/ui.md 提取的关键约束——如不支持 border-radius、默认尺寸行为、容器规则等}
 
 ### 风格数据
 {style-decision.md 中的风格数据}
@@ -182,6 +215,7 @@ brainstorming 完成后保存输出：
 - 使用 CSS 伪类和过渡表达动态效果
 - 严格遵循上述风格数据中的配色、字体、布局习惯
 - 颜色、字体、间距、背景等视觉属性精确设置
+- 遵循引擎 UI 约束，不设计引擎无法实现的效果
 ```
 
 每个画面输出到 `{task_dir}/.work/layouts/{screen_name}.html`。
@@ -202,7 +236,7 @@ brainstorming 完成后保存输出：
    ```
 
 2. 等待用户响应：
-   - **"OK"** → 用户确认，退出循环，进入步骤 7
+   - **"OK"** → 用户确认，退出循环，进入步骤 8
    - **调整诉求** → 将诉求传回 frontend-design，重新生成对应 HTML，回到步骤 1
 
 ### 8. 输出摘要
@@ -210,6 +244,7 @@ brainstorming 完成后保存输出：
 ```
 ## Design UI 完成
 
+**技术栈：** {tech}
 **风格决策：** {沿用 / 全新 / 调整}
 **设计稿：**
 {逐个列出 HTML 文件}
