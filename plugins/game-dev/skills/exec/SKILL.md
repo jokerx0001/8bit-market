@@ -208,9 +208,12 @@ mkdir -p {task_dir}/.work/coding
 **所有任务：**
 - [ ] 未修改 test/ 下文件（检查 coding agent 的已修改文件列表）
 - [ ] 无 pass / TODO / NotImplemented 残留（grep 已修改的源文件）
+- [ ] `.work/coding/` 目录包含本轮测试运行日志（至少一个 `<testsuite>_run<N>.log` 文件——coding agent 自我验证必须落盘原始输出）
 
 - 全部打勾 → 进入 VERIFY（6d）
 - 任一未打勾 → 指出具体问题，重新 spawn
+
+**test 文件自身有 bug 时（非 coding agent 实现问题）：** exec 主会话不直接修改 test/ 文件。① 在 tdd-iterations.md 记录 bug 详情；② 重新 spawn test-agent 传入 bug 描述修复测试；③ 修复后重新进入 RED → GREEN。exec 是编排器，不修改任何源文件或测试文件。
 
 **硬门：GREEN 全绿不是跳过 VERIFY 的理由。** VERIFY 验证的是"独立测试环境下的全量测试"，不是 coding agent 自己跑的测试。无论 GREEN 结果如何，必须执行 VERIFY。
 

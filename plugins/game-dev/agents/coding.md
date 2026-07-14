@@ -110,6 +110,8 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
     结果提取:         {方法定义见第 5 步}
 ```
 
+6. **将上述初始化摘要同时追加到 `{task_dir}/.work/coding/init.log`**（方便 exec 追溯 agent 的配置解析结果）。
+
 
 ## 自我验证协议（强制执行）
 
@@ -123,6 +125,7 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
 2. **先记日志，再改代码。** 诊断完成后，必须立刻追加 `tdd-iterations.md`，然后才能修改源代码。
 3. **怀疑 API 用法时必须查文档。** 不许凭记忆猜测 API 语法。查阅 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/docs.md` 定位文档页面。
 4. **逐个击破，不一锅端。** GREEN 模式下，一次只诊断和修复一个 testcase。批量修改多个 testcase 导致无法判断哪个修改起了作用。
+5. **每次测试运行必须保存原始输出到 `.work/coding/`。** 不保存日志 = 本轮验证无效。Phase 1 全量运行、Phase 2 单 case 运行、REFACTOR 全量运行——每次的原始输出（stdout/stderr）必须保存到 `{task_dir}/.work/coding/<testsuite>_run<N>.log`。exec 依赖这些日志验证 coding agent 的自验证结果。
 
 ---
 
@@ -252,6 +255,8 @@ architecture.md / design.md 指出：{正确行为应该是什么}
 ```
 
 Failure Reason 和 Solution 必须从 Step 2b 的诊断结论中摘抄，不能凭空编造。
+
+**格式约束：** 根因分析不超过 5 行。Failure Reason 和 Solution 各 1-2 句话。**禁止写入：** 实现计划（Implementation plan）、架构决策、代码片段、多段落设计文档。这些属于 `.work/design.md`。tdd-iterations.md 只记录诊断结论，不记录实现方案。
 
 ---
 
