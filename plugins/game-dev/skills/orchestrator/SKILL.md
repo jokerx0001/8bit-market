@@ -2,7 +2,7 @@
 name: game-dev:orchestrator
 description: |
   工作流状态机，协调游戏项目新功能开发的完整周期。
-  启动时自动检测技术栈（Ren'Py / Godot），加载对应配置后执行 plan → [resources] → exec → completed。
+  启动时自动检测技术栈（Ren'Py / Godot），加载对应配置后执行 plan → [resources] → exec → [ui-restoration] → completed。
   用户可以通过 --auto 标志控制是全自动运行还是在审查点暂停。
 
   <example>
@@ -31,7 +31,7 @@ description: |
 ## 工作流状态
 
 ```
-idle → [检测技术栈] → grill → requirements → concept-art → design-ui → asset-extract → plan → [资源检测] → art-resources → [审查] → exec → completed
+idle → [检测技术栈] → grill → requirements → concept-art → design-ui → asset-extract → plan → [资源检测] → art-resources → [审查] → exec → ui-restoration → completed
          ↓              ↓         ↓                ↓                                    ↑ ↑                        ↓
     读CLAUDE.md     阶段2     阶段3        加载tech config                      └── 修改plan ─┘       └── 无资源需求 ──┘
 ```
@@ -272,7 +272,17 @@ Skill({skill: "game-dev:art-resources-conductor", args: "--task-dir {task_dir} -
 2. 支持断点续跑（读取 progress.json）
 3. 全部 AI 任务完成后输出完成报告
 
-### 阶段 7b：架构文档更新
+### 阶段 7b：UI 还原
+
+exec 完成后，检测 plan.md 是否有 `## UI 还原` 章节。有则调用 `game-dev:ui-restoration`：
+
+```
+Skill({skill: "game-dev:ui-restoration", args: "--task-dir {task_dir} --tech {tech}"})
+```
+
+无 UI 还原章节则跳过此阶段。
+
+### 阶段 7c：架构文档更新
 
 feat 完成后，将新的架构知识合并到项目级架构文档。
 

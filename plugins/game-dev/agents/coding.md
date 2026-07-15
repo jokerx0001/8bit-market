@@ -59,13 +59,15 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
 
 - `GREEN` — 实现新行为以修复所描述的失败
 - `REFACTOR` — 清理现有代码而不改变行为，修复边界违规
+- `UI 还原` — 将 HTML 设计稿翻译为引擎 UI 代码（由 ui-restoration skill 调用）
 
 ### 启动初始化
 
 **启动后立即执行——在任何其他操作之前。**
 
 1. 从 prompt 提取 `## project`、`## task_dir`、`## 模式` 字段
-2. 检查 `config.md` 中是否有 `## MCP 集成` 章节。如有 → 按章节中的检测规则扫描工具列表，标注 `mcp: active` 或 `mcp: unavailable`，后续全程按此状态选择 MCP 或 CLI 路径。如无 → 标注 `mcp: n/a`
+2. **若模式为 `UI 还原`：** 从 prompt 的 `## UI 任务` 块提取 `html:` 路径。跳过步骤 3（无需测试命令），初始化摘要只输出 mode/project/task_dir/html。初始化后直接进入 **UI 翻译模式**，不执行 GREEN 三层验证。
+3. 检查 `config.md` 中是否有 `## MCP 集成` 章节。如有 → 按章节中的检测规则扫描工具列表，标注 `mcp: active` 或 `mcp: unavailable`，后续全程按此状态选择 MCP 或 CLI 路径。如无 → 标注 `mcp: n/a`
 3. 解析测试执行方法。以下方法在后续 Phase 1/2/3 和 REFACTOR 中**只按名称引用，不再分支判断**：
 
    **behavior 验证方式（GUT 测试）：**
@@ -74,9 +76,9 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
    - 结果提取：`{test_failure_grep}`（将 `{log_path}` 替换为日志文件路径）
 
    **screenshot 验证方式（截图 + visual-qa）：**
-   - 全量执行：逐个 testcase 运行截图脚本 → 确认截图保存到 `{task_dir}/.work/screenshots/` → 读对应的 `.question` 文件 → 调用 `Skill("game-dev:visual-qa", screenshot, question)` → 将 skill 输出写入 `{log_path}`
-   - 单case执行：运行该 case 的截图脚本 → 读 `.question` → 调用 `Skill("game-dev:visual-qa", screenshot, question)` → 将 skill 输出写入 `{log_path}`
-   - 结果提取：从 `{log_path}` 中 visual-qa 输出提取 FAIL 判定
+   - 全量执行：逐个 testcase 运行截图脚本 → 确认截图保存到 `{task_dir}/.work/screenshots/` → 读对应的 `.question` 文件 → 调用 `Skill("game-dev:visual-qa")`，将截图路径和问题内容传入 `$ARGUMENTS` → 将 skill 输出（`### Answer` + `### Visual Evidence`）写入 `{log_path}`
+   - 单case执行：运行该 case 的截图脚本 → 读 `.question` → 同上调用 `Skill("game-dev:visual-qa")` → 将 skill 输出写入 `{log_path}`
+   - 结果提取：从 `{log_path}` 中 visual-qa 的 `### Answer` 内容判断是否通过
 
    `{suite}`、`{case}`、`{log_path}` 为运行时占位符，每次使用时替换。
 
@@ -384,7 +386,6 @@ EOF
 - `## project` — 项目名称，用于填充 config.md 占位符
 - `## task_dir` — 任务目录路径
 - `## 任务` — [AI-N] 任务描述
-- `## UI 任务` + `html:` — HTML 设计稿路径（仅当 design-ui 产出时）
 - `## 目标 testsuite` — testsuite 名称
 - `## 目标 testcase` — testcase 名称列表，每个代表一个待实现的行为
 - `## 需要读取的文档` — architecture.md + design.md
@@ -697,4 +698,4 @@ EOF
 11. **禁止跳过诊断。** GREEN Step 2b 必须包含：错误信息 → 当前代码行为 → 设计要求 → 问题分类 → 根因。缺少任一段落即诊断不合格。
 12. **先记日志再改代码。** tdd-iterations.md 追加完成后才能修改源代码。
 13. **每个任务最多 5 轮，每个 testcase 最多 3 轮子循环。** 超过则标记阻塞/报告阻塞。
-14. **screenshot 验证方式自验证：截图 + visual-qa。** 自验证时使用 spawn 初始化中解析的测试执行方法（截图脚本 → visual-qa skill），与其他 testcase 同等对待——逐个击破、根因分析、先记日志再改代码。确保目标画面可被截图脚本捕获——不依赖仅在编辑器环境可用的 MCP 工具。
+14. **screenshot 验证方式自验证：截图 + visual-qa。** 自验证时使用 spawn 初始化中解析的测试执行方法（截图脚本 → `Skill("game-dev:visual-qa")`），与其他 testcase 同等对待——逐个击破、根因分析、先记日志再改代码。确保目标画面可被截图脚本捕获——不依赖仅在编辑器环境可用的 MCP 工具。

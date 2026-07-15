@@ -11,8 +11,6 @@ exec 是 TDD 循环的**纯编排器**。它不分析失败、不审查代码质
 
 - **设计文档是唯一的共享真相。** 两个 agent 都读设计文档。
 - **exec 不做判断，只做传递。** 测试失败让 game-dev:coding 自己看输出修，边界检查由 exec 主会话执行（自动检测违规），代码质量让 REFACTOR 做。
-- **game-dev:coding 不碰测试目录。** 跑测试不触犯这条规则。但绝不读写测试文件本身——那会破坏 RED/GREEN 的独立性。
-- **game-dev:coding 自己闭环验证。** 实现 → 跑测试 → 看输出 → 修 → 直到全绿。
 - **垂直切片，不是水平切片。** 不允许"写完全部测试再写完全部实现"。每个行为是一条从测试→实现→验证的完整垂直线。
 
 ```
@@ -95,7 +93,7 @@ esac
 
 ### 3. 解析任务列表
 
-按 `${CLAUDE_PLUGIN_ROOT}/references/plan-format.md` 的规则提取 `[AI-N]` 任务，识别类型（`logic` / `visual` / `ui`），按依赖拓扑排序。logic → visual → ui。`[HUMAN]` 任务收集但不执行。
+按 `${CLAUDE_PLUGIN_ROOT}/references/plan-format.md` 的规则提取 `[AI-N]` 任务，按依赖拓扑排序。`[HUMAN]` 任务收集但不执行。
 
 ### 4. 确认测试环境
 
@@ -118,11 +116,10 @@ exec 只传任务上下文。agent 自己读自己的定义文件和参考文件
 |---|---|
 | `project` — 用于填充 config.md 占位符 | `${CLAUDE_PLUGIN_ROOT}/references/{tech}/testing.md` |
 | `task_dir` — 任务目录路径 | `${CLAUDE_PLUGIN_ROOT}/references/{tech}/coding.md` |
-| 任务描述 `[AI-N]` + 类型 | `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` |
+| 任务描述 `[AI-N]` | `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` |
 | 行为/失败描述、testsuite、testcase 名 | `${CLAUDE_PLUGIN_ROOT}/references/{tech}/style-guide.md`（如有） |
 | 测试文件路径 | `${CLAUDE_PLUGIN_ROOT}/references/{tech}/project-organization.md`（如有） |
-| visual 任务的 spec JSON 路径 | visual-spec 格式定义（agent 自己读） |
-| UI 任务的 html 路径 | 自身 agent 定义文件（`agents/*.md`） |
+
 | 已修改文件列表（REFACTOR） | `{task_dir}/plan.md`、`.work/design.md` 等任务文件 |
 | 边界违规清单（REFACTOR） | `game/` 下源文件 |
 
@@ -179,14 +176,9 @@ mkdir -p {task_dir}/.work/coding
 
 **检查结果**（逐项打勾，缺一不可）：
 
-**logic 任务：**
 - [ ] 测试文件已创建（路径：___）
 - [ ] RED report 中所有 testcase 都失败了且原因正确（非语法错误、非标识符错误——语法错误和错误的标识符不算 RED）
 - [ ] 没有 mock、假代码
-
-**visual / ui 任务：**
-- [ ] 截图已保存到 `.work/screenshots/`（路径：___）
-- [ ] visual-compare 结果 FAIL 明确（各元素 `expected` vs `observed` 不达标项清晰）
 
 - 全部打勾 → 进入 GREEN（6c）
 - 任一未打勾 → 指出具体问题，重新 spawn（不限重试，但同问题 >3 轮报告用户）
@@ -199,13 +191,9 @@ mkdir -p {task_dir}/.work/coding
 
 **检查结果**（逐项打勾，缺一不可）：
 
-**logic 任务：**
-- [ ] coding-agent 自验证报告显示目标 testsuite 全部通过
-
-**visual 任务：**
-- [ ] coding-agent 自验证报告显示 visual-compare PASS（所有元素）
-
 **所有任务：**
+- [ ] coding-agent 自验证报告显示目标 testsuite 全部通过
+- [ ] 有 screenshot 验证方式的行为：visual-qa PASS
 - [ ] 未修改 test/ 下文件（检查 coding agent 的已修改文件列表）
 - [ ] 无 pass / TODO / NotImplemented 残留（grep 已修改的源文件）
 - [ ] `.work/coding/` 目录包含本轮测试运行日志（至少一个 `<testsuite>_run<N>.log` 文件——coding agent 自我验证必须落盘原始输出）
@@ -226,7 +214,7 @@ mkdir -p {task_dir}/.work/coding
 **检查结果**：
 
 - [ ] 全量测试全部通过（`test_cmd_full` 退出码 0）
-- [ ] visual / ui 任务：额外通过 visual-compare PASS
+- [ ] 有 screenshot 验证方式的行为：额外通过 visual-qa PASS
 - [ ] 如有失败，报告包含具体 testcase 名称和错误行（禁止只有 Summary 数字）
 
 - 全部通过 → 进入边界检查（6e）
