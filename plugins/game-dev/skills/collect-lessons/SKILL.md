@@ -66,6 +66,7 @@ renpy|godot
 ```
 {dev_dir}/{current_task}/plan.md                  # 任务概述
 {dev_dir}/{current_task}/.work/tdd-iterations.md  # TDD 迭代日志（主要来源）
+{dev_dir}/{current_task}/.work/coding/lessons.md  # coding agent 逐轮记录的经验（主要来源）
 {dev_dir}/{current_task}/progress.json            # 任务完成状态
 ```
 
