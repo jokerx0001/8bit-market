@@ -9,7 +9,16 @@ description: This skill should be used when the orchestrator needs to manage pro
 
 ## 前置条件
 
-需求管理在 Grill 采访之后执行。**必须先读取 `{task_dir}/.work/grill-interview.md`**，该文件包含用户确认的需求侧和技术侧信息。
+需求管理在 Grill 采访之后执行。**必须先读取以下两份文件，综合理解用户意图：**
+
+| 文件 | 内容 | 用途 |
+|------|------|------|
+| `{task_dir}/.work/user-prompt.md` | 用户原始输入（原语） | 检查用户是否直接指示了工作内容、技术偏好、具体约束 |
+| `{task_dir}/.work/grill-interview.md` | grill-with-docs 原始输出 | 理解用户确认过的意图，防止 AI 偏差 |
+
+**grill-interview.md 是 grill-with-docs 的原始输出，不得假设它有固定结构（如"需求侧/技术侧"分类）。** 它是什么格式就是什么格式，自己去读、去理解。
+
+**用户原语中的技术内容：** 分析 user-prompt.md 中用户是否直接指示了具体技术决策或实现约束。有则纳入需求考量，完成用户明确要求的内容。过滤掉与当前 task 无关的内容。
 
 ## 三种模式
 
@@ -25,7 +34,7 @@ description: This skill should be used when the orchestrator needs to manage pro
 
 ### --init 模式：首次构建
 
-1. 读取 `{task_dir}/.work/grill-interview.md` 的需求侧部分
+1. 读取 `{task_dir}/.work/user-prompt.md` 和 `{task_dir}/.work/grill-interview.md`，综合理解用户意图
 2. 识别游戏类型（塔防、RPG、平台跳跃、视觉小说……）
 3. 从游戏类型推导全量功能系统——**不仅限于用户描述的功能**，而是完整游戏应有的所有系统
 4. 参考 `references/requirements-format.md` 中的项目级模板，写出 `{dev_dir}/requirements.md` 初稿

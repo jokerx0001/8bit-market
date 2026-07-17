@@ -15,6 +15,7 @@ description: This skill should be used when the user asks to "design domain mode
 |------|------|------|
 | `--from {task_dir}` | 是 | 任务目录路径（如 `.godot-dev/feat-3`） |
 | `--tech {tech}` | 建议 | 技术栈标识（renpy / godot）。未传入时从项目 CLAUDE.md 检测 |
+| `--user-directives {text}` | 可选 | plan 阶段提取的领域设计相关用户指示。无则省略 |
 | `--auto` | 可选 | 跳过人工确认 |
 
 ## 前置步骤：确定 dev_dir
@@ -54,6 +55,8 @@ description: This skill should be used when the user asks to "design domain mode
 通读后从整体理解：这个 feat 要做什么、涉及哪些功能系统、行为之间的关联关系。
 
 读取 `{task_dir}/.work/grill-interview.md`，这是对用户输入的深度采访，深度挖掘的用户的诉求。从中提取与领域设计相关的约束。
+
+如传入 `--user-directives`，这是 plan 阶段从用户原语和 grill 输出中提取的"领域设计相关"指示——用户直接表达的领域概念、业务规则、行为约束。纳入领域建模考量。
 
 同时读取 `{dev_dir}/requirements.md`（如存在），这是项目级需求设计，获取上下文来挖掘与其他模块的边界与交互，无交互模块则无视。
 

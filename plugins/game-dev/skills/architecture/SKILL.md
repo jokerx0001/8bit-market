@@ -45,7 +45,10 @@ description: |
 | `--update` | 三选一 | 将任务级架构合并到项目级（exec 完成后调用） |
 | `--from {task_dir}` | task / update 必填 | 任务目录路径（如 `.godot-dev/feat-3`） |
 | `--tech {tech}` | 建议 | 技术栈标识（renpy / godot）。未传入时从项目 CLAUDE.md 检测 |
+| `--user-directives {text}` | 可选 | plan 阶段提取的架构设计相关用户指示。无则省略 |
 | `--auto` | 可选 | 跳过人工确认。三种模式均生效 |
+
+如传入 `--user-directives`，用户直接表达的内容纳入架构映射决策。
 
 ## 模式判定
 
@@ -247,10 +250,6 @@ ls -d {resources_path}/*/ 2>/dev/null
 - **功能系统归属** — 每个需求行为归属到哪个模块
 - **跨模块行为** — 哪些行为需要多模块协作
 
-从 grill-interview.md 提取：
-
-- **游戏类型** — 影响架构惯用模式（如塔防用信号驱动，视觉小说用状态机驱动）
-- **技术偏好** — 影响引擎构造选择
 
 ##### 2B-3. 从零设计架构
 

@@ -30,7 +30,7 @@ description: |
 ## 工作流
 
 ```
-idle → [检测技术栈] → grill → design-ui → 分析影响范围 → impact.md → plan → [审查] → exec → ui-restoration → completed
+idle → [检测技术栈] → 保存用户原语 → grill → design-ui → 分析影响范围 → impact.md → plan → [审查] → exec → ui-restoration → completed
          ↓              ↓         ↓              ↑_________refactor特有_________↑    ↑                        ↓
     读CLAUDE.md     阶段2     阶段3                                        └── 修改plan ─┘       └── 无UI还原章节 ──┘
 ```
@@ -115,30 +115,51 @@ Skill({skill: "game-dev:artifact-manager", args: "--kind refactor --dev-dir {dev
 
 artifact-manager 会读取 `current-state.json`、递增计数器、创建 `{dev_dir}/refactor-{N}/`、写回状态。返回 `task_dir`。
 
-### 阶段 2：Grill 前置采访
+### 阶段 2：保存用户原语 + Grill 前置采访
 
-在分析影响范围之前，通过 relentless interview 达成与用户的共识。**不可跳过，auto 模式也不例外。** 重构场景下，用户对"想改成什么样"的描述常常不完整，用文件固化信息防止上下文丢失。
+**Grill 的目的是防止 AI 偏差，不是产出需求文档。** 重构场景下，用户对"想改成什么样"的描述常常不完整，grill-with-docs 通过 relentless interview 确保 AI 理解用户真正想要什么。
 
-1. 调用 `grill-with-docs` skill 深度采访用户：
-   ```
-   Skill({skill: "grill-with-docs"})
-   ```
-2. 采访完毕后，对文档内容分类整理——因为用户的专业程度不同，输入可能混杂需求内容和技术内容
-3. 产出 `{task_dir}/.work/grill-interview.md`，内容分为两类：
+**不可跳过，auto 模式也不例外。**
 
-   ```markdown
-   # Grill Interview
+#### Step 2a：保存用户原语
 
-   ## 需求侧（重构目标是什么）
-   - {重构要达成的效果、行为变更、体验改进...}
-   - {用户确认的重构决策}
+将用户的原始重构描述（触发 `/game-dev:refactor` 的完整输入）原样写入：
 
-   ## 技术侧（用户提到的实现偏好与约束）
-   - {技术栈限制、已有系统约束、不可触碰的模块...}
-   - {用户的技术决策和假设}
-   ```
+```
+{task_dir}/.work/user-prompt.md
+```
 
-后面的所有设计环节（design-ui、impact 分析、plan）都必须首先完整阅读这个文档。
+后续所有设计环节在综合理解任务时，必须回到这个原始输入，检查用户有没有直接指示工作内容。
+
+#### Step 2b：运行 Grill 采访
+
+```
+Skill({skill: "grill-with-docs"})
+```
+
+#### Step 2c：原样保存 Grill 输出
+
+grill-with-docs 输出什么就保存什么。**不分类、不整理、不转化。** 直接将完整输出写入：
+
+```
+{task_dir}/.work/grill-interview.md
+```
+
+**禁止行为：**
+- 禁止将 grill 输出拆分为"需求侧/技术侧"
+- 禁止对 grill 输出做任何结构重组
+- 禁止从中"提炼"或"总结"出任何中间文档
+
+#### Step 2d：传递规则
+
+后面的所有设计环节（design-ui、impact 分析、plan）**必须自己读取以下两份文件，综合理解去完成任务**：
+
+| 文件 | 内容 | 用途 |
+|------|------|------|
+| `{task_dir}/.work/user-prompt.md` | 用户原始输入（原语） | 检查用户是否直接指示了工作内容、技术约束、排除范围 |
+| `{task_dir}/.work/grill-interview.md` | grill-with-docs 原始输出 | 理解用户确认过的重构目标，防止 AI 跑偏 |
+
+**各环节不得假设 grill-interview.md 有固定结构。** 它是什么格式就是什么格式，自己去读、去理解。
 
 ### 阶段 3：UI 检测
 
@@ -159,15 +180,15 @@ artifact-manager 会读取 `current-state.json`、递增计数器、创建 `{dev
 Skill({skill: "game-dev:design-ui", args: "--task-dir {task_dir} --tech {tech}"})
 ```
 
-design-ui 自读取 grill-interview.md 获取需求上下文，并按优先级寻找风格参考（历史 layout.html → 用户描述/指定文件 → 自行决定）。
+design-ui 自读取 grill-interview.md 和 user-prompt.md 获取需求上下文，并按优先级寻找风格参考（历史 layout.html → 用户描述/指定文件 → 自行决定）。
 
 **不是 UI 任务 →** 跳过本阶段。
 
 ### 阶段 4：分析影响范围
 
-充分阅读现有代码，结合 grill-interview.md 中的重构目标：
+充分阅读现有代码，结合用户原语和 grill 输出中的重构目标：
 
-1. 读取 `{task_dir}/.work/grill-interview.md` 了解重构目标
+1. 读取 `{task_dir}/.work/user-prompt.md`（用户原语）和 `{task_dir}/.work/grill-interview.md` 了解重构目标
 2. 读取受影响的源文件（`.rpy` / `.gd` / `.tscn` 等）
 3. 使用 Glob/Grep 发现关联文件（共享 screen、共用 label、数据依赖）
 4. 识别当前实现模式

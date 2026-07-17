@@ -31,7 +31,7 @@ description: |
 ## 工作流状态
 
 ```
-idle → [检测技术栈] → grill → requirements → concept-art → design-ui → asset-extract → plan → [资源检测] → art-resources → [审查] → exec → ui-restoration → completed
+idle → [检测技术栈] → 保存用户原语 → grill → requirements → concept-art → design-ui → asset-extract → plan → [资源检测] → art-resources → [审查] → exec → ui-restoration → completed
          ↓              ↓         ↓                ↓                                    ↑ ↑                        ↓
     读CLAUDE.md     阶段2     阶段3        加载tech config                      └── 修改plan ─┘       └── 无资源需求 ──┘
 ```
@@ -117,32 +117,49 @@ Skill({skill: "game-dev:artifact-manager", args: "--kind {kind} --dev-dir {dev_d
 
 artifact-manager 会读取 `current-state.json`、递增计数器、创建 `{dev_dir}/feat-{N}/`、写回状态。返回 `task_dir`。
 
-### 阶段 2：Grill 前置采访
+### 阶段 2：保存用户原语 + Grill 前置采访
 
-在需求设计之前，通过 relentless interview 达成与用户的共识。**不可跳过，auto 模式也不例外。**
+**Grill 的目的是防止 AI 偏差，不是产出需求文档。** grill-with-docs 通过 relentless interview 确保 AI 理解用户真正想要什么，避免自作主张跑偏。它的输出是用户确认过的意图记录
 
-1. 调用 `grill-with-docs` skill 深度采访用户：
-   ```
-   Skill({skill: "grill-with-docs"})
-   ```
-2. 采访完毕后，对文档内容分类整理——因为用户的专业程度不同，输入可能混杂需求内容和技术内容
-3. 产出 `{task_dir}/.work/grill-interview.md`，内容分为两类：
+**不可跳过，auto 模式也不例外。**
 
-   ```markdown
-   # Grill Interview
+#### Step 2a：保存用户原语
 
-   ## 需求侧（这个游戏/功能是什么）
-   - {功能描述、玩法设想、体验目标...}
-   - {用户确认的需求决策}
+将用户的原始任务描述（触发 `/game-dev:start` 的完整输入）原样写入：
 
-   ## 技术侧（用户提到的实现偏好与约束）
-   - {引擎选择、技术栈限制、已有系统约束...}
-   - {用户的技术决策和假设}
-   ```
+```
+{task_dir}/.work/user-prompt.md
+```
 
-后面的所有设计环节（requirements、design-ui、plan）都必须首先完整阅读这个文档。
+这是用户的"原语"——未经任何加工。后续所有设计环节在综合理解任务时，必须回到这个原始输入，检查用户有没有直接指示工作内容。
+
+#### Step 2b：运行 Grill 采访
+
+```
+Skill({skill: "grill-with-docs"})
+```
+
+#### Step 2c：原样保存 Grill 输出
+
+grill-with-docs 输出什么就保存什么。**不分类、不整理、不转化。** 直接将完整输出写入：
+
+```
+{task_dir}/.work/grill-interview.md
+```
+
+#### Step 2d：传递规则
+
+后面的所有设计环节（requirements、design-ui、plan 等）**必须自己读取以下两份文件，综合理解去完成任务**：
+
+| 文件 | 内容 | 用途 |
+|------|------|------|
+| `{task_dir}/.work/user-prompt.md` | 用户原始输入（原语） | 检查用户是否直接指示了工作内容、技术偏好、具体约束 |
+| `{task_dir}/.work/grill-interview.md` | grill-with-docs 原始输出 | 理解用户确认过的意图，防止 AI 跑偏 |
+
 
 ### 阶段 3：Requirements 需求管理
+
+requirements skill 自行读取 `{task_dir}/.work/user-prompt.md` 和 `{task_dir}/.work/grill-interview.md`，综合理解用户意图后产出需求文档。
 
 **模式判定：**
 

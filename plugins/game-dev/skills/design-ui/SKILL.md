@@ -48,7 +48,8 @@ mkdir -p {task_dir}/.work/layouts
 
 从以下文档获取本次 UI 设计的输入：
 
-- `{task_dir}/.work/grill-interview.md` — 用户原始描述（需求侧：功能描述、玩法设想、体验目标；技术侧：引擎选择、技术约束）
+- `{task_dir}/.work/user-prompt.md` — 用户原始输入（原语），检查用户是否直接指示了 UI 风格、配色、布局等视觉偏好
+- `{task_dir}/.work/grill-interview.md` — grill-with-docs 原始输出, 对用户原始输入的偏差确认，防止理解错误
 - `{dev_dir}/requirements.md` — 项目级全量需求文档（如果存在），了解游戏全貌
 - `{task_dir}/.work/requirements.md` — 本次 feat 的行为清单和边界规则
 
@@ -75,7 +76,7 @@ mmx vision describe --image {task_dir}/reference.png \
 
 **优先级 3 — 用户描述或指定文件：**
 
-如果以上皆不存在，检查用户原始描述（`{task_dir}/.work/grill-interview.md`）中是否有风格相关的描述或指定的参考文件路径。如果有指定文件，用 mmx vision 读取其风格。
+如果以上皆不存在，检查 `{task_dir}/.work/user-prompt.md`（用户原语）和 `{task_dir}/.work/grill-interview.md` 中是否有风格相关的描述或指定的参考文件路径。如果有指定文件，用 mmx vision 读取其风格。
 
 **优先级 4 — 自行决定：**
 
