@@ -42,7 +42,7 @@ detect tech → create dir → [UI检测] → design-ui → analyze → impact.m
 ### Bug Fix: `fix-conductor`
 
 ```
-detect tech → behavior clarification → test agent BUG test → debug-root-cause → debug-analysis.md → plan-fix → [review] → exec → completed
+detect tech → behavior clarification → test agent BUG test → fix-agent (fix-loop + debug-root-cause) → VERIFY → completed
 ```
 
 ### TDD Loop (exec phase)
@@ -70,11 +70,11 @@ skills/             # Core skill definitions
   design-ui/        #   UI design phase (tech-aware)
   design-resources/ #   Resource generation (Godot-specific)
   plan/             #   Design phase (tech-aware)
-  plan-fix/         #   Fix design phase
+  fix-loop/         #   Fix repair loop
   exec/             #   TDD implementation (tech-agnostic)
   artifact-manager/ #   Shared directory management
   collect-lessons/  #   Experience collection
-agents/             # Subagent definitions (test-agent, coding)
+agents/             # Subagent definitions (test-agent, coding, fix-agent)
 references/         # Format contracts + tech-specific knowledge
   renpy/            #   Ren'Py tech stack config + references
     config.md       #     Project detection, test commands, paths

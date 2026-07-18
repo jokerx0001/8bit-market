@@ -21,15 +21,16 @@ NO DIAGNOSIS WITHOUT BACKWARD TRACING FIRST
 | 输入 | 说明 |
 |------|------|
 | BUG 描述 | 用户原始报告，原样引用 |
-| 预期行为列表 | 用户确认的正确行为，逐条列出 |
-| BUG 复现测试路径 | test agent 编写的失败测试文件 |
+| 预期行为列表 | 用户确认的正确行为，逐条列出，含验证方式（`behavior` 或 `screenshot: 问题描述`）。screenshot testcase 通过命名约定 `test_{描述}_screenshot` 在测试目录中定位 |
+| BUG 复现测试路径 | test agent 编写的失败测试文件（GUT）。screenshot 脚本从同目录 `visual/` 子目录下按命名约定发现 |
+| before_attempts | `{task_dir}/.work/fix-attempts.md` 的路径。存在则读取——已验证为错误的路径，诊断时避开 |
 | task_dir | 产出写入 `{task_dir}/.work/debug-analysis.md` |
 
 ## 流程
 
 ### 步骤 1：确认 BUG 存在
 
-跑 BUG 复现测试，捕获确切的失败输出：
+**GUT 测试：** 跑 BUG 复现测试，捕获确切的失败输出：
 
 ```bash
 {test_runner} {test_path}
@@ -40,9 +41,13 @@ NO DIAGNOSIS WITHOUT BACKWARD TRACING FIRST
 - actual vs expected 值是什么
 - 完整的 traceback（如有）
 
-如果测试 PASS（BUG 不存在）→ 报告给 fix-conductor，停止。可能是用户环境问题或 BUG 已被修复。
+**Screenshot 测试（如有）：** 按 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/screenshot.md` 的 CLI 命令执行截图脚本，base64 解码保存到 `{task_dir}/.work/screenshots/{testcase_name}.png`。读对应 `.question` 文件，调用 `Skill("game-dev:visual-qa")`，将截图路径和问题内容传入 `$ARGUMENTS`。记录 visual-qa 返回的 `### Answer`。
+
+**综合判定：** 任一测试 PASS（BUG 不存在）→ 报告给 fix-conductor，停止。可能是用户环境问题或 BUG 已被修复。
 
 ### 步骤 2：逆向追踪
+
+**如 `before_attempts` 路径对应的文件存在：** 先读取——这些是已验证为错误的根因假设和修复路径。诊断时主动避开这些方向，从新的角度追踪。
 
 **核心原则：永远不在症状点修。从失败点出发，逐层往上追，直到找到"正确输入变成错误输出"的转换点。**
 
@@ -100,9 +105,9 @@ NO DIAGNOSIS WITHOUT BACKWARD TRACING FIRST
 
 ```
 1. 做最小修改（改一行、加一个条件、修一个赋值）
-2. 跑 BUG 复现测试
-3. 测试 PASS → 根因确认
-   测试 FAIL → 假设错误，回到步骤 2
+2. 跑 BUG 复现测试（GUT + Screenshot 均执行，方法同步步骤 1）
+3. 全部 PASS → 根因确认
+   任一 FAIL → 假设错误，回到步骤 2
 4. 撤销临时修改（git checkout / 手动还原）
 ```
 
@@ -119,24 +124,24 @@ NO DIAGNOSIS WITHOUT BACKWARD TRACING FIRST
 {用户报告的 BUG，原样引用}
 
 ## 预期行为
-{fix-conductor 阶段 1 确认的正确行为，逐条列出}
-1. {行为 1 — 玩家可见/系统可感知的}
-2. {行为 2}
+{fix-conductor 阶段 1 确认的正确行为，逐条列出，含验证方式}
+1. {行为 1}  — 验证方式: {behavior | screenshot: 问题描述}
+2. {行为 2}  — 验证方式: {behavior | screenshot: 问题描述}
 3. ...
 
 ## 根因
 {经步骤 4 验证的根因，精确到具体代码位置 + 因果链}
 
 ## 证据链
-1. {证据 1：BUG 复现测试的失败输出}
+1. {证据 1：BUG 复现测试的失败输出（GUT 具体 assertion 失败 + Screenshot visual-qa 结论，如有）}
 2. {证据 2：逆向追踪路径 — 从症状到根因的每一层}
-3. {证据 3：最小验证结果 — 临时修改了什么，测试从 FAIL → PASS}
+3. {证据 3：最小验证结果 — 临时修改了什么，GUT + Screenshot 从 FAIL → PASS}
 4. {证据 4：排除的替代假设（如有）}
 
 ## 影响范围
 | 文件 | 问题 |
 |------|------|
-| game/xxx.rpy | {具体问题描述} |
+| xxx | {具体问题描述} |
 
 ## 修复方向
 {修复方案的概要描述，一两句话。不写实现代码。}
@@ -174,7 +179,6 @@ NO DIAGNOSIS WITHOUT BACKWARD TRACING FIRST
 1. 你已经完成了流程——不是你偷懒
 2. 输出已知信息：追踪到了哪一层、卡在哪一层、为什么卡住
 3. 标注不确定性，写入 `.work/debug-analysis.md`
-4. 交 fix-conductor 决策
 
 **但：** 大部分"找不到"的情况是步骤 2 追得不够深。卡住之前，先检查：是否读完了每个相关函数的完整代码？是否追到了赋值源头？
 

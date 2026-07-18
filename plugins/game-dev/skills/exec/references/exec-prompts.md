@@ -37,7 +37,6 @@ RED
 ## 需要读取的文件
 - {task_dir}/.work/design.md  — widget 树、变量定义、交互流程（仅 feat/refactor 模式）
 - {task_dir}/impact.md  — 修改范围约束（仅 refactor 模式）
-- {task_dir}/.work/debug-analysis.md  — 根因分析（仅 fix 模式）
   `
 })
 ```
@@ -79,7 +78,6 @@ GREEN
 - {task_dir}/plan.md  — 设计摘要、影响范围
 - {task_dir}/.work/design.md  — widget 树、变量定义、交互流程（仅 feat/refactor 模式）
 - {task_dir}/impact.md  — 修改范围约束（仅 refactor 模式）
-- {task_dir}/.work/debug-analysis.md  — 根因分析、预期行为（仅 fix 模式）
 - game/ 下相关的源文件 — 了解已有代码模式
 - {dev_dir}/architecture.md — 项目架构文档（如存在）
   `

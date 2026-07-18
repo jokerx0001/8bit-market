@@ -339,7 +339,7 @@ Skill("game-dev:collect-lessons", "tech={tech}")
 
 ### 10. 编写教学文档
 
-**仅 feat 和 refactor 任务执行此步骤。fix 任务跳过。**
+**仅 feat 和 refactor 任务执行此步骤。**
 
 **硬门：** 步骤 9 (collect-lessons) 和步骤 10 (write-tutorial) 必须全部完成才能声明 Completion Gate 通过。步骤 9 完成后立即进入步骤 10，不得在步骤 9 之后、步骤 10 之前输出完成报告。
 
@@ -371,5 +371,5 @@ Skill("game-dev:write-tutorial")
 4. 所有 screenshot 验证行为已创建截图 testcase 且通过 visual-qa
 5. 每个 AI 任务的 5 个 phase 判定记录存在于 tdd-iterations.md
 6. `game-dev:collect-lessons` 已完成
-7. `game-dev:write-tutorial` 已完成（feat/refactor），fix 跳过
+7. `game-dev:write-tutorial` 已完成
 8. 输出完成报告
