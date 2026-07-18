@@ -47,7 +47,48 @@
 
 ---
 
-### 第 2 轮（2026-07-14）
+### 第 3 轮（2026-07-18）
+
+- **节点：** skills/orchestrator/SKILL.md
+- **问题：** #1, #2 — UI 设计判定缺少强制门。orchestrator 自行用"数据驱动的标准控件、无艺术决策"合理化跳过 design-ui，尽管本次任务新增物品栏 HUD（原来不存在的界面），满足触发条件"涉及创建新模块且明显包含原来没有的新界面"。
+- **修复：**
+  1. 阶段 4a 修正触发条件：concept-art 只在全新游戏（绿场）或新关卡/场景时需要，新增 UI 控件不需要
+  2. 阶段 4b 增加"硬门 — 判定流程"：读 requirements.md → 问"玩家会看到原来不存在的画面或控件吗？" → 是则调用 design-ui。提供"不是 UI 任务"的反例
+  3. 阶段 7b 增加硬门：grep plan.md 的 `[UI-N]` 任务数，> 0 必须调用 ui-restoration
+  4. Red Flags 重写 UI 相关信号：用"有没有新界面"（客观事实）取代"screenshot 行为数"（那是测试手段，不代表 UI 需求）
+- **来源：** diagnosis-result.md 2026-07-18 #1, #2, #3 根因分析；harness-methodology.md §2 (Hard Gate)
+- **结果：** 待验证
+
+---
+
+- **节点：** skills/exec/SKILL.md
+- **问题：** #4 — exec 错误创建了 `.work/tdd/` 空目录。步骤 6a 只要求创建 `.work/coding/`，`tdd-iterations.md` 是 `.work/` 下的文件不是目录。
+- **修复：** 步骤 6a 明确标注"tdd-iterations.md 是文件不是目录"，明确"只创建 .work/coding/ 一个子目录"
+- **来源：** diagnosis-result.md 2026-07-18 #4；exec-logging.md "初始化"节
+- **结果：** 待验证
+
+---
+
+- **节点：** skills/exec/SKILL.md
+- **问题：** #5, #9, #15, #16, #17, #18, #19 — exec 绕过 agent spawning，自行运行 Bash 测试代替 spawn test-agent/coding-agent。VERIFY/边界检查/REFACTOR 全部跳过。
+- **修复：**
+  1. Red Flags 增加 5 条"Bash 代替 spawn"检测
+  2. 步骤 6 增加"阶段转换门（Phase Transition Gate）"：每个 phase 完成后必须输出 ✅/❌ 判定
+  3. Completion Gate 增加 2 条要求：screenshot 验证完成、5 个 phase 判定记录存在于 tdd-iterations.md
+  4. 步骤 3 增加"解析行为列表 — 提取 screenshot 验证需求"：从 plan.md 行为列表提取 `screenshot:` 验证方式，路由到 RED spawn prompt（screenshot 是测试验证手段，不是 UI 需求判定依据）
+- **来源：** diagnosis-result.md 2026-07-18 #5, #9, #11, #15-#20 根因分析；harness-methodology.md §1, §3; exec-prompts.md 模板
+- **结果：** 待验证
+
+---
+
+- **节点：** skills/orchestrator/SKILL.md
+- **问题：** grill-with-docs 声明了"不可跳过，auto 模式也不例外"但缺少 Red Flag 保护和产出验证硬门。auto 模式下 LLM 可能自我合理化"全自动就是全部自动"跳过 grill。
+- **修复：**
+  1. 阶段 2 补充说明：`--auto` 跳过的是人工审查点（plan review），不是意图澄清（grill）
+  2. Step 2c 增加产出验证硬门：`test -s grill-interview.md` 确认非空，GRILL_MISSING → 重试最多 2 次，3 次仍空 → 报告阻塞
+  3. Red Flags 增加：`"--auto 模式下 grill 也可以跳过，全自动就是全部自动" → STOP`
+- **来源：** orchestrator SKILL.md 阶段 2 原文；harness-methodology.md §2 (Hard Gate)
+- **结果：** 待验证
 
 - **节点：** skills/plan/SKILL.md
 - **问题：** #8 — grill-interview.md 不存在时 plan 自行编造创建。refactor 流程无 grill 步骤，plan 不应自行补文件。

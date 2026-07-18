@@ -46,6 +46,11 @@ exec 不做:
 - "这个任务只改了一个文件，不需要边界检查"
 - "代码很简单不需要 REFACTOR"
 - "spawn 返回了我先看看结果再记日志"
+- "测试文件已经存在了，我直接 Bash 跑一下看结果就行" → STOP。RED 不是跑已有测试——是 spawn test-agent 创建新测试并确认失败原因正确。已有测试文件不代表 test-agent 不需要 spawn。
+- "我先跑个测试看看状态" → STOP。那是 test-agent 的职责。exec 不直接运行测试。
+- "直接 Bash 跑测试和 spawn test-agent 效果一样" → STOP。spawn 的目的不是跑测试，是实现 agent 隔离（test-agent 不读实现代码，coding-agent 不读测试代码）。
+- "我先用 Bash 验证一下环境/测试能不能跑" → STOP。环境验证在步骤 4 的确认测试环境硬门中完成。后续任何 Bash 测试命令都是越界。
+- "批量处理完 8 个 AI 任务再统一做 VERIFY 和边界检查更高效" → STOP。每个 AI 任务是独立的 TDD 循环。不批量处理。
 
 **以上任一条出现 → STOP。回到 6b，从 RED spawn 重新开始。**
 
@@ -94,6 +99,16 @@ esac
 ### 3. 解析任务列表
 
 按 `${CLAUDE_PLUGIN_ROOT}/references/plan-format.md` 的规则提取 `[AI-N]` 任务，按依赖拓扑排序。`[HUMAN]` 任务收集但不执行。
+
+**解析行为列表 — 提取 screenshot 验证需求（硬门）：**
+
+从 plan.md 的 `## 行为列表` 表格中提取每条行为的验证方式：
+
+```bash
+grep 'screenshot' {task_dir}/plan.md
+```
+
+有 screenshot 行为 → 记录 screenshot 验证需求列表（行为 # + 问题描述），在 RED spawn prompt 中传入。无匹配 → 标注 "无 screenshot 验证需求"。
 
 ### 4. 确认测试环境
 
@@ -152,6 +167,17 @@ exec 只传任务上下文。agent 自己读自己的定义文件和参考文件
 
 **日志铁律：spawn 返回后第一件事是追加日志。不等检查结果。先记日志，再检查。**
 
+**阶段转换门（Phase Transition Gate）— 每个 phase 不可跳过：**
+
+每个 phase (RED/GREEN/VERIFY/边界检查/REFACTOR) 完成后必须输出显式判定：
+
+```
+## Phase {N} 判定: {phase_name}
+- Verdict: ✅ 通过 → 进入 {next_phase} / ❌ 未通过 → {action}
+```
+
+**只有输出 ✅ 判定后才能进入下一 phase。** 未输出判定直接进入下一 phase = 违规。Completion Gate 要求所有 5 个 phase 的判定记录存在于 tdd-iterations.md 中。
+
 每个任务走完整 RED → GREEN → VERIFY → 边界检查 → REFACTOR 循环。
 
 **硬门：每个阶段不可跳过。GREEN 首跑全绿不是跳过 VERIFY 的理由。简单任务不是跳过边界检查的理由。**
@@ -160,9 +186,9 @@ exec 只传任务上下文。agent 自己读自己的定义文件和参考文件
 
 更新 `progress.json`：状态 → `in_progress`。
 
-按 `references/exec-logging.md` 的"初始化"节初始化 `{task_dir}/.work/tdd-iterations.md`。
+按 `references/exec-logging.md` 的"初始化"节初始化 `{task_dir}/.work/tdd-iterations.md`（**这是 `.work/` 下的一个文件，不是目录**）。
 
-创建 coding agent 日志目录：
+创建 coding agent 日志目录
 
 ```bash
 mkdir -p {task_dir}/.work/coding
@@ -339,9 +365,11 @@ Skill("game-dev:write-tutorial")
 ## Completion Gate
 
 永远不要声称任务完成，除非：
-1. 所有 `[AI-N]` 标记 `done`
+1. 所有 `[AI-N]` 标记 `done`（progress.json 中 status=done）
 2. 全量测试全部通过
 3. 边界违规全部修复
-4. `game-dev:collect-lessons` 已完成
-5. `game-dev:write-tutorial` 已完成（feat/refactor），fix 跳过
-6. 输出完成报告
+4. 所有 screenshot 验证行为已创建截图 testcase 且通过 visual-qa
+5. 每个 AI 任务的 5 个 phase 判定记录存在于 tdd-iterations.md
+6. `game-dev:collect-lessons` 已完成
+7. `game-dev:write-tutorial` 已完成（feat/refactor），fix 跳过
+8. 输出完成报告
