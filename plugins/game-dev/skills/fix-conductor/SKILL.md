@@ -123,6 +123,7 @@ mkdir -p {task_dir}/.work
 | 3 | 视觉关键词检测已执行（阶段 1b） | ✅ / ❌ |
 | 4 | 如有视觉关键词，截图验证需求已确认 | ✅ / ❌ |
 | 5 | requirements.md 已写入 {task_dir}/.work/ 且内容非空 | ✅ / ❌ |
+| 6 | spawn prompt 中预期行为的验证方式与 requirements.md 一致（逐条核对：screenshot 不能改写为 behavior，反之亦然） | ✅ / ❌ |
 
 任何 ❌ → STOP。返回对应阶段补完。
 ```
@@ -215,8 +216,9 @@ RED
 {用户报告的 BUG}
 
 ## 预期行为（含验证方式）
-1. {行为 1}  — 验证方式: {behavior | screenshot: 问题描述}
-2. {行为 2}  — 验证方式: {behavior | screenshot: 问题描述}
+{从 {task_dir}/.work/requirements.md 的"预期行为"表格逐条复制。每条的验证方式字段必须原样复制，不得修改——screenshot 不能改写为 behavior，反之亦然。}
+1. {行为 1}  — 验证方式: {逐字复制 requirements.md}
+2. {行为 2}  — 验证方式: {逐字复制 requirements.md}
 3. ...
 
 要求：
@@ -227,6 +229,7 @@ RED
 - 标注为 screenshot 的行为必须创建截图脚本 + .question 文件，放入 {test_dir}/visual/
 - 截图 testcase 命名: test_{描述}_screenshot
 - **不得在 prompt 中包含任何根因分析或调查结论。test-agent 独立基于行为清单编写测试。**
+- **不得在 prompt 中指定具体的测试文件名称或"必交付物"清单。test-agent 从行为清单自行推导 testcase。**
   "
 })
 ```
@@ -260,8 +263,9 @@ Agent({
 {用户报告的 BUG}
 
 ## 预期行为（含验证方式）
-1. {行为 1}  — 验证方式: {behavior | screenshot: 问题描述}
-2. {行为 2}  — 验证方式: {behavior | screenshot: 问题描述}
+{从 {task_dir}/.work/requirements.md 的"预期行为"表格逐条复制。每条的验证方式字段必须原样复制，不得修改。}
+1. {行为 1}  — 验证方式: {逐字复制 requirements.md}
+2. {行为 2}  — 验证方式: {逐字复制 requirements.md}
 3. ...
 
 ## 目标 testsuite
@@ -278,6 +282,7 @@ Agent({
 **conductor 禁止事项（Iron Law 强制执行）：**
 - ❌ 禁止在 spawn prompt 中写入 "调查结论"、"已知根因"、"不要重新调查"、"直接修" 等颠覆 agent 独立性的指示
 - ❌ 禁止在 spawn agent 前自行读取游戏源代码
+- ❌ 禁止将 requirements.md 中标注为 `screenshot` 的行为改写为 `behavior`。验证方式必须原样传递。
 - ✅ 只传入: project, task_dir, BUG 描述, 预期行为（含验证方式）, testsuite/testcase 列表
 
 fix-agent 启动后读取参考文件 → 调用 `Skill("game-dev:fix-loop")` 开始修复循环 → 完成后返回。
@@ -312,6 +317,11 @@ GREEN
 - BUG 复现测试 PASS
 - 已有测试全部通过（无回归）
 - 有 screenshot 验证方式的行为：截图验证通过 visual-qa
+
+**conductor 禁止事项（阶段 4）：**
+- ❌ 禁止在 VERIFY spawn prompt 中写入显式 Bash 命令（如 `godot --headless ...`）、测试命令、截图命令。test-agent 自行读取 config.md 解析命令，按 GREEN mode 标准过程执行。
+- ❌ 禁止在 VERIFY spawn prompt 中写入 "确认截图为非空 PNG" 等 file size 检查替代 visual-qa。screenshot 验证 = `Skill("game-dev:visual-qa")`，test-agent 自行按 screenshot测试执行方法 执行。
+- ✅ 只传入: 模式, project, task_dir, 任务描述。
 
 ---
 
