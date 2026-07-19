@@ -25,20 +25,24 @@ description: |
 
 # Game Dev Fix Conductor — BUG 修复状态机
 
+## The Iron Law
+
+```
+CONDUCTOR DOES NOT DEBUG. CONDUCTOR READS CONFIG, NOT SOURCE.
+
+Conductor reads: CLAUDE.md, config.md, current-state.json.
+Conductor spawns: agents and skills as defined in each phase.
+Conductor NEVER: reads game source code, traces call chains, forms root cause hypotheses.
+
+Violating the letter of this rule is violating the spirit of this rule.
+```
+
 ## 工作流
 
 ```
 [检测技术栈] → 行为澄清 → test agent 写 BUG 复现测试 → fix-agent (fix-loop + debug-root-cause) → VERIFY → completed
     ↑ 预期行为      ↑ 确认 BUG 存在 + 可复现          ↑ 诊断→修复→验证循环             ↑ 独立验证
 ```
-
-与另外两个 conductor 的区别：
-
-| | orchestrator | refactor-conductor | fix-conductor |
-|--|:--:|:--:|:--:|
-| 分析手段 | brainstorming | 代码分析 + brainstorming | 逆向追踪（debug-root-cause） |
-| 前置产物 | — | impact.md | BUG 复现测试 |
-| 执行 | exec --mode feat | exec --mode refactor | fix-agent (fix-loop) |
 
 ---
 
@@ -105,16 +109,39 @@ mkdir -p {task_dir}/.work
 5. **硬门：** 未确认预期行为前，不得进入阶段 2
 6. 用户自己也无法确定预期行为 → 暂停，建议先搞清楚功能需求再继续
 
+**硬门检查点 — 阶段 1 → 阶段 2（强制执行）：**
+
+在进入阶段 2 之前，conductor 必须输出以下检查表，全部 ✅ 才允许调用 Agent：
+
+```
+## 硬门检查: 阶段 1 → 阶段 2
+
+| # | 检查项 | 状态 |
+|---|--------|------|
+| 1 | 预期行为已整理为清单并回显给用户 | ✅ / ❌ |
+| 2 | 用户已确认预期行为（回复 OK / 明确确认） | ✅ / ❌ |
+| 3 | 视觉关键词检测已执行（阶段 1b） | ✅ / ❌ |
+| 4 | 如有视觉关键词，截图验证需求已确认 | ✅ / ❌ |
+| 5 | requirements.md 已写入 {task_dir}/.work/ 且内容非空 | ✅ / ❌ |
+
+任何 ❌ → STOP。返回对应阶段补完。
+```
+
 ### 阶段 1b：视觉验证检测
 
 预期行为确认后，检测 BUG 是否涉及视觉验证。视觉 BUG 需要额外增加截图验证，不能只看 GUT 测试结果。
 
-**自动检测规则：** 扫描 BUG 描述和预期行为文本，匹配视觉关键词（不区分大小写）：
+**自动检测规则：** 扫描 BUG 描述和预期行为文本，匹配视觉关键词（不区分大小写）。
 
+**强制执行 — 使用 grep 命令扫描（不可跳过）：**
+
+```bash
+echo "{BUG 描述} {预期行为}" | grep -iE "显示|渲染|画面|布局|颜色|位置|大小|UI|界面|样式|字体|图标|动画|特效|遮挡|重叠|偏移|消失|闪烁|错位|裁剪|拉伸|变形|对齐|间距|尺寸|透明度|层级|视觉|像素|display|render|layout|color|position|size|visual|appear|look|style|font|icon|animation|effect|overlap|offset|clip|stretch|align|spacing|opacity|layer|pixel|z-order|可见|不可见|看不到|碰撞体"
 ```
-中文: 显示|渲染|画面|布局|颜色|位置|大小|UI|界面|样式|字体|图标|动画|特效|遮挡|重叠|偏移|消失|闪烁|错位|裁剪|拉伸|变形|对齐|间距|尺寸|透明度|层级|视觉|UI|像素
-英文: display|render|layout|color|position|size|visual|appear|look|style|font|icon|animation|effect|overlap|offset|clip|stretch|align|spacing|opacity|layer|pixel|z-order
-```
+
+grep 返回非空 → 视觉 BUG 确认。grep 为空 → 无视觉 BUG，阶段 1b 通过。
+
+**此 grep 命令必须执行。跳过 = 违反铁律。**
 
 **判定逻辑：**
 
@@ -142,6 +169,27 @@ mkdir -p {task_dir}/.work
 
 **硬门：** 匹配到视觉关键词但用户未确认截图验证需求前，不得进入阶段 2。
 
+### 阶段 1c：写入 requirements.md（供 test-agent 使用）
+
+test-agent 的数据来源是文件（`{task_dir}/.work/requirements.md`），不是 spawn prompt。行为澄清完成后必须将确认的行为写入此文件。
+
+```bash
+cat > {task_dir}/.work/requirements.md << 'EOF'
+# BUG 修复需求
+
+## BUG 描述
+{BUG 描述原文}
+
+## 预期行为
+{逐条列出，含验证方式}
+1. {行为 1}  — 验证方式: {behavior | screenshot: 问题描述}
+2. {行为 2}  — 验证方式: {behavior | screenshot: 问题描述}
+3. ...
+EOF
+```
+
+**硬门：** requirements.md 写入后必须 `cat {task_dir}/.work/requirements.md` 验证内容非空。为空 → 重写。
+
 ### 阶段 2：Test Agent 写 BUG 复现测试
 
 用 test agent 编写一个专门复现 BUG 的测试文件。这个测试当前必然 FAIL（BUG 存在），它是后续根因分析的**可运行输入**。这个测试必须是依据预期行为来写，要体现出预期行为失败。
@@ -151,22 +199,34 @@ Agent({
   subagent_type: "game-dev:test-agent",
   description: "Write BUG reproduction test",
   prompt: "
-    为以下 BUG 编写复现测试：
+## 模式
+RED
 
-    BUG 描述：{用户报告的 BUG}
+## project
+{project 名称}
 
-    预期行为（含验证方式）：
-    1. {行为 1}  — 验证方式: {behavior | screenshot: 问题描述}
-    2. {行为 2}  — 验证方式: {behavior | screenshot: 问题描述}
-    3. ...
+## task_dir
+{task_dir}
 
-    要求：
-    - 测试文件写入 {test_dir}/
-    - 测试必须复现 BUG——当前应 FAIL
-    - 测试通过的标准是：实际行为 = 预期行为
-    - 只写测试，不修改源代码
-    - 标注为 screenshot 的行为必须创建截图脚本 + .question 文件，放入 {test_dir}/visual/
-    - 截图 testcase 命名: test_{描述}_screenshot
+## test_dir
+{test_dir}
+
+## BUG 描述（用户报告）
+{用户报告的 BUG}
+
+## 预期行为（含验证方式）
+1. {行为 1}  — 验证方式: {behavior | screenshot: 问题描述}
+2. {行为 2}  — 验证方式: {behavior | screenshot: 问题描述}
+3. ...
+
+要求：
+- 测试文件写入 {test_dir}/
+- 测试必须复现 BUG——当前应 FAIL
+- 测试通过的标准是：实际行为 = 预期行为
+- 只写测试，不修改源代码
+- 标注为 screenshot 的行为必须创建截图脚本 + .question 文件，放入 {test_dir}/visual/
+- 截图 testcase 命名: test_{描述}_screenshot
+- **不得在 prompt 中包含任何根因分析或调查结论。test-agent 独立基于行为清单编写测试。**
   "
 })
 ```
@@ -209,9 +269,16 @@ Agent({
 
 ## 目标 testcase
 {从 RED report 提取的 testcase 名列表（含 GUT + screenshot）}
+
+**重要：本 prompt 不含任何根因分析。fix-agent 必须自行调用 fix-loop → debug-root-cause 进行独立诊断。**
   "
 })
 ```
+
+**conductor 禁止事项（Iron Law 强制执行）：**
+- ❌ 禁止在 spawn prompt 中写入 "调查结论"、"已知根因"、"不要重新调查"、"直接修" 等颠覆 agent 独立性的指示
+- ❌ 禁止在 spawn agent 前自行读取游戏源代码
+- ✅ 只传入: project, task_dir, BUG 描述, 预期行为（含验证方式）, testsuite/testcase 列表
 
 fix-agent 启动后读取参考文件 → 调用 `Skill("game-dev:fix-loop")` 开始修复循环 → 完成后返回。
 
@@ -264,8 +331,24 @@ GREEN
 - "dev_dir 大概就是 .dev 吧，不用读 config"
 - "记得是 .dev，不用再读 config"
 - 没有回显 dev_dir 值就直接调用 artifact-manager
+- "我先读一下源代码确认 BUG 原因再 spawn agent" → STOP。你正在越权 debug-root-cause。回阶段 1 做行为澄清。
+- "根因很明显，直接告诉 agent 省一轮" → STOP。agent 必须独立诊断。conductor 不传根因。
+- "用户给了 tips 就是让我先去调查的" → STOP。tips 是行为澄清的输入，不是代码调查的入场券。
+- "--auto 模式可以跳过行为澄清" → STOP。--auto 跳过的是人工审查点，不是流程步骤。
+- "没有截图相关关键词，不用跑视觉检测 grep" → STOP。grep 命令必须执行，用结果说话。
 
 **以上任一条 → STOP。回到 Step 0b，读 config 并回显。**
+
+## 常见自我合理化
+
+| 借口 | 现实 |
+|------|------|
+| "我先看看代码确认一下再 spawn agent" | 你正在越权 debug-root-cause。Conductor 不读源代码。 |
+| "根因已经很明显了，直接告诉 fix-agent 省时间" | agent 的独立性是流程正确性的保证。喂根因 = 颠覆诊断链路。 |
+| "用户给了 tips，说明希望我先调查" | tips 是行为澄清的输入。调查是 debug-root-cause 的职责。 |
+| "这个 BUG 很简单，不需要走完整流程" | 简单 BUG 也有根因。跳步骤 = 猜。每个 BUG 用自己的证据链说话。 |
+| "--auto 就是全自动，不用确认行为" | --auto 跳过的是人工审查点，不是流程步骤。行为澄清必须执行。 |
+| "视觉检测 grep 太机械了，我看一眼就知道" | grep 是强制执行的客观检查。主观判断不可靠。 |
 
 ## 约束
 
