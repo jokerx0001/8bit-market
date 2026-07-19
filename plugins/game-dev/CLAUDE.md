@@ -30,7 +30,7 @@ The plugin auto-detects the project tech stack by reading CLAUDE.md. Tech-specif
 ### New Feature: `orchestrator`
 
 ```
-detect tech → create dir → [UI检测] → design-ui → plan → [资源检测] → design-resources → [review] → exec → completed
+detect tech → create dir → [UI] → plan → asset-extract-doc → [resources] → [review] → exec → completed
 ```
 
 ### Refactoring: `refactor-conductor`
@@ -68,7 +68,8 @@ skills/             # Core skill definitions
   fix-conductor/
   debug-root-cause/ #   Root cause analysis (backward tracing)
   design-ui/        #   UI design phase (tech-aware)
-  design-resources/ #   Resource generation (Godot-specific)
+  asset-extract/    #   (legacy) Extract assets from reference image
+  asset-extract-doc/#   Extract assets from design.md
   plan/             #   Design phase (tech-aware)
   fix-loop/         #   Fix repair loop
   exec/             #   TDD implementation (tech-agnostic)

@@ -1,6 +1,6 @@
 {
   "name": "game-dev",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "description": "Game Dev AI 开发插件 — 自动检测技术栈（Ren'Py / Godot），提供 plan → exec → completed 全流程 TDD 开发工作流",
   "author": {
     "name": "jokerx001"

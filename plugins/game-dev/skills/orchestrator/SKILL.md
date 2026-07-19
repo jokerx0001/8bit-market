@@ -31,7 +31,7 @@ description: |
 ## 工作流状态
 
 ```
-idle → [检测技术栈] → 保存用户原语 → grill → requirements → concept-art → design-ui → asset-extract → plan → [资源检测] → art-resources → [审查] → exec → ui-restoration → completed
+idle → [检测技术栈] → 保存用户原语 → grill → requirements → [concept-art] → [design-ui] → plan → asset-extract-doc → [资源检测] → art-resources → [审查] → exec → ui-restoration → completed
          ↓              ↓         ↓                ↓                                    ↑ ↑                        ↓
     读CLAUDE.md     阶段2     阶段3        加载tech config                      └── 修改plan ─┘       └── 无资源需求 ──┘
 ```
@@ -256,14 +256,6 @@ Skill({skill: "game-dev:design-ui", args: "--task-dir {task_dir} --tech {tech}"}
 ```
 
 
-#### 阶段 4c：Asset Extract — 从参考图提取资源需求
-
-```
-Skill({skill: "game-dev:asset-extract", args: "--task-dir {task_dir}"})
-```
-
-asset-extract 用 mmx vision 读 reference.png，提取视觉对象清单，判定生成策略，写入 `{task_dir}/.work/resources.md`。
-
 ### 阶段 5：Plan — 设计阶段
 
 1. 加载 `game-dev:plan` skill，传入参数：
@@ -290,13 +282,21 @@ AskUserQuestion({
 - 用户选择"批准" → 进入阶段 6
 - 用户选择"需要修改" → 用户描述修改意见，orchestrator 将意见传回 plan skill 重新设计（带 `--revise` 参数），修改后重新提交审查
 
-**全自动模式（mode=auto）：** 跳过 AskUserQuestion，直接进入阶段 6。
+**全自动模式（mode=auto）：** 跳过 AskUserQuestion，直接进入阶段 5b。
 
 ### 阶段 6：资源检测与生成
 
-**当 `{task_dir}/.work/resources.md` 存在且包含未处理的资源条目时触发。**
+Asset Extract from Design Doc — 从设计文档提取资源需求
 
-plan 阶段已将资源需求写入 `{task_dir}/.work/resources.md`。orchestrator 检查此文件有内容则调用：
+plan 已在 design.md 中内联声明资产需求。此阶段调用 asset-extract-doc 从 design.md 提取所有 `**资产:**` 声明块，判定生成策略，写入 resources.md。
+
+```
+Skill({skill: "game-dev:asset-extract-doc", args: "--task-dir {task_dir}"})
+```
+
+**当 `{task_dir}/.work/resources.md` 存在且包含 `###` 资源条目时触发。**
+
+asset-extract-doc 已将资源需求写入 `{task_dir}/.work/resources.md`。orchestrator 检查此文件有实质内容则调用：
 
 ```
 Skill({skill: "game-dev:art-resources-conductor", args: "--task-dir {task_dir} --tech {tech}"})
