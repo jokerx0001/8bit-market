@@ -137,12 +137,13 @@ mkdir -p {task_dir}/.work
 **强制执行 — 使用 grep 命令扫描（不可跳过）：**
 
 ```bash
-echo "{BUG 描述} {预期行为}" | grep -iE "显示|渲染|画面|布局|颜色|位置|大小|UI|界面|样式|字体|图标|动画|特效|遮挡|重叠|偏移|消失|闪烁|错位|裁剪|拉伸|变形|对齐|间距|尺寸|透明度|层级|视觉|像素|display|render|layout|color|position|size|visual|appear|look|style|font|icon|animation|effect|overlap|offset|clip|stretch|align|spacing|opacity|layer|pixel|z-order|可见|不可见|看不到|碰撞体"
+VISUAL_CHECK=$(echo "{BUG 描述} {预期行为}" | grep -iE "显示|渲染|画面|布局|颜色|位置|大小|UI|界面|样式|字体|图标|动画|特效|遮挡|重叠|偏移|消失|闪烁|错位|裁剪|拉伸|变形|对齐|间距|尺寸|透明度|层级|视觉|像素|display|render|layout|color|position|size|visual|appear|look|style|font|icon|animation|effect|overlap|offset|clip|stretch|align|spacing|opacity|layer|pixel|z-order|可见|不可见|看不到|碰撞体")
+echo "VISUAL_CHECK_RESULT: ${VISUAL_CHECK:-NONE}" >> {task_dir}/.work/requirements.md
 ```
 
 grep 返回非空 → 视觉 BUG 确认。grep 为空 → 无视觉 BUG，阶段 1b 通过。
 
-**此 grep 命令必须执行。跳过 = 违反铁律。**
+**此 grep 命令必须执行。跳过 = 违反铁律。** grep 结果追加到 requirements.md 底部作为执行证据，后续阶段可通过读取 requirements.md 验证 grep 确实执行了。
 
 **判定逻辑：**
 
@@ -236,7 +237,26 @@ RED
 
 **硬门通过后 — 记录测试目标：**
 
-从 test-agent 的 report 提取 testsuite 名和 testcase 名列表（含 GUT + screenshot），在后续阶段 3 传入 fix-agent。
+从 test-agent 的 RED report 提取 testsuite 名和 testcase 名列表（含 GUT + screenshot），在后续阶段 3 传入 fix-agent。
+
+**硬门检查点 — 阶段 2 → 阶段 3: spawn prompt 完整性验证（强制执行）：**
+
+在 spawn fix-agent 之前，conductor 必须逐字段确认 spawn prompt 模板中的所有 `${...}` 占位符已填充：
+
+```
+## spawn prompt 完整性自检
+
+| # | 占位符 | 来源 | 已填充? | 填充值 |
+|---|--------|------|---------|--------|
+| 1 | {project 名称} | 阶段 0 检测 | ✅ / ❌ | {实际值} |
+| 2 | {task_dir} | 阶段 0c artifact-manager 返回 | ✅ / ❌ | {实际值} |
+| 3 | {用户报告的 BUG} | 用户输入 | ✅ / ❌ | {实际值} |
+| 4 | {行为 N} + {验证方式} | requirements.md 逐字复制 | ✅ / ❌ | {条数} 条 |
+| 5 | {testsuite 名} | RED report 提取 | ✅ / ❌ | {实际 suite 名} |
+| 6 | {testcase 名列表} | RED report 提取 | ✅ / ❌ | {N 个 testcase} |
+```
+
+**任何 ❌ → STOP。** 返回对应来源补全字段。**特别是 #5 和 #6 不能为空**——无测试目标就无法验证修复。
 
 ### 阶段 3：Fix Agent — 诊断→修复→验证循环
 

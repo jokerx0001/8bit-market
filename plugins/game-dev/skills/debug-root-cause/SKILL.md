@@ -45,6 +45,16 @@ NO DIAGNOSIS WITHOUT BACKWARD TRACING FIRST
 
 **综合判定：** 任一测试 PASS（BUG 不存在）→ 报告给 fix-conductor，停止。可能是用户环境问题或 BUG 已被修复。
 
+**步骤 1 硬门（强制执行）：** 未完成以下全部三项前，不得进入步骤 2。
+
+| # | 检查项 | 状态 |
+|---|--------|------|
+| 1 | GUT 测试已执行，失败输出已捕获（含 assertion 失败详情、actual vs expected、traceback） | ✅ / ❌ |
+| 2 | 如有 screenshot 测试：已执行截图脚本，已调用 visual-qa，Answer 已记录；如环境不支持（无 xvfb），已明确标注 "screenshot 跳过: 环境不支持" | ✅ / ❌ / N/A |
+| 3 | debug-analysis.md 的 "证据链" §1 已写入上述测试输出（非 "代码 reading 确认"） | ✅ / ❌ |
+
+**任何 ❌ → STOP。** 尚未确认 BUG 存在——你还没有可运行的失败起点，无法进行逆向追踪。
+
 ### 步骤 2：逆向追踪
 
 **如 `before_attempts` 路径对应的文件存在：** 先读取——这些是已验证为错误的根因假设和修复路径。诊断时主动避开这些方向，从新的角度追踪。
@@ -112,6 +122,16 @@ NO DIAGNOSIS WITHOUT BACKWARD TRACING FIRST
 ```
 
 **验证修改是 hack——不要把它写成正式修复。** 它的唯一目的是确认"改这里，BUG 就消失"。
+
+**步骤 4 硬门（强制执行）：** 撤销确认后才可进入步骤 5。
+
+| # | 检查项 | 状态 |
+|---|--------|------|
+| 1 | 临时修改的具体内容已记录（文件、行号、改动内容） | ✅ / ❌ |
+| 2 | BUG 复现测试已执行，结果已记录（GUT FAIL → PASS；如有 screenshot 同步骤 1） | ✅ / ❌ |
+| 3 | 临时修改已撤销（`git checkout` 或手动还原），`git diff` 确认工作区干净 | ✅ / ❌ |
+
+**任何 ❌ → STOP。** 未验证的根因假设 = 猜测。猜测的根因写入 debug-analysis.md 会浪费 fix-loop 的修复轮次。
 
 ### 步骤 5：写入 debug-analysis.md
 

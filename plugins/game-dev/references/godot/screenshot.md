@@ -1,6 +1,6 @@
 # Godot 截图方法
 
-非 headless 截图。关键经验两条：
+# 约束
 
 1. **绝不能加 `--headless`** 否则无法截图
 2. **切场景后必须多 `await process_frame` + 一次 `await RenderingServer.frame_post_draw`**，等 GPU 真正提交完这一帧。否则 `get_viewport().get_texture()` 拿到的是上一帧或未提交的内容，经常是黑屏。
@@ -51,7 +51,7 @@ func _init() -> void:
 # 执行截图脚本，stdout 输出纯 base64 PNG 字符串
 godot --path {project} --script {screenshot_script_path}
 
-# 解码保存为 PNG 文件
+# 截图命令
 godot --path {project} --script {screenshot_script_path} | base64 -d > {output_path}.png
 ```
 
