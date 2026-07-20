@@ -110,3 +110,19 @@
 - **去掉了:** Iron Law 加 cache 条款、阶段 5 步骤 0 hard gate、阶段 3.4 cache 写入检查、cache 相关 Red Flags(2条)、cache 相关理性化借口(1条)——所有这些对于防止一个路径歧义而言都是过度布防。
 - **Source:** 系统提示中 `Base directory for this skill` vs `Primary working directory` 的双锚点分析
 - **Result:** pending verification
+
+### Round 7 (2026-07-20)
+
+- **Node:** `skills/plugin-improve/SKILL.md` — References 章节 + 阶段 3/4 入口 + 红旗信号 + 理性化借口 + 验证清单
+- **Problem:** [CRITICAL] Reference 文件"按需加载"措辞无强制力 — 模型将"按需"解释为可选，跳过读取全部 4 个 reference（harness-methodology.md / skill-structure.md / agent-structure.md / diagnosis-guide.md）直接写诊断和根因分析。Session log 证据：diagnosis-result.md 在 L232 写入，但 harness-methodology.md 首次读取在 L458（用户明确要求"从harness来修"之后）；skill-structure.md、agent-structure.md、diagnosis-guide.md 全程未读取（读取次数 = 0）。
+- **Root cause:** SKILL.md L591 "诊断过程中按需加载"措辞为建议性而非强制性 — 缺少 Iron Law 级别声明。阶段 3→4 转换处无 Hard Gate 强制验证 reference 已被读取。Red Flags 和 Rationalization Table 在文件末尾，距阶段 3-4 执行点距离过远，无法在违规时触发自检。
+- **Fix (7 changes):**
+  1. References 章节: "按需加载" → "REFERENCE FILES ARE NOT OPTIONAL"，明确每个 reference 的强制加载时机
+  2. 阶段 3 入口 Hard Gate: `Read diagnosis-guide.md §2` — 未读取 = 不具备进入资格
+  3. 阶段 4 入口 Hard Gate: 4-item checklist — 任何文件未读 = 不具备根因分析资格
+  4. 阶段 4 入口内联 Red Flags: 4 条中英双语（"根因很明显不需要查 reference" 等）
+  5. Rationalization Table: +4 条 reference-skipping 条目
+  6. Red Flags: +3 条中英双语 reference-skipping 条目
+  7. 验证清单: +2 条 reference 读取检查项
+- **Source:** harness-methodology.md §机制1,3,4,5; diagnosis-guide.md §2; self-diagnosis 2026-07-20-plugin-improve-self-diagnosis.md
+- **Result:** pending verification

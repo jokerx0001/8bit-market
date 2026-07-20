@@ -83,7 +83,7 @@
     {
       "name": "plugin-improve",
       "description": "Plugin 诊断改善工具 — 链路追踪分析，Harness 方法论检查，结构标准验证，有依据地改善 Claude Code plugin 的行为质量",
-      "version": "0.1.6",
+      "version": "0.1.7",
       "source": "./plugins/plugin-improve",
       "category": "development",
       "author": {
