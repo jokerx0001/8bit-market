@@ -209,9 +209,6 @@ RED
 ## task_dir
 {task_dir}
 
-## test_dir
-{test_dir}
-
 ## BUG 描述（用户报告）
 {用户报告的 BUG}
 
@@ -222,11 +219,10 @@ RED
 3. ...
 
 要求：
-- 测试文件写入 {test_dir}/
 - 测试必须复现 BUG——当前应 FAIL
 - 测试通过的标准是：实际行为 = 预期行为
 - 只写测试，不修改源代码
-- 标注为 screenshot 的行为必须创建截图脚本 + .question 文件，放入 {test_dir}/visual/
+- 标注为 screenshot 的行为必须创建截图脚本 + .question 文件
 - 截图 testcase 命名: test_{描述}_screenshot
 - **不得在 prompt 中包含任何根因分析或调查结论。test-agent 独立基于行为清单编写测试。**
 - **不得在 prompt 中指定具体的测试文件名称或"必交付物"清单。test-agent 从行为清单自行推导 testcase。**
