@@ -210,6 +210,7 @@ Skill({skill: "game-dev:visual-qa", args: "--reference_image_path {截图路径}
 | 1 | `{testcase_name}_qa.log` 已写入 .work/logs/（文件存在且非空） | ✅ / ❌ |
 | 2 | qa 日志中包含 `### Answer` 节（visual-qa 返回了有效结果，非 API error） | ✅ / ❌ |
 | 3 | Answer 内容判断通过（PASS）或失败原因已记录 | ✅ / ❌ |
+| 4 | 如 Answer 包含 `blank_screenshot: true` → 回到 Step 6 重截（见下方"空白截图处理"），重截后从 Step 6 的 visual-qa 步骤重新走 | ✅ / ❌ |
 
 **截图失败必做行为（硬门——任一步骤失败必须全部执行）：**
 
@@ -219,6 +220,19 @@ Skill({skill: "game-dev:visual-qa", args: "--reference_image_path {截图路径}
 | 2 | 已逐条对照 screenshot.md 确认截图命令合规 | ✅ / ❌ |
 | 3 | 已检查环境 | ✅ / ❌ |
 | 4 | 如环境不支持 → 已找到不支持的原因 并更新 fix-attempts.md | ✅ / ❌ |
+| 5 | 已检查 qa.log 是否含 `blank_screenshot: true`（visual-qa 的 blank 报告）| ✅ / ❌ |
+
+**空白截图处理（如硬门 #4 或失败必做 #5 发现 blank_screenshot: true）：**
+
+空白截图 = 渲染未完成就截了。处理步骤：
+
+1. 检查 screenshot.md 中的帧等待是否足够（Godot: 是否等了足够 `process_frame` + 一次 `RenderingServer.frame_post_draw`；Ren'Py: 是否 `pause` 了足够时间）
+2. **增加帧等待：** 在截图脚本中把帧等待翻倍（10 → 20、5 → 10），确保 GPU 提交完成
+3. 重新执行截图命令，写出新 PNG
+4. 重新调用 visual-qa skill 验证新截图
+5. 将空白截图原因和重试结果记录到 fix-attempts.md
+
+**如果连续 2 次重截仍是空白 → 标记 BLOCKED。** 不再浪费时间——可能是环境没有 GPU、渲染后端异常等根本性问题。
 
 **此硬门不可跳过。截图失败不做此检查 = 本轮验证无效。**
 

@@ -32,6 +32,46 @@ From the arguments — freeform text with file paths:
 - Reference image + multiple frames → Dynamic mode — 暂不可用（见 Capability Detection）
 - No reference, just a question about screenshots → Question mode
 
+## Blank Screenshot Detection
+
+截图为空白或无效时，`mmx vision` 会返回 `API error: input new_sensitive, input image sensitive (HTTP 200)`。这类截图不能用于验证，必须识别并报告给调用方。
+
+### 统一输出格式
+
+无论预检还是 API 错误触发，**统一输出以下格式**（调用方只需检查 `blank_screenshot: true`）：
+
+```
+### Answer
+**blank_screenshot**: true
+**diagnosis**: {具体原因}
+```
+
+### 预检（API 调用前）
+
+对每张截图执行：
+
+```bash
+STD=$(identify -format "%[standard-deviation]" {screenshot.png} 2>/dev/null || echo "0")
+IS_BLANK=$(echo "$STD < 0.02" | bc -l 2>/dev/null || echo "0")
+```
+
+如果 `$IS_BLANK` 为 `1`（标准差 < 0.02），**不要调用 API**，直接输出 blank_screenshot 响应。diagnosis 写明 std 值。
+
+Static 模式下只对 screenshot 做预检，不对拼接后的图做检查。
+
+### API 错误捕获（API 调用后）
+
+`mmx vision` 的返回结果如果包含以下内容，说明截图对 API 无效（即使预检通过——例如几乎透明、仅顶部有少量内容的图）：
+
+```
+"error": {
+  "code": 1,
+  "message": "API error: input new_sensitive, input image sensitive (HTTP 200)"
+}
+```
+
+**将此错误等同于 blank_screenshot。** 不要重试 API 调用，直接输出 blank_screenshot 响应。diagnosis 写明 `API returned input_sensitive`。
+
 ## Execution
 
 ### Static Mode
