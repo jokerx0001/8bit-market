@@ -126,7 +126,36 @@
 
 ---
 
-### 第 5b 轮（2026-07-20）— 遗漏问题补充修复（harness 正确方案）
+### 第 7 轮（2026-07-21）— fix 链路 screenshot 伪截图防护
+
+- **节点：** agents/test-agent.md
+- **问题：** 诊断 #4, #5, #6 — test-agent 第一个 spawn 写了 4 个程序化伪截图脚本（Image.create/fill/set_pixel 绘图），未加载真实场景，未抓 viewport。缺失 Iron Law + Red Flags 阻止 agent 用绘图替代截图
+- **修复：**
+  1. Screenshot 测试编写方法前增加 Screenshot Iron Law：`SCREENSHOT MEANS VIEWPORT CAPTURE. NOT PROGRAMMATIC DRAWING.` 禁止 Image.create/fill/set_pixel 和 Fake 对象
+  2. 增加 Screenshot Red Flags 表格（4 条中英双语）："不加载主场景"、"Image.create 在脚本中"、"Fake/Mock 对象"、"无法到达场景但仍在写脚本"
+  3. tools 字段增加 `Skill`（body 要求调用 visual-qa skill 但 tools 缺少 Skill 工具权限）
+- **来源：** diagnosis 2026-07-21-fix-screenshots; harness-methodology.md §机制1 (Iron Law), §机制4 (Red Flags); agent-structure.md §6.1 (最小权限)
+- **结果：** 待验证
+
+---
+
+- **节点：** skills/fix-conductor/SKILL.md
+- **问题：** 诊断 #3, #7, #8, #9 — 阶段 2 硬门仅检查 screenshot 文件存在性，未检查内容质量；spawn prompt 构建后无内容一致性自检，导致 requirements.md 的"从 PNG 加载的图像"被改写为"真实武器模型的视觉"
+- **修复：**
+  1. 阶段 2 硬门增加 screenshot 脚本内容质量验证（3 条 grep 检查：必须有 change_scene_to_file/get_viewport().get_texture()；禁止 Image.create/fill/set_pixel）
+  2. spawn prompt 构建后增加"内容一致性自检"步骤——逐条对比 prompt 与 requirements.md 的核心动作/对象短语
+- **来源：** diagnosis 2026-07-21-fix-screenshots; harness-methodology.md §机制5 (Hard Gate), §机制8 (Self-Review Checkpoint)
+- **结果：** 待验证
+
+---
+
+- **节点：** skills/fix-loop/SKILL.md
+- **问题：** 诊断 #10 — screenshot 输出路径不一致：fix-loop 用 `.work/logs/screenshots/`，debug-root-cause/test-agent 用 `.work/screenshots/`
+- **修复：** 准备阶段 mkdir 和 Step 6 output_path 统一为 `.work/screenshots/`
+- **来源：** diagnosis 2026-07-21-fix-screenshots; harness-methodology.md §机制6 (Phase Transitions 出口验证)
+- **结果：** 待验证
+
+---
 
 - **节点：** agents/fix-agent.md
 - **问题：** 诊断 #24a — 声明的 `> {log_path}` 未执行，12 次 GUT 全部用管道丢弃输出
