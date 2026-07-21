@@ -202,12 +202,39 @@ Skill({skill: "game-dev:visual-qa", args: "--reference_image_path {截图路径}
 ```
 3. 将 skill 输出写入 `{task_dir}/.work/logs/{testcase_name}_qa.log`
 - 结果提取：从 qa 日志文件中 visual-qa 的 `### Answer` 内容判断是否通过
-- 截图失败必做行为: `Read ${CLAUDE_PLUGIN_ROOT}/references/{tech}/screenshot.md`, 输出内容, 逐条确认失败时候执行的命令是否符合文件内容指引，不符合则必须按照文件内容执行。如果已经遵守文件内容,则要检查环境问题。
+
+**Screenshot 验证硬门（强制执行）：** 每次截图验证后检查以下项目。任何 ❌ → 截图验证标记为 INCOMPLETE（不得标记为 PASS，不得退出循环）。
+
+| # | 检查项 | 状态 |
+|---|--------|------|
+| 1 | `{testcase_name}_qa.log` 已写入 .work/logs/（文件存在且非空） | ✅ / ❌ |
+| 2 | qa 日志中包含 `### Answer` 节（visual-qa 返回了有效结果，非 API error） | ✅ / ❌ |
+| 3 | Answer 内容判断通过（PASS）或失败原因已记录 | ✅ / ❌ |
+
+**截图失败必做行为（硬门——任一步骤失败必须全部执行）：**
+
+| # | 检查项 | 状态 |
+|---|--------|------|
+| 1 | 已重新 `Read ${CLAUDE_PLUGIN_ROOT}/references/{tech}/screenshot.md` | ✅ / ❌ |
+| 2 | 已逐条对照 screenshot.md 确认截图命令合规 | ✅ / ❌ |
+| 3 | 已检查环境 | ✅ / ❌ |
+| 4 | 如环境不支持 → 已找到不支持的原因 并更新 fix-attempts.md | ✅ / ❌ |
+
+**此硬门不可跳过。截图失败不做此检查 = 本轮验证无效。**
 
 #### Step 7: 判定
 
-- **全部 PASS → 退出循环。** 跳转到"完成"。
-- **任一 FAIL → 继续下一轮。** 追加失败详情到 fix-attempts.md：
+**判定前置条件（先检查，再判定）：**
+
+| # | 条件 | 状态 |
+|---|------|------|
+| 1 | GUT 测试已执行且输出已保存到 .work/logs/ | ✅ / ❌ |
+| 2 | 如有 screenshot testcase：每条有对应的 qa.log（文件存在且含 `### Answer`），或已标注 `环境不支持` | ✅ / ❌ |
+
+**任何 ❌ → 本轮验证无效。** 返回 Step 6 补全缺失的日志/验证，或标注 BLOCKED。
+
+- **全部 PASS（含 Screenshot visual-qa 全部 PASS 或已标注环境不支持）→ 退出循环。** 跳转到"完成"。
+- **任一 FAIL 或 INCOMPLETE → 继续下一轮。** 追加失败详情到 fix-attempts.md：
 
 ```markdown
 ### 验证结果
@@ -227,6 +254,16 @@ Skill({skill: "game-dev:visual-qa", args: "--reference_image_path {截图路径}
 ## 完成
 
 所有测试通过后：
+
+**完成硬门（以下步骤不可跳过。未完成前不得返回 fix-conductor）：**
+
+| # | 产出 | 状态 |
+|---|------|------|
+| 1 | `fix-summary.md` 已写入 `{task_dir}/.work/` | ✅ / ❌ |
+| 2 | `## Fix Complete` 报告已输出（含 BUG/根因/修复/轮次/验证） | ✅ / ❌ |
+| 3 | `fix-attempts.md` 最后一轮验证结果为 PASS（含 Screenshot 结果） | ✅ / ❌ |
+
+**任何 ❌ → 返回补全对应产出。不完成硬门 = 本轮 fix-loop 未完成。**
 
 ### 1. 写修复总结
 

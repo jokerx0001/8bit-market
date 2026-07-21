@@ -78,6 +78,54 @@
 
 ---
 
+### 第 6 轮（2026-07-21）— fix 链路 screenshot 验证 + 完成步骤 + VERIFY 硬门
+
+- **节点：** skills/debug-root-cause/SKILL.md
+- **问题：** 诊断 #52, #53 — Step 4 最小验证在第 5 轮已添加硬门检查表，但 agent 仍能在 session 中跳过（写"跳过(根因已通过代码阅读确认,逻辑直接且无歧义)"）。硬门表缺少"跳过声明检测"和绝对化禁止语言。
+- **修复：**
+  1. 步骤 4 开头增加绝对化语言：**"此步骤不可跳过。跳过 = 违反 Iron Law。代码阅读不是验证——只有实验结果是验证。"**
+  2. 硬门检查表新增第 0 项：检查 agent 是否在 debug-analysis.md 中写了"跳过"或"无需"——若是则本轮诊断无效
+- **来源：** diagnosis-result.md 2026-07-21; fix-conductor SKILL.md L146 绝对化语言模板 ("此 grep 命令必须执行。跳过 = 违反铁律")
+- **结果：** 待验证
+
+---
+
+- **节点：** skills/fix-loop/SKILL.md
+- **问题：** 诊断 #63, #64, #65, #66 — Screenshot 验证失败处理无强制机制。visual-qa 返回 API 错误后 agent 未执行"截图失败必做行为"，qa 日志未保存，agent 将 INCOMPLETE 视为 PASS 退出循环。
+- **修复：**
+  1. Screenshot 验证增加硬门检查表（3 项）：qa.log 存在、含 ### Answer、Answer 判定通过
+  2. "截图失败必做行为"从段落升级为硬门检查表（4 项）：重读 screenshot.md → 逐条对照命令 → 检查环境 → 标注不支持
+  3. Step 7 判定前增加前置条件检查表（2 项）：GUT 日志已保存、如有 screenshot 则 qa.log 完整
+  4. "任一 FAIL 或 INCOMPLETE → 继续下一轮"（原为"任一 FAIL → 继续"）
+- **来源：** diagnosis-result.md 2026-07-21; fix-conductor SKILL.md L114-L129 (硬门检查表格式模板)
+- **结果：** 待验证
+
+---
+
+- **节点：** skills/fix-loop/SKILL.md
+- **问题：** 诊断 #67, #68 — fix-loop 完成步骤（fix-summary.md + Fix Complete 报告）无强制性，agent 可自行跳过
+- **修复：** "完成"节开头增加硬门检查表（3 项）：fix-summary.md 已写入、Fix Complete 报告已输出、fix-attempts 最后一轮验证 PASS。任何 ❌ → 返回补全
+- **来源：** diagnosis-result.md 2026-07-21; fix-conductor SKILL.md L114-L129
+- **结果：** 待验证
+
+---
+
+- **节点：** skills/fix-conductor/SKILL.md
+- **问题：** 诊断 #26 — fix-conductor 阶段 4 VERIFY 完全未执行。session 中仅有 2 个 subagent（test-agent RED + fix-agent），无 GREEN mode VERIFY。全量回归测试未执行。
+- **修复：** 阶段 3→4 之间增加硬门检查表（5 项）：fix-summary.md 存在、fix-attempts 最后验证 PASS、screenshot visual-qa 结果记录、logs/ 中有验证日志、轮次 ≤ 5。任何 ❌ → STOP 不得进入阶段 4。
+- **来源：** diagnosis-result.md 2026-07-21; fix-conductor SKILL.md L114-L129 (阶段1→2硬门检查表模式)
+- **结果：** 待验证
+
+---
+
+- **节点：** agents/fix-agent.md
+- **问题：** 诊断 #41 — 初始化摘要 spec_files_read 不完整。agent 在摘要中将文件读取标记为后续操作，导致摘要中只显示 config.md: ✅，其余文件未在摘要中汇总。
+- **修复：** 启动步骤 3 改为"按顺序逐个尝试读取规范文件（先读后记，不可批量）"，每读一个立即记录结果。强调"不得全部读完后凭记忆写摘要"。初始化摘要输出从步骤 4 移至步骤 5（确保步骤 1-4 全部完成后再输出）。
+- **来源：** diagnosis-result.md 2026-07-21; fix-agent.md L47-L85 当前初始化流程
+- **结果：** 待验证
+
+---
+
 ### 第 5b 轮（2026-07-20）— 遗漏问题补充修复（harness 正确方案）
 
 - **节点：** agents/fix-agent.md

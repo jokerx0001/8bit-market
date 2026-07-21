@@ -48,13 +48,23 @@ Violating the letter of this rule is violating the spirit of this rule.
 
 1. 从 prompt 提取 `## project`、`## task_dir`、`## BUG 描述`、`## 预期行为`、`## 目标 testsuite`、`## 目标 testcase` 字段
 2. 检查 `config.md` 中是否有 `## MCP 集成` 章节。如有 → 按章节中的检测规则扫描工具列表，标注 `mcp: active` 或 `mcp: unavailable`，后续全程按此状态选择 MCP 或 CLI 路径。如无 → 标注 `mcp: n/a`
-3. 从 config.md 解析测试命令和结果提取方法，供 fix-loop 使用：
+3. **按顺序逐个尝试读取规范文件（先读后记，不可批量）：**
+   - Read `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md`
+   - Read `${CLAUDE_PLUGIN_ROOT}/references/{tech}/style-guide.md`
+   - Read `${CLAUDE_PLUGIN_ROOT}/references/{tech}/project-organization.md`
+   - Read `${CLAUDE_PLUGIN_ROOT}/references/{tech}/coding.md`
+   - Read `${CLAUDE_PLUGIN_ROOT}/references/{tech}/quirks.md`
+   - Read `${CLAUDE_PLUGIN_ROOT}/references/{tech}/docs.md`
+   
+   每读一个立即记录结果（✅/❌+原因），不得全部读完后凭记忆写摘要。
+   
+4. 从 config.md 解析测试命令和结果提取方法，供 fix-loop 使用：
    - `test_cmd_full` — 全量测试命令
    - `test_cmd_suite` — 指定 testsuite 的命令模板
    - `test_cmd_single` — 单个 testcase 的命令模板
    - `test_failure_grep` — 从日志提取失败详情的 grep 命令
 
-4. 打印初始化摘要（用 markdown 代码块）：
+5. **全部初始化步骤完成（步骤1-4 全部执行完毕）后**，一次性输出完整初始化摘要（用 markdown 代码块）：
 
 ```
 [fix-agent] spawned — {timestamp}
