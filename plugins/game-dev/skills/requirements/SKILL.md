@@ -37,7 +37,7 @@ description: This skill should be used when the orchestrator needs to manage pro
 1. 读取 `{task_dir}/.work/user-prompt.md` 和 `{task_dir}/.work/grill-interview.md`，综合理解用户意图
 2. 识别游戏类型（塔防、RPG、平台跳跃、视觉小说……）
 3. 从游戏类型推导全量功能系统——**不仅限于用户描述的功能**，而是完整游戏应有的所有系统
-4. 参考 `references/requirements-format.md` 中的项目级模板，写出 `{dev_dir}/requirements.md` 初稿
+4. 参考 `${CLAUDE_SKILL_DIR}/references/requirements-format.md` 中的项目级模板，写出 `{dev_dir}/requirements.md` 初稿
 5. 调用 `AskUserQuestion` 向用户确认功能系统是否完整、是否有遗漏或不需要的系统
 6. 用户确认后落盘
 
@@ -48,9 +48,9 @@ description: This skill should be used when the orchestrator needs to manage pro
 1. 读取完整的 `{dev_dir}/requirements.md`
 2. 读取 `{task_dir}/.work/grill-interview.md`
 3. 分析本次新模块与既存功能系统的关系——是新增系统、改造现有系统，还是扩展行为
-4. 参照 `references/requirements-format.md` 中的子需求模板，写出 `{task_dir}/.work/requirements.md`
+4. 参照 `${CLAUDE_SKILL_DIR}/references/requirements-format.md` 中的子需求模板，写出 `{task_dir}/.work/requirements.md`
 5. 调用 `AskUserQuestion` 澄清疑点（如新行为与现有行为的边界、功能归属等）
-6. **写完子需求后立即更新项目级文档**——参照 `references/requirements-format.md` 中的更新规则，将本次变更合并到 `{dev_dir}/requirements.md` 的正确章节位置。**严禁末尾盲追加**。
+6. **写完子需求后立即更新项目级文档**——参照 `${CLAUDE_SKILL_DIR}/references/requirements-format.md` 中的更新规则，将本次变更合并到 `{dev_dir}/requirements.md` 的正确章节位置。**严禁末尾盲追加**。
 
 **auto 模式下跳过步骤 5，直接基于已有信息更新。**
 
@@ -59,7 +59,7 @@ description: This skill should be used when the orchestrator needs to manage pro
 1. 扫描项目源码，识别已有的功能系统
 2. 读取所有 `{dev_dir}/feat-*/`、`{dev_dir}/refactor-*/` 目录下的设计文档，提取历史功能描述
 3. 反推全量功能系统
-4. 参照 `references/requirements-format.md` 中的项目级模板，写出 `{dev_dir}/requirements.md` 初稿
+4. 参照 `${CLAUDE_SKILL_DIR}/references/requirements-format.md` 中的项目级模板，写出 `{dev_dir}/requirements.md` 初稿
 5. 调用 `AskUserQuestion` 向用户确认反推结果是否准确、是否有遗漏
 6. 用户确认后落盘
 
@@ -87,7 +87,7 @@ description: This skill should be used when the orchestrator needs to manage pro
 
 **为什么这样做：** 行为确认承担的是需求描述。设计文档描述的是方案（界面结构、组件树），行为描述的是需求（玩家看到什么、做什么、结果是什么）。方案可以有多种，行为只有一种。test-agent 和 coding-agent 都以行为为基准——测试断言行为，实现产出行。
 
-写入前，对每条行为判定验证方式：该行为的结果玩家用眼睛能不能看到？看不到 → `behavior`，看得到 → `screenshot: {问题}`。判定后保存到 `{task_dir}/.work/requirements.md` 的"新增行为"章节，格式见 `references/requirements-format.md`。
+写入前，对每条行为判定验证方式：该行为的结果玩家用眼睛能不能看到？看不到 → `behavior`，看得到 → `screenshot: {问题}`。判定后保存到 `{task_dir}/.work/requirements.md` 的"新增行为"章节，格式见 `${CLAUDE_SKILL_DIR}/references/requirements-format.md`。
 
 **auto 模式下跳过确认直接写入。**
 
@@ -108,4 +108,4 @@ description: This skill should be used when the orchestrator needs to manage pro
 
 ## 格式规范
 
-详细模板、命名约定和更新规则见 `references/requirements-format.md`。
+详细模板、命名约定和更新规则见 `${CLAUDE_SKILL_DIR}/references/requirements-format.md`。

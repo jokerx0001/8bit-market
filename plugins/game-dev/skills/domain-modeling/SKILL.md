@@ -7,7 +7,7 @@ description: This skill should be used when the user asks to "design domain mode
 
 将需求文档翻译为具体引擎技术无关的领域模型。**铁律：只做分析和输出文档，不写实现代码，不涉及引擎概念。**
 
-**格式契约：** `references/domain-design-format.md` 定义了 domain-design.md 的完整格式规范。所有输出必须遵守。
+**格式契约：** `${CLAUDE_SKILL_DIR}/references/domain-design-format.md` 定义了 domain-design.md 的完整格式规范。所有输出必须遵守。
 
 ## 参数
 
@@ -111,7 +111,7 @@ description: This skill should be used when the user asks to "design domain mode
 
 ### 4. 写入
 
-按 `references/domain-design-format.md` 的模板写入 `{task_dir}/.work/domain-design.md`。
+按 `${CLAUDE_SKILL_DIR}/references/domain-design-format.md` 的模板写入 `{task_dir}/.work/domain-design.md`。
 
 ```bash
 mkdir -p {task_dir}/.work

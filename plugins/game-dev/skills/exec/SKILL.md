@@ -36,7 +36,7 @@ exec 不做:
 如果你发现自己在想：
 
 - "--auto 模式下可以简化，直接实现更快"
-- "找不到 references/exec-prompts.md，我自己写 prompt 就行"
+- "找不到 ${CLAUDE_SKILL_DIR}/references/exec-prompts.md，我自己写 prompt 就行"
 - "这个任务简单，不需要 spawn agent，我自己写了再验证"
 - "我先写几个文件让 agent 参考"
 - "spawn agent 太慢了，我自己跑测试更快"
@@ -59,7 +59,7 @@ exec 不做:
 | 借口 | 现实 |
 |------|------|
 | "--auto 就是全自动，我自己做也是自动" | `--auto` 只跳过人工审查（plan→exec），不跳过 agent 隔离。自己写代码会破坏 RED/GREEN 独立性。 |
-| "找不到参考文件，我自己拼 prompt 也一样" | 找不到 references/exec-prompts.md 说明路径有问题，应报错停止。自己编的 prompt 不会遵守隔离规则。 |
+| "找不到参考文件，我自己拼 prompt 也一样" | 找不到 ${CLAUDE_SKILL_DIR}/references/exec-prompts.md 说明路径有问题，应报错停止。自己编的 prompt 不会遵守隔离规则。 |
 | "自己做比 spawn agent 更快" | 快在一时。没有 agent 隔离 = test-agent 看到实现 = coding-agent 看到测试 = TDD 循环被污染。 |
 | "任务很简单，不需要完整流程" | 简单任务也有 RED/GREEN 边界。跳过 spawn = 回到"一个人又写测试又写实现"的非 TDD 模式。 |
 | "我先写个草稿让 agent 改" | agent 看到你的草稿会产生锚定效应——它会围绕你的实现修修补补，而不是从设计文档出发。 |
@@ -148,8 +148,8 @@ exec 只传任务上下文。agent 自己读自己的定义文件和参考文件
 ### 6. TDD 循环
 
 在开始循环前，一次性读取以下参考文件：
-- `references/exec-prompts.md` — agent spawn prompt 模板
-- `references/exec-logging.md` — TDD 迭代日志格式（exec 主会话记录用）
+- `${CLAUDE_SKILL_DIR}/references/exec-prompts.md` — agent spawn prompt 模板
+- `${CLAUDE_SKILL_DIR}/references/exec-logging.md` — TDD 迭代日志格式（exec 主会话记录用）
 - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` — 提取 project 名称、测试环境信息、已知坑
 - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/coding.md` — 提取边界检查规则
 
@@ -186,7 +186,7 @@ exec 只传任务上下文。agent 自己读自己的定义文件和参考文件
 
 更新 `progress.json`：状态 → `in_progress`。
 
-按 `references/exec-logging.md` 的"初始化"节初始化 `{task_dir}/.work/tdd-iterations.md`（**这是 `.work/` 下的一个文件，不是目录**）。
+按 `${CLAUDE_SKILL_DIR}/references/exec-logging.md` 的"初始化"节初始化 `{task_dir}/.work/tdd-iterations.md`（**这是 `.work/` 下的一个文件，不是目录**）。
 
 创建 coding agent 日志目录
 
@@ -196,7 +196,7 @@ mkdir -p {task_dir}/.work/coding
 
 #### 6b. RED — spawn game-dev:test-agent
 
-使用 `references/exec-prompts.md` 的 **RED prompt** 模板组装 spawn prompt。
+使用 `${CLAUDE_SKILL_DIR}/references/exec-prompts.md` 的 **RED prompt** 模板组装 spawn prompt。
 
 **记录日志**：spawn 返回后立即按 exec-logging.md RED 格式追加日志。先记日志，再检查。
 
@@ -309,7 +309,7 @@ mkdir -p {task_dir}/.work/coding
 
 使用 **REFACTOR prompt** + 边界违规清单（如有）。
 
-**检查结果**：按 references/exec-prompts.md REFACTOR 检查规则验收。
+**检查结果**：按 ${CLAUDE_SKILL_DIR}/references/exec-prompts.md REFACTOR 检查规则验收。
 - 阻塞（>5 轮）→ 报告用户，建议撤销重构保持 GREEN 状态
 - 全部通过 → 标记 done（6h）
 

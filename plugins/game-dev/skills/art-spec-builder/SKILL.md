@@ -44,7 +44,7 @@ description: |
 
 **只输出有效 YAML。** 不输出解释、不输出 markdown、不输出自然语言段落。
 
-完整 Schema 见 `references/art-spec-schema.md`。
+完整 Schema 见 `${CLAUDE_SKILL_DIR}/references/art-spec-schema.md`。
 
 ---
 
