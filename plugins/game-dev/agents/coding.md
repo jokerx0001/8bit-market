@@ -77,8 +77,8 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
    - 结果提取：`{test_failure_grep}`（将 `{log_path}` 替换为日志文件路径）
 
    **screenshot 验证方式（截图 + visual-qa）：**
-   - 全量执行：逐个 testcase 执行截图脚本（CLI 命令参考 screenshot.md，stdout base64 → `| base64 -d > {task_dir}/.work/screenshots/{testcase_name}.png`）→ 读对应的 `.question` 文件 → 调用 `Skill("game-dev:visual-qa")`，将截图路径和问题内容传入 `$ARGUMENTS` → 将 skill 输出（`### Answer` + `### Visual Evidence`）写入 `{log_path}`
-   - 单case执行：执行该 case 的截图脚本（同上 base64 解码）→ 读 `.question` → 同上调用 `Skill("game-dev:visual-qa")` → 将 skill 输出写入 `{log_path}`
+   - 截图执行：按 screenshot.md CLI 执行截图脚本 → stdout base64 → `| base64 -d > {task_dir}/.work/screenshots/{testcase_name}.png` → 读同名 `.question` 文件 → 调用 `Skill("game-dev:visual-qa")`，将截图路径和 .question 内容传入 `$ARGUMENTS` → 将 skill 输出（`### Answer` + `### Visual Evidence`）写入 `{log_path}`
+     Phase 1 全量验证时对每个 screenshot testcase 执行一次；Phase 2 单case 诊断时只对目标 testcase 执行一次。方法本身相同，仅 scope 不同。screenshot 没有批量 CLI 命令——不要尝试解析"全量执行"等价物。
    - 结果提取：从 `{log_path}` 中 visual-qa 的 `### Answer` 内容判断是否通过
 
    `{suite}`、`{case}`、`{log_path}` 为运行时占位符，每次使用时替换。
@@ -98,9 +98,11 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch"]
     test_cmd_single:  {从 config.md 解析}
     test_failure_grep: {从 config.md 解析}
     screenshot 命令:   {从 config.md 解析}
-    全量执行:         {方法定义见第 3 步}
-    单case执行:       {方法定义见第 3 步}
-    结果提取:         {方法定义见第 3 步}
+    全量执行 (GUT):     {test_cmd_suite} > {log_path} 2>&1
+    单case执行 (GUT):   {test_cmd_single} > {log_path} 2>&1
+    截图执行:           godot --path {project} --script {script} | base64 -d > {png} → Skill("game-dev:visual-qa")
+    结果提取 (GUT):     {test_failure_grep}
+    结果提取 (截图):     visual-qa ### Answer
 ```
 
 5. **将上述初始化摘要同时追加到 `{task_dir}/.work/coding/init.log`**（方便 exec 追溯 agent 的配置解析结果）。

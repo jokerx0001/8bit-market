@@ -1,3 +1,16 @@
+### 第 8 轮（2026-07-23）— feat 链路 screenshot 执行方法分离
+
+- **节点：** agents/coding.md
+- **问题：** 诊断 #2, #3 — coding.md 步骤3 把 GUT 和 screenshot 两种完全不同的测试体系强行套用同一套"全量执行/单case执行"命名框架。screenshot 没有批量 CLI 命令（GUT 有 `test_cmd_suite`），agent 在 init.log 中尝试为 screenshot 解析"全量执行"等价物时失败，标为 `godot CLI (unavailable)`。同时初始化摘要模板中 GUT 和 screenshot 的执行方法共用字段名，导致 agent 无法正确表达。
+- **修复：**
+  1. 步骤3 screenshot 方法定义: "全量执行/单case执行" → "截图执行"（去掉不存在的批量概念，Phase 1 vs Phase 2 仅 scope 不同，方法相同）
+  2. 初始化摘要模板: `全量执行`/`单case执行` → `全量执行 (GUT)`/`单case执行 (GUT)`/`截图执行`，各自独立字段
+  3. 结果提取也分开: `结果提取 (GUT)` + `结果提取 (截图)`
+- **来源：** diagnosis-result.md 2026-07-23; coding.md L79-82 原方法定义分析; init.log "godot CLI (unavailable)" 证据
+- **结果：** 待验证
+
+---
+
 ### 第 4 轮（2026-07-19）— fix 链路修复
 
 - **节点：** skills/fix-conductor/SKILL.md
