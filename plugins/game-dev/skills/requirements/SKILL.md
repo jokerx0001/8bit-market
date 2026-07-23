@@ -14,9 +14,9 @@ description: This skill should be used when the orchestrator needs to manage pro
 | 文件 | 内容 | 用途 |
 |------|------|------|
 | `{task_dir}/.work/user-prompt.md` | 用户原始输入（原语） | 检查用户是否直接指示了工作内容、技术偏好、具体约束 |
-| `{task_dir}/.work/grill-interview.md` | grill-with-docs 原始输出 | 理解用户确认过的意图，防止 AI 偏差 |
+| `{task_dir}/.work/grill-interview.md` | grilling 采访记录 | 理解用户确认过的意图，防止 AI 偏差 |
 
-**grill-interview.md 是 grill-with-docs 的原始输出，不得假设它有固定结构（如"需求侧/技术侧"分类）。** 它是什么格式就是什么格式，自己去读、去理解。
+**grill-interview.md 是 grilling 的采访记录，不得假设它有固定结构（如"需求侧/技术侧"分类）。** 它是什么格式就是什么格式，自己去读、去理解。
 
 **用户原语中的技术内容：** 分析 user-prompt.md 中用户是否直接指示了具体技术决策或实现约束。有则纳入需求考量，完成用户明确要求的内容。过滤掉与当前 task 无关的内容。
 

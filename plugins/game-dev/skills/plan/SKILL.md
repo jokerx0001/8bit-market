@@ -41,7 +41,7 @@ mkdir -p {task_dir}/.work
 
 **用户原始输入 + Grill 输出**
 - 读取 `{task_dir}/.work/user-prompt.md` — 用户原始输入（原语）。**分析其中是否有直接指示工作内容的技术决策或实现约束。** 有则纳入设计，完成用户明确要求的内容。过滤掉与当前 task 无关的内容。
-- 读取 `{task_dir}/.work/grill-interview.md` — grill-with-docs 原始输出。**Grill 的目的是防止 AI 偏差**
+- 读取 `{task_dir}/.work/grill-interview.md` — grilling 采访记录。**Grill 的目的是防止 AI 偏差**
 
 **需求文档**
 - 读取`{dev_dir}/requirements.md`(如果存在) 项目级需求文档,可以从整体理解这个项目
