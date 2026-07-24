@@ -69,10 +69,16 @@ GREEN
 ## 目标 testsuite
 {从 test-agent RED report 的 "### Testsuite" 提取的 testsuite 名称}
 
-## 目标 testcase — 每个都代表一个待实现的行为
-{从 test-agent RED report 的 "### Testcases" 表格提取的 testcase 名称}
+## 目标 testcase（GUT）— 每个都代表一个待实现的行为
+{从 test-agent RED report 的 "### GUT Testcases" 表格提取的 testcase 名称}
 - testcase_1
 - testcase_2
+
+## 目标 screenshot testcase（如有）— 每个代表一个需视觉验证的行为
+{从 test-agent RED report 的 "### Screenshot Testcases" 表格提取。无此项则写 "无"}
+- testcase_name: {Behavior 列内容}
+  脚本: test/visual/test_{name}.gd
+  question: test/visual/test_{name}.question
 
 ## 需要读取的文件
 - {task_dir}/plan.md  — 设计摘要、影响范围
@@ -84,8 +90,8 @@ GREEN
 })
 ```
 - coding-agent 自验证报告显示目标 testsuite 全部通过
-- 有 screenshot 验证方式的行为：visual-qa PASS
-- 未修改 game/tests/ 下文件
+- 有 screenshot 验证方式的行为：所有 screenshot testcase visual-qa PASS
+- 未修改 test/ 下文件
 - 无 pass / TODO / NotImplemented 残留
 合格: 全部条件达成
 不合格: 任一条件未达到

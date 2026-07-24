@@ -97,6 +97,11 @@ grep -iE "(Ren'Py|renpy|Godot|godot)" CLAUDE.md 2>/dev/null | head -5
 - 包含 `--auto` → mode = `auto`（全自动，不在审查点暂停）
 - 不包含 → mode = `normal`（正常模式，在审查点暂停等待用户确认）
 
+**硬门 — `--auto` 来源验证：**
+1. 从 `{task_dir}/.work/user-prompt.md` 中 grep `--auto`
+2. 如果 user-prompt.md 中不含 `--auto` 但 mode 被判定为 auto → **报错：`--auto` 来源不明，回退为 normal 模式**
+3. 此检查防止上游节点（start command）错误地编造 `--auto`
+
 **回显确认后才能进入阶段 1：**
 
 ```
@@ -147,7 +152,7 @@ grilling 返回什么就保存什么。**不分类、不整理、不转化。** 
 {task_dir}/.work/grill-interview.md
 ```
 
-**铁律：grill-interview.md 只能由 grilling skill 的返回内容写入。orchestrator 绝不自己创建、自己整理、自己补写此文件。**
+**铁律：grill-interview.md 只能由 grilling skill 的返回内容写入。orchestrator 绝不自己创建、自己整理、自己补写此文件。Auto 模式也不例外——grill 的核心价值是向用户提问获取真实反馈，不是 AI 自我分析。**
 
 **硬门 — 产出验证（不可跳过）：**
 
@@ -156,8 +161,8 @@ grilling 返回什么就保存什么。**不分类、不整理、不转化。** 
    ```bash
    test -s {task_dir}/.work/grill-interview.md && echo "GRILL_OK" || echo "GRILL_MISSING"
    ```
-3. `GRILL_MISSING` → **报告阻塞，不继续后续阶段。禁止自己写文件代替。**
-4. `GRILL_OK` → 读回文件前 20 行，确认内容是对话/采访格式（有问答交互痕迹），不是单方面编写的需求分析。如果读起来像自己写的需求文档 → STOP，回到 Step 2b 重新 grill。
+3. `GRILL_MISSING` → **报告阻塞，不继续后续阶段。禁止自己写文件代替。Auto 模式下同样报告阻塞——auto 只跳过人工审查点（plan review），不跳过 grill。**
+4. `GRILL_OK` → 读回文件前 20 行，确认内容是对话/采访格式（有问答交互痕迹），不是单方面编写的需求分析。**额外检查：grep 文件中的 `?` 或 `？`（问句是对话格式的必要特征）。零问句 → 不是采访 → STOP，回到 Step 2b 重新 grill。**如果读起来像自己写的需求文档 → STOP，回到 Step 2b 重新 grill。
 
 #### Step 2c：Domain Modeling 归档
 
@@ -392,6 +397,7 @@ Skill({skill: "game-dev:architecture", args: "--update --from {task_dir} --tech 
 - "plan 完成后不需要 AskUserQuestion，用户肯定批准"
 - 没有回显 mode 确认就直接进入阶段执行
 - "--auto 模式下 grill 也可以跳过，全自动就是全部自动" → STOP。grill 不可跳过，auto 模式也不例外。grill 是防止 AI 偏差，不是用户审查点。
+- "--auto 模式下我可以自己完成 grill 采访（self-directed grilling），不需要真向用户提问" → STOP。grill 的核心价值是向用户提问获取真实反馈。AI 自我分析不是 grill——它是单方面的假设验证，无法纠正 AI 对用户意图的误解。grill-interview.md 中没有 `?` 问句 = 不是采访。
 - "grilling 什么都没返回，我自己整理一份 grill-interview.md 就行" → STOP。grill-interview.md 只能由 grilling 的返回内容写入。自己写 = 编造用户意图。
 - "grill-interview.md 已经存在了，不用再调 grilling" → STOP。文件存不存在的唯一判定在 Step 2b 的硬门。没经过 grilling 返回的文件不能信任。
 - "这个任务不需要 UI 设计，虽然有新界面但是纯控件布局/数据驱动/标准控件" → STOP。有没有新界面是客观事实，不是风格判断。只要玩家会看到原来不存在的画面或控件，就必须 design-ui。

@@ -171,13 +171,14 @@ screenshot 行为的验证描述中可能混合**视觉条件**和**代码条件
 ### Screenshot Iron Law
 
 ```
-SCREENSHOT MEANS VIEWPORT CAPTURE. NOT PROGRAMMATIC DRAWING.
+SCREENSHOT MEANS VIEWPORT CAPTURE OF THE ACTUAL GAMEPLAY SCENE. NOT PROGRAMMATIC DRAWING. NOT ISOLATED COMPONENT SCENES.
 
 A screenshot script that does not call get_viewport().get_texture() is not a screenshot script.
 Image.create(), Image.fill(), set_pixel(), and blit_rect() are FORBIDDEN in screenshot scripts.
 Fake objects (mock player, mock inventory, FakeWeaponInventory) are FORBIDDEN in screenshot scripts.
+Loading an isolated component .tscn (e.g., loading only tang_guard.tscn to screenshot the character) is FORBIDDEN — the screenshot must capture the behavior in its actual game context (the level, the main menu, the HUD).
 
-If the target scene cannot be loaded, the task FAILS — do NOT substitute with programmatic drawing.
+If the target gameplay scene cannot be loaded, the task FAILS — do NOT substitute with programmatic drawing or isolated component screenshots.
 ```
 
 **Violating the letter of this rule is violating the spirit of screenshot verification.**
@@ -187,11 +188,13 @@ If the target scene cannot be loaded, the task FAILS — do NOT substitute with 
 | 中文 | English |
 |------|---------|
 | "不加载主场景(避免副作用)" | "Skip loading main scene to avoid side effects" |
+| "加载角色的 tscn 就行，不需要加载关卡" | "Just load the character tscn, no need to load the level" |
+| "加载独立的 tscn 就能看到角色外观了" | "Loading the isolated tscn is enough to see the character" |
 | `Image.create(` / `Image.fill(` / `img.set_pixel(` 出现在截图脚本中 | `Image.create(` / `Image.fill(` / `img.set_pixel(` in screenshot script |
 | "Fake" / "Mock" + 截图脚本中构造假对象 | "Fake" / "Mock" objects in screenshot script |
 | "无法到达目标场景" + 仍在写脚本 | "Cannot reach target scene" but still writing script |
 
-**以上任一条 → STOP。截图脚本必须加载真实场景并通过 viewport 截图。无法达到目标场景则标注任务失败，不得用程序化绘图替代。**
+**以上任一条 → STOP。截图脚本必须加载行为发生的实际游戏场景（关卡、主菜单、HUD），通过 viewport 截图。加载独立组件 .tscn 的截图不验证任何行为——角色在关卡中的样子和孤立场景中完全不同。无法达到目标场景则标注任务失败，不得用程序化绘图或独立组件截图替代。**
 
 **Step W1: 读取截图参考**
 
@@ -203,6 +206,17 @@ If the target scene cannot be loaded, the task FAILS — do NOT substitute with 
 - 目标视觉状态是什么（哪个界面、什么交互后的状态）
 - 需要加载哪个场景
 - 截图前是否需要交互、交互步骤是什么
+
+**场景选择规则（硬门）：截图必须加载行为实际发生的游戏场景，不是独立组件的 .tscn。**
+
+| 行为类型 | 加载的场景 | 错误做法 |
+|---------|-----------|---------|
+| 角色外观/动画（"关卡中看到新角色"） | 关卡场景（如 `level.tscn`），角色通过 Global 或关卡逻辑自然加载 | ❌ 只加载 `tang_guard.tscn` 独立组件 |
+| UI 界面（"装备栏展示 6 个 Slot"） | 包含该 UI 的游戏场景，或 UI 自己的场景文件（如果它是独立可加载的） | ❌ 创建临时场景只放 UI 节点 |
+| 战斗/交互（"攻击命中敌人"） | 关卡场景，包含敌人和玩家 | ❌ 只加载武器场景 |
+| 主菜单/标题画面 | 主菜单场景（如 `title.tscn`） | ❌ 手动拼 UI 节点 |
+
+**判定原则：玩家在游戏中哪里能看到这个行为，就加载哪个场景。**
 
 是否交互、怎么交互由 agent 根据任务自行判断。
 

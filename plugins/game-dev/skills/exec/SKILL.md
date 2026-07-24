@@ -240,11 +240,12 @@ mkdir -p {task_dir}/.work/coding
 **检查结果**：
 
 - [ ] 全量测试全部通过（`test_cmd_full` 退出码 0）
-- [ ] 有 screenshot 验证方式的行为：额外通过 visual-qa PASS
+- [ ] 有 screenshot 验证方式的行为：所有截图 testcase visual-qa PASS（**零失败容忍**）
+- [ ] 有 screenshot 验证方式的行为：所有截图文件为有效 PNG（`file {path}` 输出含 "PNG image data"）。非图片文件 → 截图脚本执行失败
 - [ ] 如有失败，报告包含具体 testcase 名称和错误行（禁止只有 Summary 数字）
 
 - 全部通过 → 进入边界检查（6e）
-- 有失败 → 回退到 GREEN（6c）再修。同一错误反复出现（>2 轮）→ exec 向用户报告，不自动循环
+- 有失败（GUT 失败 或 screenshot FAIL 或截图文件无效）→ 回退到 GREEN（6c）再修。同一错误反复出现（>2 轮）→ exec 向用户报告，不自动循环
 
 #### 6e. 边界检查 — exec 主会话执行（独立质量门）
 
