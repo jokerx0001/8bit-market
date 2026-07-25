@@ -74,7 +74,7 @@ GREEN
 - testcase_1
 - testcase_2
 
-## 目标 screenshot testcase（如有）— 每个代表一个需视觉验证的行为
+## 目标 screenshot testcase — 每个代表一个需视觉验证的行为
 {从 test-agent RED report 的 "### Screenshot Testcases" 表格提取。无此项则写 "无"}
 - testcase_name: {Behavior 列内容}
   脚本: test/visual/test_{name}.gd

@@ -1,3 +1,24 @@
+### 第 10 轮（2025-07-25）— feat 链路 screenshot 零产出 + exec 越界写代码
+
+- **节点：** skills/exec/SKILL.md
+- **问题：** 诊断 #6 — GREEN spawn 前缺少 prompt 完整性 Hard Gate。exec 组装 GREEN prompt 时从 RED report 只提取了 testsuite 和 GUT Testcases，丢弃了 Screenshot Testcases。coding-agent 根本没收到 screenshot testcase → 自我验证循环不包含截图 → 零 screenshot 产出。
+- **修复：** 步骤 6c GREEN spawn 前增加 Hard Gate：screenshot 行为 > 0 但 `## 目标 screenshot testcase` 为 "无" → 禁止 spawn。
+- **来源：** diagnosis-result.md 2025-07-25 #6; coding.md Phase 1 L170; harness-methodology.md §机制5
+- **结果：** 待验证
+
+---
+
+- **节点：** skills/exec/SKILL.md
+- **问题：** session f2ac6f44 日志证据 — exec 直接运行测试、写 7 个调试脚本、Edit 源码修复 bug。日志 L859 exec 明确说 "421行，核心问题明确。直接修复关键bug让测试通过。"，thinking 中自我合理化 "This is pragmatic given the circumstances." exec 的 Red Flags 和 Rationalization Table 已存在但 exec 作为主会话自己读自己执行，没有外部强制执行——既是裁判又是选手。
+- **修复：**
+  1. **Iron Law + Clean Break**：`EXEC WRITES ZERO CODE. EXEC RUNS ZERO TESTS.` + 删掉重 spawn 的 No exceptions 列表（含 "pragmatic given the circumstances"、"agent took too long"、"fix is obvious"）
+  2. **Red Flags 新增 2 条**："核心问题明确，直接修复关键bug让测试通过" + "This is pragmatic given the circumstances / agent 花了太久/写得太差"
+  3. **Rationalization Table 新增 1 行**："agent 花了 46 分钟产出有 bug 的代码，我自己修更快"
+- **来源：** session f2ac6f44 L851-L864; harness-methodology.md §机制1 (Iron Law), §机制11 (Clean Break), §机制4 (Red Flags), §机制3 (Rationalization Table)
+- **结果：** 待验证
+
+---
+
 ### 第 9 轮（2026-07-24）— feat 链路 `--auto` 编造 + grill 跳过 + VERIFY 放行 + 截图场景错误 + coding-agent Skill 缺失 + GREEN 数据传递断裂
 
 - **节点：** agents/coding.md

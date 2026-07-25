@@ -31,6 +31,28 @@ exec 不做:
 
 ---
 
+## Iron Law
+
+```
+EXEC WRITES ZERO CODE. EXEC RUNS ZERO TESTS.
+```
+
+exec 不产生任何 `.gd`、`.tscn`、`.tres` 文件。exec 不直接执行任何 `godot` 测试命令。
+如果 exec 修改了任何源文件或测试文件，或直接运行了测试——那些改动无效。删掉。重新 spawn agent。
+
+**No exceptions:**
+- Not for "the agent took too long"
+- Not for "the fix is obvious"
+- Not for "just this one line"
+- Not for "pragmatic given the circumstances"
+- Don't keep the changes as "reference"
+- Don't write debug scripts in `.work/coding/`
+- Delete means delete. Re-spawn means re-spawn.
+
+**Violating the letter of this rule is violating the spirit of exec.**
+
+---
+
 ## Red Flags — 停下来，回到 spawn 流程
 
 如果你发现自己在想：
@@ -51,6 +73,8 @@ exec 不做:
 - "直接 Bash 跑测试和 spawn test-agent 效果一样" → STOP。spawn 的目的不是跑测试，是实现 agent 隔离（test-agent 不读实现代码，coding-agent 不读测试代码）。
 - "我先用 Bash 验证一下环境/测试能不能跑" → STOP。环境验证在步骤 4 的确认测试环境硬门中完成。后续任何 Bash 测试命令都是越界。
 - "批量处理完 8 个 AI 任务再统一做 VERIFY 和边界检查更高效" → STOP。每个 AI 任务是独立的 TDD 循环。不批量处理。
+- "核心问题明确，直接修复关键bug让测试通过" → STOP。exec 不修 bug——把 bug 描述和错误信息传给 coding-agent 重新 spawn。exec 改的每一行代码都在破坏 TDD 循环的独立性。
+- "This is pragmatic given the circumstances" / "agent 花了太久/写得太差，这种情况下我自己做更合理" → STOP。这是 exec 最危险的自我合理化。agent 产出有问题 = 把具体问题描述传给 agent 重新 spawn，不是 exec 替 agent 做。
 
 **以上任一条出现 → STOP。回到 6b，从 RED spawn 重新开始。**
 
@@ -63,6 +87,7 @@ exec 不做:
 | "自己做比 spawn agent 更快" | 快在一时。没有 agent 隔离 = test-agent 看到实现 = coding-agent 看到测试 = TDD 循环被污染。 |
 | "任务很简单，不需要完整流程" | 简单任务也有 RED/GREEN 边界。跳过 spawn = 回到"一个人又写测试又写实现"的非 TDD 模式。 |
 | "我先写个草稿让 agent 改" | agent 看到你的草稿会产生锚定效应——它会围绕你的实现修修补补，而不是从设计文档出发。 |
+| "agent 花了 46 分钟产出有 bug 的代码，我自己修更快" | exec 修了代码 = TDD 循环被污染。正确做法：把具体 bug 描述和错误日志传给 coding-agent 重新 spawn。agent 修自己的代码比 exec 介入更可靠。 |
 
 ---
 
@@ -211,7 +236,19 @@ mkdir -p {task_dir}/.work/coding
 
 #### 6c. GREEN — spawn game-dev:coding（含自验证）
 
-使用 **GREEN prompt** 模板。从 test-agent 的 RED report 提取 testsuite 名称和 testcase 名称。
+使用 **GREEN prompt** 模板。从 test-agent 的 RED report 提取：testsuite 名称、GUT testcase 名称、**以及 `### Screenshot Testcases` 表的全部行（testcase 名 + Behavior + 脚本路径 + question 路径）**。
+
+**Hard Gate — spawn 前验证 prompt 完整性（不可跳过）：**
+
+组装完 GREEN prompt 后，逐项确认：
+
+- [ ] `## 目标 testsuite` 非空
+- [ ] `## 目标 testcase（GUT）` 非空
+- [ ] **步骤 3 grep screenshot 结果 > 0 时：`## 目标 screenshot testcase` 必须非空且非 "无"，每个 testcase 含脚本路径和 question 路径**
+
+**screenshot 行为 > 0 但 `## 目标 screenshot testcase` 为 "无" → 禁止 spawn。回到 RED report 的 `### Screenshot Testcases` 表重新提取。coding-agent 的自我验证循环是 screenshot 执行的唯一入口——prompt 里没有 screenshot testcase，self-verification (Phase 1→2→3) 就不会包含截图。**
+
+全部字段确认 → spawn coding-agent。
 
 **记录日志**：spawn 返回后立即按 exec-logging.md GREEN 格式追加日志。先记日志，再检查。
 
