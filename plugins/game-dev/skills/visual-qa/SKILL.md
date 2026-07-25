@@ -38,9 +38,11 @@ From the arguments — freeform text with file paths:
 
 ### 统一输出格式
 
-无论预检还是 API 错误触发，**统一输出以下格式**（调用方只需检查 `blank_screenshot: true`）：
+无论预检还是 API 错误触发，**统一输出以下格式**（调用方只需检查 `blank_screenshot: true` + `### Verdict: fail`）：
 
 ```
+### Verdict: fail
+
 ### Answer
 **blank_screenshot**: true
 **diagnosis**: {具体原因}
@@ -187,9 +189,18 @@ Severity: major/minor = must fix. note = cosmetic, can ship.
 ### Question Mode
 
 ```
+### Verdict: {pass | fail}
+
 ### Answer
 {Direct, specific, actionable answer. Reference locations, frames, colors, objects.}
 
 ### Visual Evidence
 {What in the screenshots supports the answer. Reference specific frames and locations.}
 ```
+
+**Verdict 判定规则（不可跳过）：**
+- 截图中存在 question 要求的所有元素且肉眼可辨识 → `pass`
+- 任一问题答案为"否"/"看不到"/"不存在"/"无法辨识" → `fail`
+- 截图为空白/黑屏/无明显内容 → `fail`
+- 无法确定 → 偏向 `fail`（宁可误报不可漏报）
+- **blank_screenshot 场景统一输出 `### Verdict: fail`，后跟 `### Answer` 中的 `blank_screenshot: true`**

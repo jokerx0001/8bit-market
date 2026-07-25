@@ -1,3 +1,43 @@
+### 第 11 轮（2026-07-25）— feat 链路 visual-qa FAIL 被误判为 PASS + 仅 3/12 screenshot 被执行
+
+- **节点：** skills/visual-qa/SKILL.md
+- **问题：** 诊断 #3 — visual-qa question mode 输出是自然语言 Answer，没有机器可读的 PASS/FAIL 标记。coding-agent 无法从自然语言 Answer 中机械判断通过/失败，导致 "看不到" 的 Answer 被误判为 PASS。
+- **修复：** question mode 输出格式增加 `### Verdict: {pass | fail}` 字段 + Verdict 判定规则（5 条规则）。blank_screenshot 输出格式同步增加 `### Verdict: fail`。coding-agent 可通过 grep `### Verdict: pass/fail` 机械判断。
+- **来源：** diagnosis-result.md 2026-07-25 #3; harness-methodology.md §机制5
+- **结果：** 待验证
+
+---
+
+- **节点：** agents/coding.md
+- **问题：** 诊断 #4 — GREEN 报告格式无 screenshot 验证结果表。coding-agent 可以随意说 "12/12 PASS" 而不列出逐个 testcase 的 visual-qa 原始输出。exec 无法交叉验证。
+- **修复：** GREEN Step 5 报告模板增加 "### Screenshot 验证结果" 表（testcase + visual-qa Verdict + Answer 摘要）。同时 Phase 1 Step 1c 的 visual-qa 结果判定从"读 Answer 判断"改为"grep `### Verdict: pass/fail`"。
+- **来源：** diagnosis-result.md 2026-07-25 #4,#5; harness-methodology.md §机制13
+- **结果：** 待验证
+
+---
+
+- **节点：** skills/exec/SKILL.md
+- **问题：** 诊断 #5,#6 — GREEN 和 VERIFY 的 screenshot 检查是信任型而非验证型。Exec 信任 coding-agent 的一句话 "12/12 PASS" 而不独立读 `screenshot_*_run*.log`。VERIFY 的 `file {path}` PNG 有效性检查从未实际执行。
+- **修复：**
+  1. GREEN 检查（步骤 6c）: screenshot visual-qa PASS 项升级为 3 条独立验证动作（grep Verdict: fail + 日志文件数校验 + GREEN 报告表检查）。任一项不满足 → GREEN 不合格。
+  2. VERIFY 检查（步骤 6d）: screenshot 检查升级为 Hard Gate（3 条验证 + 不满足→回退 GREEN 的后果声明）。
+  3. GREEN spawn 前增加 screenshot testcase 数量校验：prompt 中的数量 < plan.md screenshot 行为数 → 禁止 spawn。
+- **来源：** diagnosis-result.md 2026-07-25 #5,#6,#1; harness-methodology.md §机制5 + §机制13
+- **结果：** 待验证
+
+---
+
+- **节点：** agents/coding.md
+- **问题：** 诊断 #2,#7,#9 — Phase 1 缺少 screenshot 完整性 Hard Gate、缺少视觉 QA 前截图预检、Iron Law 未显式包含 screenshot 日志。
+- **修复：**
+  1. Phase 1→2 转换处增加 Hard Gate：screenshot testcase 数量 < prompt 声明数 → 禁止进入 Phase 2。
+  2. 截图执行流程增加预检步骤：`file {png}` PNG 验证 + `identify` std 检查。空白/无效 PNG 直接标记 FAIL 不调 visual-qa。
+  3. Iron Law #5 显式增加 screenshot 日志格式 `screenshot_<name>_run<N>.log`。
+- **来源：** diagnosis-result.md 2026-07-25 #2,#7,#9; harness-methodology.md §机制1 + §机制5
+- **结果：** 待验证
+
+---
+
 ### 第 10 轮（2025-07-25）— feat 链路 screenshot 零产出 + exec 越界写代码
 
 - **节点：** skills/exec/SKILL.md

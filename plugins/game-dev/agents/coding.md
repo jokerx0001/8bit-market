@@ -77,10 +77,12 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch", "Skill"]
    - 结果提取：`{test_failure_grep}`（将 `{log_path}` 替换为日志文件路径）
 
    **screenshot 验证方式（截图 + visual-qa）：**
-   - 截图执行：按 screenshot.md CLI 执行截图脚本 → stdout base64 → `| base64 -d > {task_dir}/.work/screenshots/{testcase_name}.png` → 读同名 `.question` 文件 → 调用 `Skill("game-dev:visual-qa")`，将截图路径和 .question 内容传入 `$ARGUMENTS` → 将 skill 输出（`### Answer` + `### Visual Evidence`）写入 `{log_path}`
+   - 截图执行：按 screenshot.md CLI 执行截图脚本 → stdout base64 → `| base64 -d > {task_dir}/.work/screenshots/{testcase_name}.png`
+   - **截图预检（调用 visual-qa 前强制执行）：** `file {png_path} | grep -q 'PNG image data' && echo "PNG_OK" || echo "PNG_INVALID"`。PNG_INVALID → 截图脚本执行失败，不调 visual-qa，直接写 `### Verdict: fail` + `### Answer: PNG_INVALID — screenshot script failed` 到 `{log_path}`。额外检查：`identify -format '%[standard-deviation]' {png} | awk '{if ($1<0.02) print "BLANK"; else print "OK"}'` → BLANK → 不调 visual-qa，直接写 `### Verdict: fail` + `### Answer: blank_screenshot — std too low` 到 `{log_path}`
+   - 预检通过 → 读同名 `.question` 文件 → 调用 `Skill("game-dev:visual-qa")`，将截图路径和 .question 内容传入 `$ARGUMENTS` → 将 skill 输出（`### Verdict` + `### Answer` + `### Visual Evidence`）写入 `{log_path}`
    - 全量执行: 全量验证时对每个 screenshot testcase 使用截图执行方式执行一次；screenshot 没有批量 CLI 命令,所以全量就是对所有的范围内的单独执行一次
    - 单case执行：用截图执行方法对目标 testcase 执行一次
-   - 结果提取：从 `{log_path}` 中 visual-qa 的 `### Answer` 内容判断是否通过
+   - 结果提取：grep `### Verdict: pass` 或 `### Verdict: fail` 从 `{log_path}` 判断是否通过
 
    `{suite}`、`{case}`、`{log_path}` 为运行时占位符，每次使用时替换。
 
@@ -124,7 +126,7 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch", "Skill"]
 2. **先记日志，再改代码。** 诊断完成后，必须立刻追加 `tdd-iterations.md`，然后才能修改源代码。
 3. **怀疑 API 用法时必须查文档。** 不许凭记忆猜测 API 语法。查阅 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/docs.md` 定位文档页面。
 4. **逐个击破，不一锅端。** 出现测试失败后，一次只诊断和修复一个 testcase。批量修改多个 testcase 导致无法判断哪个修改起了作用。
-5. **每次测试运行必须保存原始输出(stdout/stderr)到 `.work/coding/`文件夹, 每次测试独立文件。** 不保存日志 = 本轮验证无效。全量运行保存到`{task_dir}/.work/coding/<testsuite>_run<N>.log`。单 case 运行保存到 `{task_dir}/.work/coding/<testcase>_run<N>.log`。exec 依赖这些日志验证 coding agent 的自验证结果。
+5. **每次测试运行必须保存原始输出(stdout/stderr)到 `.work/coding/`文件夹, 每次测试独立文件。** 不保存日志 = 本轮验证无效。GUT 全量运行 → `{task_dir}/.work/coding/<testsuite>_run<N>.log`。GUT 单 case → `{task_dir}/.work/coding/<testcase>_run<N>.log`。Screenshot + visual-qa → `{task_dir}/.work/coding/screenshot_<name>_run<N>.log`。exec 依赖这些日志验证 coding agent 的自验证结果。
 
 ---
 
@@ -173,10 +175,22 @@ Phase 3: 收尾（追加完成记录 + 写经验到 CLAUDE.md）
 
 使用 spawn 初始化中解析的**结果提取**方法，`{log_path}` 为 `{task_dir}/.work/coding/<testsuite>_run<N>.log`。
 
-**如有 screenshot testcase：** 逐一检查每个 `screenshot_<name>_run<N>.log`，读 visual-qa 的 `### Answer`，判断 PASS 或 FAIL。
+**如有 screenshot testcase：** 逐一检查每个 `screenshot_<name>_run<N>.log`，grep visual-qa 的 `### Verdict` 字段：
+- `### Verdict: pass` → PASS
+- `### Verdict: fail` → FAIL
+- Verdict 字段缺失 → 视为 FAIL（visual-qa 未正常完成）
 
 - **GUT 全部通过 且 screenshot 全部 PASS** → 跳过 Phase 2，直接进入 Phase 3（Step 3a）
 - **任一有失败** → 进入 Phase 2
+
+**Hard Gate — 进入 Phase 2 前必须确认所有 screenshot testcase 已执行（不可跳过）：**
+
+若 spawn prompt 中 `## 目标 screenshot testcase` 非空且不为 "无"：
+```bash
+EXPECTED=N  # N = prompt 中 screenshot testcase 数量
+ACTUAL=$(ls {task_dir}/.work/coding/screenshot_*_run*.log 2>/dev/null | wc -l)
+# $ACTUAL < $EXPECTED → Phase 1 未完成，禁止进入 Phase 2。返回 Step 1b 补充执行缺失的 screenshot testcase。
+```
 
 **Step 1d - 报告结果**:
 
@@ -479,8 +493,16 @@ ${CLAUDE_PLUGIN_ROOT}/references/{tech}/3d-construction.md  — 3D 构造模式�
 | 1 | xxx | 设计不匹配 | 补全了... |
 | 2 | xxx | API 用法 | 查阅文档后改用... |
 
+### Screenshot 验证结果（如有 screenshot testcase）
+| # | Testcase | visual-qa Verdict | Answer 摘要 |
+|---|----------|-------------------|-------------|
+| 1 | {name} | pass / fail | {visual-qa Answer 的一句摘要} |
+
+无 screenshot testcase → 写 "无 screenshot testcase"。
+
 ### 测试验证
 - 目标 testsuite：N/N 通过 ✅
+- Screenshot：N/N visual-qa PASS ✅（如有）
 - 总轮次：{N} 轮
 
 ### 经验记录

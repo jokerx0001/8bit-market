@@ -265,6 +265,15 @@ mkdir -p {task_dir}/.work/coding
 
 **screenshot 行为 > 0 但 `## 目标 screenshot testcase` 为 "无" → 禁止 spawn。回到 RED report 的 `### Screenshot Testcases` 表重新提取。coding-agent 的自我验证循环是 screenshot 执行的唯一入口——prompt 里没有 screenshot testcase，self-verification (Phase 1→2→3) 就不会包含截图。**
 
+**screenshot 行为 > 0 时，额外校验数量（硬门）：**
+```
+# RED report 的 ### Screenshot Testcases 表中的条目数
+RED_SCT_COUNT={从 RED report 的 ### Screenshot Testcases 表行数}
+# GREEN prompt 中 ## 目标 screenshot testcase 的条目数
+PROMPT_SCT_COUNT={从 GREEN prompt 的 ## 目标 screenshot testcase 条目数}
+```
+**`PROMPT_SCT_COUNT` < `RED_SCT_COUNT` → RED report 中的 screenshot testcase 未全部传入 GREEN prompt，数据丢失。禁止 spawn，回到 RED report 重新提取。**
+
 全部字段确认 → spawn coding-agent。
 
 **记录日志**：spawn 返回后立即按 exec-logging.md GREEN 格式追加日志。先记日志，再检查。
@@ -273,7 +282,11 @@ mkdir -p {task_dir}/.work/coding
 
 **所有任务：**
 - [ ] coding-agent 自验证报告显示目标 testsuite 全部通过
-- [ ] 有 screenshot 验证方式的行为：visual-qa PASS
+- [ ] **有 screenshot 验证方式的行为（硬门，零容忍）：**
+  1. GREP 验证：`grep -rl '### Verdict: fail' {task_dir}/.work/coding/screenshot_*_run*.log 2>/dev/null | wc -l` == 0（零 FAIL）
+  2. 完整性验证：`ls {task_dir}/.work/coding/screenshot_*_run*.log 2>/dev/null | wc -l` >= GREEN prompt 中 `## 目标 screenshot testcase` 的数量
+  3. GREEN 报告包含 "### Screenshot 验证结果" 表，且表中 verdict 列全部为 "pass"
+  **任一项不满足 → GREEN 不合格，重新 spawn。禁止仅凭 coding-agent 的一句话总结判定通过。**
 - [ ] 未修改 test/ 下文件（检查 coding agent 的已修改文件列表）
 - [ ] 无 pass / TODO / NotImplemented 残留（grep 已修改的源文件）
 - [ ] `.work/coding/` 目录包含本轮测试运行日志（至少一个 `<testsuite>_run<N>.log` 文件——coding agent 自我验证必须落盘原始输出）
@@ -293,9 +306,14 @@ mkdir -p {task_dir}/.work/coding
 
 **检查结果**：
 
+**Hard Gate — 全部通过才算 VERIFY 合格：**
+
 - [ ] 全量测试全部通过（`test_cmd_full` 退出码 0）
-- [ ] 有 screenshot 验证方式的行为：所有截图 testcase visual-qa PASS（**零失败容忍**）
-- [ ] 有 screenshot 验证方式的行为：所有截图文件为有效 PNG（`file {path}` 输出含 "PNG image data"）。非图片文件 → 截图脚本执行失败
+- [ ] **有 screenshot 验证方式的行为（零失败容忍）：**
+  1. `grep -rl '### Verdict: fail' {task_dir}/.work/coding/screenshot_*_run*.log 2>/dev/null | wc -l` == 0
+  2. `file {task_dir}/.work/screenshots/*.png 2>/dev/null | grep -v 'PNG image data'` 零输出（所有截图文件为有效 PNG）
+  3. `.work/screenshots/` 中 PNG 数量 >= GREEN prompt 中 `## 目标 screenshot testcase` 数量
+  **任一项不满足 → VERIFY 不合格，回退到 GREEN（6c）再修。** screenshot 检查不可跳过——GUT 全绿不是跳过 screenshot 检查的理由。
 - [ ] 如有失败，报告包含具体 testcase 名称和错误行（禁止只有 Summary 数字）
 
 - 全部通过 → 进入边界检查（6e）
