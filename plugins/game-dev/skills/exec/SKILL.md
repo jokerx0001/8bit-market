@@ -230,6 +230,23 @@ mkdir -p {task_dir}/.work/coding
 - [ ] 测试文件已创建（路径：___）
 - [ ] RED report 中所有 testcase 都失败了且原因正确（非语法错误、非标识符错误——语法错误和错误的标识符不算 RED）
 - [ ] 没有 mock、假代码
+- [ ] **Screenshot Testcases（如有）— 截图脚本合规验证（硬门，不可跳过）：**
+
+  1. 读取 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/screenshot.md`
+  2. 对 RED report 中 Screenshot Testcases 表的每个脚本，逐一检查：
+
+  ```
+  # 必须有：用 change_scene_to_file 加载游戏场景
+  grep 'change_scene_to_file' {script_path}
+  
+  # 禁止有：手动挂载独立组件 / 程序化绘图
+  grep -n 'get_root().add_child\|Image.create\|Image.fill\|set_pixel\|blit_rect' {script_path}
+  ```
+
+  - [ ] 每个脚本 `change_scene_to_file` 命中 → 脚本加载了真实游戏场景 ✅
+  - [ ] 每个脚本禁止模式零命中 → 无独立组件挂载、无程序化绘图 ✅
+
+  **任一个脚本 ❌ → RED 不合格。将违规脚本路径和命中行写入 spawn prompt，重新 spawn test-agent 要求修正。**
 
 - 全部打勾 → 进入 GREEN（6c）
 - 任一未打勾 → 指出具体问题，重新 spawn（不限重试，但同问题 >3 轮报告用户）
