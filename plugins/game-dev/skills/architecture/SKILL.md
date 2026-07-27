@@ -34,7 +34,9 @@ description: |
 | 项目级 | `{dev_dir}/architecture.md` | 跨 feat 持久化，记录项目当前架构全貌 |
 | 任务级 | `{task_dir}/.work/architecture.md` | per-task，plan 阶段产出，exec 阶段的模块级施工图 |
 
-**格式契约：** `${CLAUDE_SKILL_DIR}/references/architecture-format.md` 定义了统一模板。项目级和任务级结构相同，区别仅模块数量。所有输出必须遵守。
+**格式契约：** 两类架构文档各有一套模板：
+- per-task：`${CLAUDE_PLUGIN_ROOT}/references/{tech}/architecture-format.md`
+- 项目级：`${CLAUDE_PLUGIN_ROOT}/references/{tech}/architecture-format-project.md`
 
 ## 参数
 
@@ -192,7 +194,7 @@ ls -d {resources_path}/*/ 2>/dev/null
 
 ##### 2A-4. 写入 architecture.md
 
-所有模块确认完毕后，按 `${CLAUDE_SKILL_DIR}/references/architecture-format.md` 的统一模板写入。
+所有模块确认完毕后，按 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/architecture-format-project.md` 的模板写入。
 
 **内容来源优先级：**
 1. 用户确认的分析结论
@@ -201,8 +203,7 @@ ls -d {resources_path}/*/ 2>/dev/null
 4. 源码目录结构推断
 
 **组装规则：**
-- 按统一模板五章节结构：总体架构 → 模块规约 → 运行时视图 → 跨模块约定 → 架构决策记录
-- 每个模块一个 `### 2.N {模块名}` 节
+- 按 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/architecture-format-project.md` 模板写入
 - 不写任何 feat-N 标注
 
 写入后输出摘要：
@@ -298,13 +299,13 @@ ls -d {resources_path}/*/ 2>/dev/null
 
 ##### 2B-5. 写入 architecture.md
 
-按 `${CLAUDE_SKILL_DIR}/references/architecture-format.md` 的统一模板组装写入。
+按 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/architecture-format-project.md` 的模板组装写入。
 
 ---
 
 ## 模式：--task --from {task_dir}
 
-由 **plan 步骤 5** 调用。读取 domain-design.md 和 requirements，生成 per-task `.work/architecture.md`——这是 exec 阶段的模块级施工图。
+由 **plan 步骤 5** 调用。读取 domain-design.md 和 requirements，生成 per-task `.work/architecture.md`。
 
 ### 1. 输入文件
 
@@ -318,67 +319,22 @@ ls -d {resources_path}/*/ 2>/dev/null
 | `{task_dir}/.work/grill-interview.md` | 用户原始意图 | 警告继续 |
 | `{dev_dir}/architecture.md` | 项目级架构约束（如存在） | 跳过，无架构约束 |
 | `${CLAUDE_PLUGIN_ROOT}/references/{tech}/patterns.md` | 领域模式 → 引擎构造映射规则 | 必须存在 |
-| `${CLAUDE_PLUGIN_ROOT}/references/{tech}/coding.md` | 技术栈编码惯例 | 必须存在 |
 
 ### 2. 提取模块
 
-从 domain-design.md 提取模块列表：
+从 domain-design.md 提取模块列表。每个独立的领域模式/概念 → 一个模块。
 
-- 每个独立的领域模式/概念 → 一个模块
-- 模块边界遵循单一职责原则
-- 模块间依赖从数据流方向推导
+### 3. 编写 architecture.md
 
-### 3. 技术映射
+按 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/architecture-format.md` 的模板逐章编写，写入 `{task_dir}/.work/architecture.md`。
 
-对每个模块，将领域概念映射到引擎构造。对照 patterns.md 和 coding.md，确保每个选择都是该引擎推荐的写法。
+如传入 `--user-directives`，纳入架构映射决策。
 
-映射内容：
-- **技术映射** — 引擎构造 1 → 实现领域行为 A，理由：为什么选这个而非替代方案
-- **对外接口** — 信号/方法/公共属性、调用方、参数含义、调用时机
-- **外部依赖** — 依赖的模块/数据源、获取什么数据、何时获取
-- **行为契约** — 状态机/生命周期，关键边界行为（输入为空、依赖缺失、异常路径）
-- **设计理由** — 关键取舍（如有两难选择）
+### 4. 输出
 
-### 4. 运行时视图
+输出架构摘要。
 
-用序列图展示至少一个关键跨模块流程（正常路径 + 一个关键异常路径）。
-
-### 5. 跨模块约定
-
-识别跨模块的通用约定：错误处理策略、资源生命周期、duck-type 契约等。说明本次设计与现有项目架构的契合点。
-
-### 6. 架构决策记录
-
-用表格记录关键决策：选择方案、替代方案、理由。
-
-### 7. 输出
-
-按 `${CLAUDE_SKILL_DIR}/references/architecture-format.md` 的统一模板写入 `{task_dir}/.work/architecture.md`。
-
-```bash
-mkdir -p {task_dir}/.work
-```
-
-**非 auto 模式：** 输出架构摘要，等待用户确认后写入。
-**auto 模式：** 跳过确认，直接写入。
-
-输出摘要：
-
-```
-## Per-task Architecture 已生成
-
-**文件：** {task_dir}/.work/architecture.md
-**模块数：** {N} 个
-**运行时流程：** {N} 个
-**架构决策：** {N} 条
-
-模块列表：
-- {模块 A} → {技术映射摘要}
-- {模块 B} → {技术映射摘要}
-...
-```
-
----
+**auto 模式处理：** 非 auto 模式 → 调用 `AskUserQuestion` 等待用户确认。auto 模式 → 跳过确认。`--auto` 判定在公共前置步骤中已完成。
 
 ## 模式：--update --from {task_dir}
 
@@ -399,40 +355,31 @@ mkdir -p {task_dir}/.work
 
 | 类型 | 判断标准 | 合并操作 |
 |------|---------|---------|
-| **新模块** | 涉及全新概念，不在现有 architecture.md 的模块规约中 | 更新模块职责一览表 + 在模块规约末尾追加 `### 2.N {模块名}` 节 |
-| **架构变更** | 现有模块的核心架构改变（技术映射/对外接口/行为契约/设计理由） | 定位该 `### 2.N {模块名}` 节，替换变更部分，保留未变更部分 |
-| **功能扩展** | 现有模块内新增功能，核心架构不变 | 定位该 `### 2.N {模块名}` 节，更新/丰富规约内容 |
+| **新模块** | 涉及全新概念，不在现有 architecture.md 中 | 在各相关章节追加该模块的内容 |
+| **架构变更** | 现有模块的核心架构改变 | 定位该模块在项目级各章节中的内容，替换变更部分 |
+| **功能扩展** | 现有模块内新增功能，核心架构不变 | 定位该模块在项目级各章节中的内容，追加/更新 |
 | **无变更** | 纯 bug fix、纯界面调整、纯重命名等 | 输出"本次任务无架构变更"，直接完成 |
 
 如果分类不确定 → 非 auto 模式下输出判断和理由，请求用户确认。
 
 ### 3. 智能合并
 
-**不是 append，是 merge。**
+**不是 append，是 merge。** 项目级 architecture.md 的章节结构由 `{tech}/architecture-format-project.md` 定义。
 
-```
-读取 architecture.md → 按 ### 2.N {模块名} 解析模块规约
-  │
-  ├── 新模块 → 更新模块职责一览表
-  │          → 在模块规约末尾追加 ### 2.N {模块名} 节
-  │
-  ├── 架构变更 → 定位匹配的 ### 2.N {模块名} 节
-  │            → 对比新旧内容，替换变更部分，保留未变更部分
-  │            → 保留用户在前次确认中手动编辑的内容
-  │
-  └── 功能扩展 → 定位匹配的 ### 2.N {模块名} 节
-                → 更新/丰富模块规约内容
-```
+合并流程：
+1. 读取 per-task architecture.md，识别本次涉及的模块
+2. 对每个模块，在项目级 architecture.md 各章中定位对应内容
+3. 按变更类型合并：新模块 → 追加到各章末尾，变更/扩展 → 替换或丰富对应章节中的内容
 
 **禁止行为：**
-- 直接在文件末尾盲追加（除非是新模块）
+- 直接在文件末尾盲追加
 - 写 feat-N 标注
 - 对同一模块的内容写到文件两个不同位置
 - 覆盖用户手动编辑的已有内容
 
 ### 4. 写入
 
-按 `${CLAUDE_SKILL_DIR}/references/architecture-format.md` 规范写回。
+按 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/architecture-format-project.md` 规范写回。
 
 **`--auto` 模式：** 跳过确认，直接写入。
 **非 `--auto` 模式：** 输出变更摘要，等待用户确认后写入。
@@ -459,8 +406,8 @@ mkdir -p {task_dir}/.work
 
 - `--init` 时，架构文档是全量的——覆盖项目所有模块，不仅限于当前已实现的功能
 - `--init` 绿场时，从设计文档（grill-interview + requirements + domain-design）理解要做什么，从零编写架构。不从 feat 目录推导，不凭空猜测
-- `--task` 时，每个模块必须来自 domain-design.md 的领域概念——**一个领域概念 → 一个模块规约**。模块数量 = 领域概念数量
-- `--task` 的产出必须有**模块规约**章节——每个模块讲清楚"领域来源 → 技术映射 → 对外接口 → 行为契约 → 设计理由"
+- `--task` 时，每个模块必须来自 domain-design.md 的领域概念——一个领域概念 → 一个模块。模块数量 = 领域概念数量
+- `--task` 的产出格式由 `{tech}/architecture-format.md` 定义
 - `--update` 时，合并操作必须定位到正确章节，**严禁末尾盲追加**。相同模块的内容必须聚合
 - **非 auto 模式下，设计中有疑点必追问，严禁凭猜测决定。** 包括但不限于：模块划分不确定、变更类型分类模糊、领域映射存在多种解释、用户意图与设计文档不一致。auto 模式跳过追问，基于已有信息继续
 - 领域模型部分用引擎无关语言，引擎映射部分必须具体到文件路径和构造名称
@@ -477,8 +424,7 @@ mkdir -p {task_dir}/.work
 - "这个变更太小了，直接追加到文件末尾就行" → 不。相同模块的内容必须聚合。盲追加是架构文档腐化的开始。
 - "用户说 OK 我就全写了" → 不。确认一个模块才能进入下一个。
 - "绿场项目没有源码可分析，我跳过扫描直接退出" → 不。绿场项目读设计文档从零编写架构，参照 --init 的 2B 分支。
-- "task 模式下 domain-design 模块很多，我合并几个" → 不。一个领域概念一个模块规约。合并会导致职责模糊、exec 无法分配任务。
-- "task 模式下不需要模块规约，有个架构图就够了" → 不。模块规约是 exec 阶段拆分 AI 任务的唯一依据。缺少它，plan 步骤 6 无法正确拆分。
+- "task 模式下 domain-design 模块很多，我合并几个" → 不。一个领域概念一个模块。合并会导致职责模糊、exec 无法分配任务。
 
 ---
 
@@ -506,12 +452,9 @@ mkdir -p {task_dir}/.work
 
 **--task 模式：**
 - [ ] domain-design.md、requirements.md 已读取
-- [ ] 模块列表从 domain-design.md 提取，每个领域概念对应一个模块规约
-- [ ] architecture.md 已按统一模板写入（含模块规约章节）
-- [ ] 每个模块包含：领域来源、技术映射、对外接口、行为契约、设计理由
-- [ ] 运行时视图至少覆盖一个正常路径 + 一个异常路径
-- [ ] 非 auto 模式下已获用户确认后写入
-- [ ] 输出模块摘要
+- [ ] 模块列表从 domain-design.md 提取
+- [ ] architecture.md 已按 `{tech}/architecture-format.md` 模板写入
+- [ ] 非 auto 模式下已获用户确认
 
 **--update 模式：**
 - [ ] 输入文件全部确认存在
