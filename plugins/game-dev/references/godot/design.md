@@ -2,6 +2,18 @@
 
 ---
 
+## 模块→Scene 映射
+
+从 architecture 场景清单搬运。
+
+| 模块 | Scene | 操作 |
+|------|-------|------|
+| 模块A | new_scene.tscn | 新建 |
+| 模块A | child.tscn | 新建 |
+| 模块B | existing.tscn | 修改 |
+
+---
+
 ## 对每个新建的 scene
 
 ```markdown

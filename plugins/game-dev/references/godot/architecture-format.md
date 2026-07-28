@@ -164,13 +164,12 @@ sequenceDiagram
 
 本次涉及的 scene 操作表。只列新建和修改的 scene。复用的 scene 已在全景图中标注，不在此表重复。
 
-| Scene | 操作 | 理由 |
-|-------|------|------|
-| new_scene.tscn | 新建 | 新模块，不存在 |
-| child.tscn | 新建 | 新子 scene，运行时动态挂载 |
-| existing.tscn | 修改 | 新增 @export 字段引用新 scene |
+| 模块 | Scene | 操作 | 理由 |
+|------|-------|------|------|
+| 模块A | new_scene.tscn | 新建 | 新模块，不存在 |
+| 模块A | child.tscn | 新建 | 新子 scene，运行时动态挂载 |
+| 模块B | existing.tscn | 修改 | 新增 @export 字段引用新 scene |
 
-**作用：** 详细设计阶段拿着这张表决定 design.md 写哪些章节——新建的写完整章节，修改的只写变更部分。
 
 ## 5. 对外接口
 
