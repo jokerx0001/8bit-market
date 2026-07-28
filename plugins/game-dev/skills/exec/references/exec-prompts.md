@@ -169,3 +169,27 @@ REFACTOR
 合格: 全部条件达成
 不合格: 任一条件未达到
 
+---
+
+## INTEGRATION-TEST — integration-test agent
+
+```
+Agent({
+  subagent_type: "game-dev:integration-test",
+  prompt: `
+## project
+{project 路径，传给 agent 用于解析 Godot 可执行文件}
+
+## task_dir
+{task_dir}
+  `
+})
+```
+
+**exec 检查集成测试结果:**
+- `{task_dir}/.work/integration-test-report.md` 存在
+- 报告中非阻塞路径全部通过
+合格: 全部条件达成
+不合格: 报告缺失或存在未阻塞路径失败
+有 BLOCKED → 向用户报告阻塞详情，允许继续
+

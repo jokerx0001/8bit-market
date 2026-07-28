@@ -402,7 +402,22 @@ PROMPT_SCT_COUNT={从 GREEN prompt 的 ## 目标 screenshot testcase 条目数}
 
 从 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/config.md` 读取 test_cmd_full 并执行。验证全部通过。
 
-### 9. 收集开发经验
+### 9. 集成测试 — spawn game-dev:integration-test
+
+**feat、refactor、fix 全部必须执行。**
+
+使用 `${CLAUDE_SKILL_DIR}/references/exec-prompts.md` 的 **INTEGRATION-TEST prompt** 模板组装 spawn prompt。
+
+**检查结果**（逐项打勾，缺一不可）：
+
+- [ ] `{task_dir}/.work/integration-test-report.md` 存在
+- [ ] 报告中非阻塞路径全部通过
+
+- 全部打勾 → 进入步骤 10 (collect-lessons)
+- 报告缺失 → 集成测试未正常完成，报告阻塞，不继续后续步骤
+- 有 BLOCKED 路径 → 向用户报告阻塞详情，允许继续
+
+### 10. 收集开发经验
 
 调用 `game-dev:collect-lessons` skill，传入 tech：
 
@@ -410,11 +425,11 @@ PROMPT_SCT_COUNT={从 GREEN prompt 的 ## 目标 screenshot testcase 条目数}
 Skill("game-dev:collect-lessons", "tech={tech}")
 ```
 
-### 10. 编写教学文档
+### 11. 编写教学文档
 
 **仅 feat 和 refactor 任务执行此步骤。**
 
-**硬门：** 步骤 9 (collect-lessons) 和步骤 10 (write-tutorial) 必须全部完成才能声明 Completion Gate 通过。步骤 9 完成后立即进入步骤 10，不得在步骤 9 之后、步骤 10 之前输出完成报告。
+**硬门：** 步骤 10 (collect-lessons) 和步骤 11 (write-tutorial) 必须全部完成才能声明 Completion Gate 通过。步骤 10 完成后立即进入步骤 11，不得在步骤 10 之后、步骤 11 之前输出完成报告。
 
 调用 `game-dev:write-tutorial` skill：
 
@@ -443,6 +458,7 @@ Skill("game-dev:write-tutorial")
 3. 边界违规全部修复
 4. 所有 screenshot 验证行为已创建截图 testcase 且通过 visual-qa
 5. 每个 AI 任务的 5 个 phase 判定记录存在于 tdd-iterations.md
-6. `game-dev:collect-lessons` 已完成
-7. `game-dev:write-tutorial` 已完成
-8. 输出完成报告
+6. 集成测试报告存在，非阻塞路径全部通过
+7. `game-dev:collect-lessons` 已完成
+8. `game-dev:write-tutorial` 已完成
+9. 输出完成报告

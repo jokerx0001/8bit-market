@@ -51,12 +51,17 @@ Each `[AI-N]` task: RED → GREEN → VERIFY → **boundary check** → REFACTOR
 
 Boundary checks are embedded before REFACTOR (not as a separate review phase). Violations become REFACTOR input.
 
+### Integration Testing (exec phase, after all [AI-N])
+
+After all TDD cycles + final verification: spawn `integration-test` agent → E2E testing in real game. Every step is screenshot + visual-qa. Console errors trigger fix loop.
+
 ### Agent Isolation Rules
 
 | Agent | Writes to | Must never touch |
 |-------|-----------|-----------------|
 | `game-dev:test-agent` | test directory | any source code |
 | `game-dev:coding` | source code (not tests) | test files, third-party code |
+| `game-dev:integration-test` | test/integration/ | source code (delegates fixes to coding) |
 
 ## File Organization
 
@@ -73,9 +78,10 @@ skills/             # Core skill definitions
   plan/             #   Design phase (tech-aware)
   fix-loop/         #   Fix repair loop
   exec/             #   TDD implementation (tech-agnostic)
+  integration-test-loop-godot/  #   Godot E2E integration test loop
   artifact-manager/ #   Shared directory management
   collect-lessons/  #   Experience collection
-agents/             # Subagent definitions (test-agent, coding, fix-agent)
+agents/             # Subagent definitions (test-agent, coding, fix-agent, integration-test)
 references/         # Format contracts + tech-specific knowledge
   renpy/            #   Ren'Py tech stack config + references
     config.md       #     Project detection, test commands, paths
@@ -94,6 +100,7 @@ references/         # Format contracts + tech-specific knowledge
     design-resources-3d.md
     nodes-2d.md     #     2D core node reference
     nodes-3d.md     #     3D core node reference
+    integration-test-protocol.md  #   MCP Runtime TCP protocol reference
   plan-format.md    #   plan.md → exec parsing contract
   impact-format.md  #   impact.md → plan constraints contract
   exec-prompts.md   #   Agent spawn prompt templates
