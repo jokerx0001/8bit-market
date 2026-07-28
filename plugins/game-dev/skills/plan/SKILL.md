@@ -219,112 +219,19 @@ architecture.md 的 **"模块规约"章节**（`## 2. 模块规约`）已经划�
 
 ### 8. 详细设计
 
-**以领域模型为骨架，逐个功能行为展开引擎层实施方案。**
+```
+Skill({skill: "game-dev:design", args: "--from {task_dir} --tech {tech}"})
+```
 
-**强制检查：** 进入详细设计前，取出步骤 4 的"详细设计相关"指示列表。展开每个功能行为时逐条对照——确认该指示是否已被当前实施方案覆盖。全部覆盖后方可进入步骤 9。
+加载该 skill 后**等待其完成**，然后检查输出文件存在：
 
-调用 `superpowers:brainstorming`，但对每个功能行为按以下流程驱动：
+```bash
+test -f {task_dir}/.work/design.md && echo "OK"
+```
 
-对 `{task_dir}/.work/domain-design.md` 的每个功能行为：
-
-1. **确认领域模式** — 这是什么模式？（状态机 / 资源管理 / 事件队列 / 空间查询 / ...）
-2. **确认架构映射** — 对照 `{task_dir}/.work/architecture.md`，这个模式映射到了哪个引擎构造？
-3. **对照用户详细设计指示** — 步骤 4 中"详细设计相关"项，有无与此行为相关的指示？有则纳入实现方案。
-4. **展开实现方案（主体）** — 这个模式在引擎里具体怎么搭：
-   - 需要哪些数据结构/变量/配置？
-   - 转换/流转逻辑怎么组织？
-   - 关键时序和生命周期？
-5. **过边界清单** — domain-design.md 中该行为的边界情况清单，逐条确认实现方案覆盖了每一条边界
-6. **API/属性/最佳实践不确定时** — 读引擎参考文档查。这是字典，不是驱动
-
-**引擎参考文档的角色：字典，不是主导。** 领域模型驱动结构，架构映射提供框架，引擎文档填充技术细节：
-
-- `${CLAUDE_PLUGIN_ROOT}/references/{tech}/design.md` — 详细设计指引
-- `${CLAUDE_PLUGIN_ROOT}/references/{tech}/nodes-{2d,3d}.md`（仅 Godot）— 节点类型速查
-
-7. **显示推导（强制执行，不可跳过）** — 前面的设计文档（requirements/domain/architecture）覆盖了逻辑层和架构层，但没有覆盖显示层。详细设计是第一个面对显示层的阶段——必须从零推导用户最终看到什么。
-
-   从行为目标反推：
-   - 这个行为完成后，用户看到什么？（画面/控件/动画/反馈）
-   - 视觉元素在屏幕上的位置和布局？
-   - 每个视觉元素的用途和尺寸？
-
-   这一步只描述"用户看到什么"，不写用什么节点实现——那是步骤 4 已经覆盖的。
-
-8. **资产声明（强制执行，不可跳过）** — 步骤 7 列出视觉元素后，逐个判定是否需要外部资产：
-
-   **不需要声明资产的情况（纯代码可绘制）：**
-   - 纯色块、渐变、圆角矩形 → ColorRect / StyleBoxFlat
-   - 系统字体文本 → Label / Theme
-   - CSG 基本体 + 纯色材质 → CSGBox3D / CSGSphere3D
-   - Tween 动画效果
-   - 代码绘制的简单几何（线、圆、网格）
-
-   **需要声明资产的情况（代码无法满足视觉效果）：**
-   - 具象图形（图标、头像、插画、精灵）
-   - 纹理贴图（不是纯色填充的材质）
-   - 背景/场景图
-   - 3D 模型超出 CSG 基本体能力范围
-
-   需要资产 → 在实现方案中内联声明，紧跟节点描述之后。格式：
-
-   ```
-   **资产: {名称}**
-   - 用途: {一句话——显示什么、做什么用}
-   - 类型: {精灵/纹理/模型/背景/UI素材/材质}
-   - 尺寸: {W×H 或 描述}
-   - 视觉要求: {颜色、材质、风格——这是后续资产生成的唯一依据}
-   ```
-
-   视觉要求写清楚颜色值、材质描述、尺寸、风格方向。**不写"怎么生成"（mmx/CSG/pillow），不写输出路径，不写格式。** 那些判定是 asset-extract-doc 的职责。
-
-   **示例（设计文档中 InventoryBar 实现方案的样子）：**
-
-   ```
-   ### InventoryBar 实现方案
-
-   **前置:**
-   从 requirements: 物品栏常驻显示10个槽，键盘1-0/鼠标选择，显示图标和数量
-   从 domain-design: InventoryBar 聚合 Slot，Slot 引用 Item，SelectionManager 管理选中
-   从 architecture: UI 层用 Control 节点 + 全局 Theme，信号与数据层通信
-
-   **显示推导:**
-   物品栏是 HUD 元素，始终可见。需求"屏幕底部居中"→ 锚定底部水平居中。
-   10 个槽横向排列，每个槽用户看到：底板 + 物品图 + 数量数字 + 选中高亮。
-
-   **节点:**
-   Control(底部居中) → HBoxContainer → InventorySlot × 10
-   每槽: PanelContainer(底板) + TextureRect(32×32图标) + Label(数量)
-
-   **数据流:**
-   ItemManager.items_changed → _refresh_slots()
-   SelectionManager.selection_changed → _update_highlight()
-
-   **资产: Slot Background**
-   - 用途: 每个槽位的底板，让槽在任意背景上可辨识
-   - 类型: UI素材
-   - 尺寸: 64×64 px
-   - 视觉要求: 深色半透明（#1a1a2e @ 70%），4px 圆角，无边框
-
-   **资产: Selection Highlight**
-   - 用途: 当前选中槽的金色高亮边框
-   - 类型: UI素材
-   - 视觉要求: 2px 金色描边（#d4a574），4px 圆角，外发光效果
-
-   **资产: Item Icons**
-   - 用途: 10种物品在槽中的图标
-   - 类型: 精灵
-   - 尺寸: 32×32 px
-   - 视觉要求: 扁平化风格，粗轮廓。剑(银灰)、盾(深铁)、药水(红/蓝/绿)、钥匙(金)
-   ```
-
-   设计文档全部保存到 `{task_dir}/.work/design.md`。
-
-   **plan 不再直接写 resources.md。** resources.md 由 asset-extract-doc skill 从 design.md 的资产声明块提取生成。plan.md 的 `## 资源需求` 节从 design.md 提取所有资产声明的摘要（名称 + 类型 + 用途），供 orchestrator 判断是否触发资产生成阶段。
+文件存在后继续
 
 ### 9. 编写 plan.md
-
-**自己编写，不委托外部 skill。** 外部 skill 不知道 `[AI-N]` 任务格式和测试策略表约定，会产生偏离。
 
 基于 `.work/` 下的设计文档（requirements.md / domain-design.md / architecture.md / design.md）编写。
 

@@ -1,60 +1,60 @@
-# Godot 详细设计指引
-
-plan skill 的 step 7 读本文件，执行 Godot 项目的详细设计。
+# Godot 详细设计模板
 
 ---
 
-## 设计内容
-
-使用 `superpowers:brainstorming` 分析，从 `references/godot/nodes-{2d,3d}.md` 查节点类型。
-
-### 场景节点树设计
-
-对每个需要新建的场景，设计节点树结构：
+## 对每个新建的 scene
 
 ```markdown
-### {scene_name}.tscn
-- 节点类型: {Node2D / Control / Node3D}
-- 用途: {简要说明}
+### {scene_name}.tscn（新建）
 
-节点树:
-{root_node} ({type})
-├── {child_1} ({type})           # 用途
-│   └── {grandchild} ({type})    # 用途
-├── {child_2} ({type})           # 用途
-└── {child_3} ({type})           # 用途
+**节点树：**
 
-关键属性:
-- {node_path}: {property} = {value}
-- {node_path}: {signal} → {handler}
+RootNode (NodeType)
+├── Child1 (NodeType)              # 用途
+│   └── Grandchild (NodeType)      # 用途
+└── Child2 (NodeType)              # 用途
+    └── (挂载点，子 scene 结构见本节第 N 章)
 
-引用的外部资源:
-- ext_resource: {type}, path="res://{path}"
+**关键属性：**
+
+- 节点路径: property = value（非默认值）
+
+**内部信号连接：**
+
+NodeA.signal → NodeB.method()
+
+**显示推导：**
+
+用户在这个 scene 中看到什么——画面描述、位置、布局。
+
+**GDScript 主要内容：**
+
+- 主要方法的逻辑（做什么，不写代码）
+- 关键状态变量和生命周期
+
+**资产: {名称}**
+- 用途: {一句话}
+- 类型: {精灵/纹理/UI素材/材质}
+- 尺寸: {W×H}
+- 视觉要求: {颜色、材质、风格}
 ```
-
-### 信号连接设计
-
-用 Mermaid 流程图描述场景间和场景内信号流：
-- 场景 A 的信号 → 场景 B 的处理方法
-- 节点内信号链
-
-### 数据模型
-
-- Autoload 单例：全局状态管理
-- 场景内数据：节点属性、脚本变量
-- 资源文件：.tres 配置文件
-
-### 资源需求清单
-
-从节点树提取所有外部资源引用（精灵、纹理、材质、模型、音频等）：
-
-| # | 资源名称 | 类型 | 尺寸 | 使用场景 | 节点引用 |
-|---|---------|------|------|---------|---------|
-| 1 | player_sprite | Texture2D | 64x64 | Player 角色的 Sprite2D | Player/Sprite2D.texture |
-
-AI 可生成的类型：.tres 材质、.gdshader 着色器、简单几何体 .tscn。
-AI 不可生成的类型：.glb/.fbx 模型、复杂纹理贴图、骨骼动画 → 标记 `[HUMAN]`。
 
 ---
 
-保存到 `{task_dir}/.work/design.md`。
+## 对每个修改的 scene
+
+```markdown
+### {scene_name}.tscn（修改）
+- 新增/删除挂载scene，创建方式: {编译期嵌套 / 运行时 instantiate}，挂载点: {节点路径}
+- 自身节点变化
+- GDScript 逻辑变更: {哪些方法/逻辑需要改，改什么}
+
+```
+
+---
+
+## 内容规则
+
+**必须遵守：**
+- 新建 scene 的节点树完整展开到底
+

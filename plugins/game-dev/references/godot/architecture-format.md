@@ -97,15 +97,12 @@ stateDiagram-v2
     air_attack --> hit: take_damage()
 ```
 
-**如果模块不含复杂领域逻辑（如纯数据资源），简写即可：**
-
-> {模块名} 为纯数据层，用 Resource (.tres) 表达，无运行时逻辑。
-
 ## 3. 系统全景图
 
 ### 3.1 完整运行时节点树
 
-Mermaid flowchart。所有模块的所有 scene 拼成一棵完整的运行时树。
+Mermaid flowchart。所有模块的所有 scene
+拼成一棵完整的运行时树。场景装配的真相来源
 
 **规则：**
 - 用 `subgraph` 标注模块边界
