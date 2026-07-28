@@ -42,8 +42,7 @@ RED
 ```
 
 **exec 检查 RED 结果：**
-- behavior 验证方式：测试文件已创建、所有 testcase 失败且原因正确、无 mock/假代码
-- screenshot 验证方式：截图脚本 + `.question` 文件已创建、截图脚本可执行（退出码 0，PNG 非空）
+- 测试文件已创建、所有 testcase 失败且原因正确、无 mock/假代码
 - 合格: 全部条件达成
 - 不合格: 任一条件未达到
 ---
@@ -74,12 +73,6 @@ GREEN
 - testcase_1
 - testcase_2
 
-## 目标 screenshot testcase — 每个代表一个需视觉验证的行为
-{从 test-agent RED report 的 "### Screenshot Testcases" 表格提取。无此项则写 "无"}
-- testcase_name: {Behavior 列内容}
-  脚本: test/visual/test_{name}.gd
-  question: test/visual/test_{name}.question
-
 ## 需要读取的文件
 - {task_dir}/plan.md  — 设计摘要、影响范围
 - {task_dir}/.work/design.md  — widget 树、变量定义、交互流程（仅 feat/refactor 模式）
@@ -90,7 +83,6 @@ GREEN
 })
 ```
 - coding-agent 自验证报告显示目标 testsuite 全部通过
-- 有 screenshot 验证方式的行为：所有 screenshot testcase visual-qa PASS
 - 未修改 test/ 下文件
 - 无 pass / TODO / NotImplemented 残留
 合格: 全部条件达成
@@ -122,7 +114,7 @@ GREEN
 ```
 
 **exec 检查 VERIFY 结果：**
-- 合格: 全量测试全部通过，有 screenshot 验证方式的行为额外通过 visual-qa
+- 合格: 全量测试全部通过
 - 不合格: 有失败时，报告是否包含具体 testcase 名称和错误行（禁止只有 Summary 数字）
 
 ---

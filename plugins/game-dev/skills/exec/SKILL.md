@@ -73,8 +73,13 @@ exec 不产生任何 `.gd`、`.tscn`、`.tres` 文件。exec 不直接执行任�
 - "直接 Bash 跑测试和 spawn test-agent 效果一样" → STOP。spawn 的目的不是跑测试，是实现 agent 隔离（test-agent 不读实现代码，coding-agent 不读测试代码）。
 - "我先用 Bash 验证一下环境/测试能不能跑" → STOP。环境验证在步骤 4 的确认测试环境硬门中完成。后续任何 Bash 测试命令都是越界。
 - "批量处理完 8 个 AI 任务再统一做 VERIFY 和边界检查更高效" → STOP。每个 AI 任务是独立的 TDD 循环。不批量处理。
-- "核心问题明确，直接修复关键bug让测试通过" → STOP。exec 不修 bug——把 bug 描述和错误信息传给 coding-agent 重新 spawn。exec 改的每一行代码都在破坏 TDD 循环的独立性。
-- "This is pragmatic given the circumstances" / "agent 花了太久/写得太差，这种情况下我自己做更合理" → STOP。这是 exec 最危险的自我合理化。agent 产出有问题 = 把具体问题描述传给 agent 重新 spawn，不是 exec 替 agent 做。
+-- "核心问题明确，直接修复关键bug让测试通过" → STOP。exec 不修 bug——把
+bug 描述和错误信息传给 coding-agent 重新 spawn。exec 改的每一行代码都在
+破坏 TDD 循环的独立性。
+-- "This is pragmatic given the circumstances" / "agent
+花了太久/写得太差，这种情            况下我自己做
+更合理" → STOP。这是 exec 最危险的自我合理化。agent 产出有问题 =
+把具体问题描述传给 agent 重新 spawn，不是 exec 替 agent 做。
 
 **以上任一条出现 → STOP。回到 6b，从 RED spawn 重新开始。**
 
@@ -125,15 +130,7 @@ esac
 
 按 `${CLAUDE_PLUGIN_ROOT}/references/plan-format.md` 的规则提取 `[AI-N]` 任务，按依赖拓扑排序。`[HUMAN]` 任务收集但不执行。
 
-**解析行为列表 — 提取 screenshot 验证需求（硬门）：**
-
-从 plan.md 的 `## 行为列表` 表格中提取每条行为的验证方式：
-
-```bash
-grep 'screenshot' {task_dir}/plan.md
-```
-
-有 screenshot 行为 → 记录 screenshot 验证需求列表（行为 # + 问题描述），在 RED spawn prompt 中传入。无匹配 → 标注 "无 screenshot 验证需求"。
+**提取行为列表：** 从 plan.md 的 `## 行为列表` 表格中提取每条行为的验证描述，在 RED spawn prompt 中传入。
 
 ### 4. 确认测试环境
 
@@ -230,30 +227,13 @@ mkdir -p {task_dir}/.work/coding
 - [ ] 测试文件已创建（路径：___）
 - [ ] RED report 中所有 testcase 都失败了且原因正确（非语法错误、非标识符错误——语法错误和错误的标识符不算 RED）
 - [ ] 没有 mock、假代码
-- [ ] **Screenshot Testcases（如有）— 截图脚本合规验证（硬门，不可跳过）：**
-
-  1. 读取 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/screenshot.md`
-  2. 对 RED report 中 Screenshot Testcases 表的每个脚本，逐一检查：
-
-  ```
-  # 必须有：用 change_scene_to_file 加载游戏场景
-  grep 'change_scene_to_file' {script_path}
-  
-  # 禁止有：手动挂载独立组件 / 程序化绘图
-  grep -n 'get_root().add_child\|Image.create\|Image.fill\|set_pixel\|blit_rect' {script_path}
-  ```
-
-  - [ ] 每个脚本 `change_scene_to_file` 命中 → 脚本加载了真实游戏场景 ✅
-  - [ ] 每个脚本禁止模式零命中 → 无独立组件挂载、无程序化绘图 ✅
-
-  **任一个脚本 ❌ → RED 不合格。将违规脚本路径和命中行写入 spawn prompt，重新 spawn test-agent 要求修正。**
 
 - 全部打勾 → 进入 GREEN（6c）
 - 任一未打勾 → 指出具体问题，重新 spawn（不限重试，但同问题 >3 轮报告用户）
 
 #### 6c. GREEN — spawn game-dev:coding（含自验证）
 
-使用 **GREEN prompt** 模板。从 test-agent 的 RED report 提取：testsuite 名称、GUT testcase 名称、**以及 `### Screenshot Testcases` 表的全部行（testcase 名 + Behavior + 脚本路径 + question 路径）**。
+使用 **GREEN prompt** 模板。从 test-agent 的 RED report 提取：testsuite 名称、GUT testcase 名称。
 
 **Hard Gate — spawn 前验证 prompt 完整性（不可跳过）：**
 
@@ -261,18 +241,6 @@ mkdir -p {task_dir}/.work/coding
 
 - [ ] `## 目标 testsuite` 非空
 - [ ] `## 目标 testcase（GUT）` 非空
-- [ ] **步骤 3 grep screenshot 结果 > 0 时：`## 目标 screenshot testcase` 必须非空且非 "无"，每个 testcase 含脚本路径和 question 路径**
-
-**screenshot 行为 > 0 但 `## 目标 screenshot testcase` 为 "无" → 禁止 spawn。回到 RED report 的 `### Screenshot Testcases` 表重新提取。coding-agent 的自我验证循环是 screenshot 执行的唯一入口——prompt 里没有 screenshot testcase，self-verification (Phase 1→2→3) 就不会包含截图。**
-
-**screenshot 行为 > 0 时，额外校验数量（硬门）：**
-```
-# RED report 的 ### Screenshot Testcases 表中的条目数
-RED_SCT_COUNT={从 RED report 的 ### Screenshot Testcases 表行数}
-# GREEN prompt 中 ## 目标 screenshot testcase 的条目数
-PROMPT_SCT_COUNT={从 GREEN prompt 的 ## 目标 screenshot testcase 条目数}
-```
-**`PROMPT_SCT_COUNT` < `RED_SCT_COUNT` → RED report 中的 screenshot testcase 未全部传入 GREEN prompt，数据丢失。禁止 spawn，回到 RED report 重新提取。**
 
 全部字段确认 → spawn coding-agent。
 
@@ -282,11 +250,6 @@ PROMPT_SCT_COUNT={从 GREEN prompt 的 ## 目标 screenshot testcase 条目数}
 
 **所有任务：**
 - [ ] coding-agent 自验证报告显示目标 testsuite 全部通过
-- [ ] **有 screenshot 验证方式的行为（硬门，零容忍）：**
-  1. GREP 验证：`grep -rl '### Verdict: fail' {task_dir}/.work/coding/screenshot_*_run*.log 2>/dev/null | wc -l` == 0（零 FAIL）
-  2. 完整性验证：`ls {task_dir}/.work/coding/screenshot_*_run*.log 2>/dev/null | wc -l` >= GREEN prompt 中 `## 目标 screenshot testcase` 的数量
-  3. GREEN 报告包含 "### Screenshot 验证结果" 表，且表中 verdict 列全部为 "pass"
-  **任一项不满足 → GREEN 不合格，重新 spawn。禁止仅凭 coding-agent 的一句话总结判定通过。**
 - [ ] 未修改 test/ 下文件（检查 coding agent 的已修改文件列表）
 - [ ] 无 pass / TODO / NotImplemented 残留（grep 已修改的源文件）
 - [ ] `.work/coding/` 目录包含本轮测试运行日志（至少一个 `<testsuite>_run<N>.log` 文件——coding agent 自我验证必须落盘原始输出）
@@ -309,15 +272,10 @@ PROMPT_SCT_COUNT={从 GREEN prompt 的 ## 目标 screenshot testcase 条目数}
 **Hard Gate — 全部通过才算 VERIFY 合格：**
 
 - [ ] 全量测试全部通过（`test_cmd_full` 退出码 0）
-- [ ] **有 screenshot 验证方式的行为（零失败容忍）：**
-  1. `grep -rl '### Verdict: fail' {task_dir}/.work/coding/screenshot_*_run*.log 2>/dev/null | wc -l` == 0
-  2. `file {task_dir}/.work/screenshots/*.png 2>/dev/null | grep -v 'PNG image data'` 零输出（所有截图文件为有效 PNG）
-  3. `.work/screenshots/` 中 PNG 数量 >= GREEN prompt 中 `## 目标 screenshot testcase` 数量
-  **任一项不满足 → VERIFY 不合格，回退到 GREEN（6c）再修。** screenshot 检查不可跳过——GUT 全绿不是跳过 screenshot 检查的理由。
 - [ ] 如有失败，报告包含具体 testcase 名称和错误行（禁止只有 Summary 数字）
 
 - 全部通过 → 进入边界检查（6e）
-- 有失败（GUT 失败 或 screenshot FAIL 或截图文件无效）→ 回退到 GREEN（6c）再修。同一错误反复出现（>2 轮）→ exec 向用户报告，不自动循环
+- 有失败 → 回退到 GREEN（6c）再修。同一错误反复出现（>2 轮）→ exec 向用户报告，不自动循环
 
 #### 6e. 边界检查 — exec 主会话执行（独立质量门）
 
@@ -456,9 +414,8 @@ Skill("game-dev:write-tutorial")
 1. 所有 `[AI-N]` 标记 `done`（progress.json 中 status=done）
 2. 全量测试全部通过
 3. 边界违规全部修复
-4. 所有 screenshot 验证行为已创建截图 testcase 且通过 visual-qa
-5. 每个 AI 任务的 5 个 phase 判定记录存在于 tdd-iterations.md
-6. 集成测试报告存在，非阻塞路径全部通过
-7. `game-dev:collect-lessons` 已完成
-8. `game-dev:write-tutorial` 已完成
-9. 输出完成报告
+4. 每个 AI 任务的 5 个 phase 判定记录存在于 tdd-iterations.md
+5. 集成测试报告存在，非阻塞路径全部通过
+6. `game-dev:collect-lessons` 已完成
+7. `game-dev:write-tutorial` 已完成
+8. 输出完成报告

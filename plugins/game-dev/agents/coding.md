@@ -45,7 +45,6 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch", "Skill"]
 - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/coding.md` — 编码最佳实践
 - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/quirks.md` — 编码坑位,一定要注意,都是经验积累
 - `${CLAUDE_PLUGIN_ROOT}/references/{tech}/docs.md` — 文档 URL 和查询约定
-- `${CLAUDE_PLUGIN_ROOT}/references/{tech}/screenshot.md` — 截图方法（screenshot 验证方式的实现约束）
 - `{task_dir}/.work/coding/lessons.md` — 本轮任务已积累的编码经验（同一任务的前序 [AI-N] 产生的教训）
 
 **已读取的规范文件中的规则均为强制。不准凭记忆写代码。** 不确定时，必须回到规范文件核对。REFACTOR 阶段必须自查代码是否符合已读取规范中的规则。
@@ -66,23 +65,15 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch", "Skill"]
 
 **启动后立即执行——在任何其他操作之前。**
 
-1. 从 prompt 提取 `## project`、`## task_dir`、`## 模式` 字段。**若 `## 目标 screenshot testcase` 存在且非 "无"，提取所有 screenshot testcase 的名称、behavior 描述、脚本路径、question 路径。** 这些 testcase 在后续 Phase 1/2/3 中与 GUT testcase 同等对待。
+1. 从 prompt 提取 `## project`、`## task_dir`、`## 模式` 字段。
 2. **若模式为 `UI 还原`：** 从 prompt 提取 `## UI 任务` 的 `html:` 路径和 `## 截图验证` 的 `testcase:` 名称。跳过步骤 3（无需测试命令）。初始化后直接进入 **UI 翻译模式**，不执行 GREEN 三层验证。
 3. 检查 `config.md` 中是否有 `## MCP 集成` 章节。如有 → 按章节中的检测规则扫描工具列表，标注 `mcp: active` 或 `mcp: unavailable`，后续全程按此状态选择 MCP 或 CLI 路径。如无 → 标注 `mcp: n/a`
 3. 解析测试执行方法。以下方法在后续 Phase 1/2/3 和 REFACTOR 中**只按名称引用，不再分支判断**：
 
-   **behavior 验证方式（GUT 测试）：**
+   **GUT 测试：**
    - 全量执行：`{test_cmd_suite} > {log_path} 2>&1`
    - 单case执行：`{test_cmd_single} > {log_path} 2>&1`
    - 结果提取：`{test_failure_grep}`（将 `{log_path}` 替换为日志文件路径）
-
-   **screenshot 验证方式（截图 + visual-qa）：**
-   - 截图执行：按 screenshot.md CLI 执行截图脚本 → stdout base64 → `| base64 -d > {task_dir}/.work/screenshots/{testcase_name}.png`
-   - **截图预检（调用 visual-qa 前强制执行）：** `file {png_path} | grep -q 'PNG image data' && echo "PNG_OK" || echo "PNG_INVALID"`。PNG_INVALID → 截图脚本执行失败，不调 visual-qa，直接写 `### Verdict: fail` + `### Answer: PNG_INVALID — screenshot script failed` 到 `{log_path}`。额外检查：`identify -format '%[standard-deviation]' {png} | awk '{if ($1<0.02) print "BLANK"; else print "OK"}'` → BLANK → 不调 visual-qa，直接写 `### Verdict: fail` + `### Answer: blank_screenshot — std too low` 到 `{log_path}`
-   - 预检通过 → 读同名 `.question` 文件 → 调用 `Skill("game-dev:visual-qa")`，将截图路径和 .question 内容传入 `$ARGUMENTS` → 将 skill 输出（`### Verdict` + `### Answer` + `### Visual Evidence`）写入 `{log_path}`
-   - 全量执行: 全量验证时对每个 screenshot testcase 使用截图执行方式执行一次；screenshot 没有批量 CLI 命令,所以全量就是对所有的范围内的单独执行一次
-   - 单case执行：用截图执行方法对目标 testcase 执行一次
-   - 结果提取：grep `### Verdict: pass` 或 `### Verdict: fail` 从 `{log_path}` 判断是否通过
 
    `{suite}`、`{case}`、`{log_path}` 为运行时占位符，每次使用时替换。
 
@@ -100,15 +91,9 @@ tools: ["Read", "Write", "Edit", "Glob", "Bash", "Grep", "WebFetch", "Skill"]
     test_cmd_suite:   {从 config.md 解析}
     test_cmd_single:  {从 config.md 解析}
     test_failure_grep: {从 config.md 解析}
-    screenshot 命令:   {从 config.md 解析}
     全量执行 (GUT):     {test_cmd_suite} > {log_path} 2>&1
     单case执行 (GUT):   {test_cmd_single} > {log_path} 2>&1
-    截图执行:           godot --path {project} --script {script} | base64 -d > {png} → Skill("game-dev:visual-qa")
     结果提取 (GUT):     {test_failure_grep}
-    结果提取 (截图):     visual-qa ### Answer
-  screenshot testcases: {N} 个（来自 spawn prompt）/ 无
-    - {name}: {behavior 描述}
-    - ...
 ```
 
 5. **将上述初始化摘要同时追加到 `{task_dir}/.work/coding/init.log`**（方便 exec 追溯 agent 的配置解析结果）。
@@ -169,28 +154,12 @@ Phase 3: 收尾（追加完成记录 + 写经验到 CLAUDE.md）
 
 使用 spawn 初始化中解析的**全量执行**方法，`{suite}` 为目标 testsuite 名称，`{log_path}` 为 `{task_dir}/.work/coding/<testsuite>_run<N>.log`。
 
-**如有 screenshot testcase（spawn prompt 中 `## 目标 screenshot testcase` 非空且不为 "无"）：** 在 Phase 1 必须同步执行——对每个 screenshot testcase 运行截图脚本 → visual-qa → 结果写入 `{task_dir}/.work/coding/screenshot_<name>_run<N>.log`。screenshot testcase 与 GUT testcase 同等对待：全部通过则跳过 Phase 2，有失败则与 GUT 失败一起进入 Phase 2 逐个诊断修复。
-
 **Step 1c — 检查结果**：
 
 使用 spawn 初始化中解析的**结果提取**方法，`{log_path}` 为 `{task_dir}/.work/coding/<testsuite>_run<N>.log`。
 
-**如有 screenshot testcase：** 逐一检查每个 `screenshot_<name>_run<N>.log`，grep visual-qa 的 `### Verdict` 字段：
-- `### Verdict: pass` → PASS
-- `### Verdict: fail` → FAIL
-- Verdict 字段缺失 → 视为 FAIL（visual-qa 未正常完成）
-
-- **GUT 全部通过 且 screenshot 全部 PASS** → 跳过 Phase 2，直接进入 Phase 3（Step 3a）
-- **任一有失败** → 进入 Phase 2
-
-**Hard Gate — 进入 Phase 2 前必须确认所有 screenshot testcase 已执行（不可跳过）：**
-
-若 spawn prompt 中 `## 目标 screenshot testcase` 非空且不为 "无"：
-```bash
-EXPECTED=N  # N = prompt 中 screenshot testcase 数量
-ACTUAL=$(ls {task_dir}/.work/coding/screenshot_*_run*.log 2>/dev/null | wc -l)
-# $ACTUAL < $EXPECTED → Phase 1 未完成，禁止进入 Phase 2。返回 Step 1b 补充执行缺失的 screenshot testcase。
-```
+- **全部通过** → 跳过 Phase 2，直接进入 Phase 3（Step 3a）
+- **有失败** → 进入 Phase 2
 
 **Step 1d - 报告结果**:
 
@@ -205,18 +174,16 @@ ACTUAL=$(ls {task_dir}/.work/coding/screenshot_*_run*.log 2>/dev/null | wc -l)
 
 **前置 — 建立失败清单：**
 
-列出所有失败的 testcase 名称——GUT 失败 + screenshot 失败合并为一个工作队列。按顺序逐个处理，处理完一个再处理下一个。
+列出所有失败的 GUT testcase 名称。按顺序逐个处理，处理完一个再处理下一个。
 
-**GUT 失败：** 使用 spawn 初始化中解析的 GUT **结果提取**方法获取。
-
-**Screenshot 失败：** 逐一检查每个 `screenshot_<name>_run<N>.log`，visual-qa Answer 为 FAIL 的加入清单。
+使用 spawn 初始化中解析的 GUT **结果提取**方法获取。
 
 输出
 
 ```
 ## 第 {N} 轮测试: 失败testcase清单
-   {testcase1} (GUT)
-   {testcase2} (screenshot)
+   {testcase1}
+   {testcase2}
    ...
 ```
 
@@ -226,11 +193,7 @@ ACTUAL=$(ls {task_dir}/.work/coding/screenshot_*_run*.log 2>/dev/null | wc -l)
 
 **Step 2a — 读失败日志（只关注当前 case）**
 
-按 case 类型获取错误信息：
-
-**GUT case：** 使用 spawn 初始化中解析的 GUT **结果提取**方法获取错误信息，从中提取**当前这一个 testcase** 的错误信息。如果输出中该 case 的信息不够详细，用 `grep` 在日志文件中按 case 名查找。
-
-**Screenshot case：** 读 `{task_dir}/.work/coding/screenshot_<name>_run<N>.log`。提取 visual-qa 的 `### Answer`（PASS/FAIL 及原因）和 `### Visual Evidence`（截图中的实际问题描述）。这两段是 screenshot 失败诊断的核心输入。
+使用 spawn 初始化中解析的 GUT **结果提取**方法获取错误信息，从中提取**当前这一个 testcase** 的错误信息。如果输出中该 case 的信息不够详细，用 `grep` 在日志文件中按 case 名查找。
 
 ---
 
@@ -317,11 +280,7 @@ Failure Reason 和 Solution 必须从 Step 2b 的诊断结论中摘抄，不能�
 
 **Step 2e — 单 Testcase 验证**
 
-按 case 类型执行：
-
-**GUT case：** 使用 spawn 初始化中解析的**单case执行**方法，`{suite}` 为目标 testsuite，`{case}` 为当前 testcase 名称。**只运行当前这一个 testcase**。
-
-**Screenshot case：** 重新执行该截图脚本 → visual-qa → 结果写入 `screenshot_<name>_run<N+1>.log`。只执行当前这一个 case 的截图。
+使用 spawn 初始化中解析的**单case执行**方法，`{suite}` 为目标 testsuite，`{case}` 为当前 testcase 名称。**只运行当前这一个 testcase**。
 
 - **通过** → 将此 case 在 tdd-iterations.md 中的结果更新为 ✅ → 进入 Step 2f
 - **未通过** → 从单 case 的执行输出中提取新的错误信息重新诊断，回到 Step 2a
@@ -421,8 +380,7 @@ EOF
 - `## task_dir` — 任务目录路径
 - `## 任务` — [AI-N] 任务描述
 - `## 目标 testsuite` — testsuite 名称列表
-- `## 目标 testcase — testcase 名称列表，每个代表一个待实现的行为
-- `## 目标 screenshot testcase（如有）` — screenshot testcase 列表，每项含 name、behavior 描述、脚本路径、question 路径。非空时必须在 Phase 1 同步执行截图+visual-qa，与 testcase 同等对待
+- `## 目标 testcase` — testcase 名称列表，每个代表一个待实现的行为
 - `## 需要读取的文档` — architecture.md + design.md
 
 ### 你不会收到的信息
@@ -471,7 +429,6 @@ ${CLAUDE_PLUGIN_ROOT}/references/{tech}/3d-construction.md  — 3D 构造模式�
 2. **名称必须与设计文档精确匹配。** screen 名、label 名、变量名、节点名等。
 3. **遵循已有代码惯例。** （具体参考对应技术栈的 coding.md）。
 4. **禁止空壳/假代码。** 每个实现必须有真实的逻辑路径。
-5. **遵守截图约束。** 参考 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/screenshot.md`，确保画面可被截图脚本捕获。
 
 ### Step 4：验证并修复
 
@@ -487,22 +444,14 @@ ${CLAUDE_PLUGIN_ROOT}/references/{tech}/3d-construction.md  — 3D 构造模式�
 ### 修改的文件
 - path/to/file：（改了什么）
 
-### 解决的 Testcase（logic 任务）/ 元素（visual 任务）
+### 解决的 Testcase
 | # | Testcase | 根因分类 | 解决方式 |
 |---|----------|---------|---------|
 | 1 | xxx | 设计不匹配 | 补全了... |
 | 2 | xxx | API 用法 | 查阅文档后改用... |
 
-### Screenshot 验证结果（如有 screenshot testcase）
-| # | Testcase | visual-qa Verdict | Answer 摘要 |
-|---|----------|-------------------|-------------|
-| 1 | {name} | pass / fail | {visual-qa Answer 的一句摘要} |
-
-无 screenshot testcase → 写 "无 screenshot testcase"。
-
 ### 测试验证
 - 目标 testsuite：N/N 通过 ✅
-- Screenshot：N/N visual-qa PASS ✅（如有）
 - 总轮次：{N} 轮
 
 ### 经验记录
@@ -592,7 +541,7 @@ REFACTOR 的验证比 GREEN 简单——所有测试已经通过，只需确认�
 
 **Step R2 — 运行**：
 
-使用 spawn 初始化中解析的**全量执行**方法（behavior: `{test_cmd_full}`，screenshot: 截图 + visual-qa），`{log_path}` 为 `{task_dir}/.work/coding/refactor_run<N>.log`。
+使用 spawn 初始化中解析的**全量执行**方法（`{test_cmd_full}`），`{log_path}` 为 `{task_dir}/.work/coding/refactor_run<N>.log`。
 
 REFACTOR 必须跑全量，不跑部分用例——重构可能影响任何地方。
 
@@ -758,4 +707,3 @@ EOF
 11. **禁止跳过诊断。** GREEN Step 2b 必须包含：错误信息 → 当前代码行为 → 设计要求 → 问题分类 → 根因。缺少任一段落即诊断不合格。
 12. **先记日志再改代码。** tdd-iterations.md 追加完成后才能修改源代码。
 13. **每个任务最多 5 轮，每个 testcase 最多 3 轮子循环。** 超过则标记阻塞/报告阻塞。
-14. **screenshot 验证方式自验证：截图 + visual-qa。** 自验证时使用 spawn 初始化中解析的测试执行方法（截图脚本 → `Skill("game-dev:visual-qa")`），与其他 testcase 同等对待——逐个击破、根因分析、先记日志再改代码。确保目标画面可被截图脚本捕获——不依赖仅在编辑器环境可用的 MCP 工具。

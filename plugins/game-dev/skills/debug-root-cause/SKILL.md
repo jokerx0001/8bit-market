@@ -21,8 +21,8 @@ NO DIAGNOSIS WITHOUT BACKWARD TRACING FIRST
 | 输入 | 说明 |
 |------|------|
 | BUG 描述 | 用户原始报告，原样引用 |
-| 预期行为列表 | 用户确认的正确行为，逐条列出，含验证方式（`behavior` 或 `screenshot: 问题描述`）。screenshot testcase 通过命名约定 `test_{描述}_screenshot` 在测试目录中定位 |
-| BUG 复现测试路径 | test agent 编写的失败测试文件（GUT）。screenshot 脚本从同目录 `visual/` 子目录下按命名约定发现 |
+| 预期行为列表 | 用户确认的正确行为，逐条列出，每条含验证描述 |
+| BUG 复现测试路径 | test agent 编写的失败测试文件（GUT） |
 | before_attempts | `{task_dir}/.work/fix-attempts.md` 的路径。存在则读取——已验证为错误的路径，诊断时避开 |
 | task_dir | 产出写入 `{task_dir}/.work/debug-analysis.md` |
 
@@ -41,9 +41,7 @@ NO DIAGNOSIS WITHOUT BACKWARD TRACING FIRST
 - actual vs expected 值是什么
 - 完整的 traceback（如有）
 
-**Screenshot 测试（如有）：** 按 `${CLAUDE_PLUGIN_ROOT}/references/{tech}/screenshot.md` 的 CLI 命令执行截图脚本，base64 解码保存到 `{task_dir}/.work/screenshots/{testcase_name}.png`。读对应 `.question` 文件，调用 `Skill("game-dev:visual-qa")`，将截图路径和问题内容传入 `$ARGUMENTS`。记录 visual-qa 返回的 `### Answer`。
-
-**综合判定：** 任一测试 PASS（BUG 不存在）→ 报告给 fix-conductor，停止。可能是用户环境问题或 BUG 已被修复。
+**判定：** 测试 PASS（BUG 不存在）→ 报告给 fix-conductor，停止。可能是用户环境问题或 BUG 已被修复。
 
 **步骤 1 硬门（强制执行）：** 未完成以下全部三项前，不得进入步骤 2。
 
@@ -163,9 +161,9 @@ test -f "{项目根目录}/{引用路径}" && echo "EXISTS" || echo "MISSING"
 {用户报告的 BUG，原样引用}
 
 ## 预期行为
-{fix-conductor 阶段 1 确认的正确行为，逐条列出，含验证方式}
-1. {行为 1}  — 验证方式: {behavior | screenshot: 问题描述}
-2. {行为 2}  — 验证方式: {behavior | screenshot: 问题描述}
+{fix-conductor 阶段 1 确认的正确行为，逐条列出}
+1. {行为 1} — 验证: {验证描述}
+2. {行为 2} — 验证: {验证描述}
 3. ...
 
 ## 根因

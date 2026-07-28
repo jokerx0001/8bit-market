@@ -76,7 +76,7 @@ description: This skill should be used when the orchestrator needs to manage pro
 
 这些是玩家能看到和操作的，每条对应一个 testcase：
 
-1. 玩家进入主菜单 → 看到角色选择界面（截图基线）
+1. 玩家进入主菜单 → 看到角色选择界面
 2. 玩家点击第 2 个角色卡片 → 卡片视觉高亮
 3. 玩家选中角色后点击"确认" → 跳转到游戏开始
 4. 玩家未选中角色点击"确认" → 停留在当前界面，无事发生
@@ -87,7 +87,7 @@ description: This skill should be used when the orchestrator needs to manage pro
 
 **为什么这样做：** 行为确认承担的是需求描述。设计文档描述的是方案（界面结构、组件树），行为描述的是需求（玩家看到什么、做什么、结果是什么）。方案可以有多种，行为只有一种。test-agent 和 coding-agent 都以行为为基准——测试断言行为，实现产出行。
 
-写入前，对每条行为判定验证方式：该行为的结果玩家用眼睛能不能看到？看不到 → `behavior`，看得到 → `screenshot: {问题}`。判定后保存到 `{task_dir}/.work/requirements.md` 的"新增行为"章节，格式见 `${CLAUDE_SKILL_DIR}/references/requirements-format.md`。
+写入前，对每条行为写验证描述。保存到 `{task_dir}/.work/requirements.md` 的"新增行为"章节，格式见 `${CLAUDE_SKILL_DIR}/references/requirements-format.md`。
 
 **auto 模式下跳过确认直接写入。**
 

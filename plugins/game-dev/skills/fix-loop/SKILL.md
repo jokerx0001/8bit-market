@@ -13,9 +13,9 @@ description: "BUG 修复循环。诊断→修复→验证循环，直到 BUG 复
 |------|------|
 | task_dir | 任务目录路径 |
 | bug_description | 用户报告的 BUG，原样引用 |
-| expected_behaviors | 用户确认的预期行为，逐条列出，每条标注验证方式（`behavior` 或 `screenshot: 问题描述`） |
+| expected_behaviors | 用户确认的预期行为，逐条列出，每条含验证描述 |
 | testsuite | test-agent 创建的 testsuite 名称 |
-| testcases | testcase 名列表（含 GUT 和 screenshot 两类——screenshot testcase 通过命名约定区分：`test_{描述}_screenshot`） |
+| testcases | testcase 名列表 |
 | test_cmd_full | 全量测试命令（fix-agent 从 config.md 解析传入） |
 | test_cmd_suite | 指定 testsuite 的命令模板（`{suite}` 占位符由 fix-loop 替换） |
 | test_cmd_single | 单个 testcase 的命令模板（`{suite}`、`{case}` 占位符由 fix-loop 替换） |
@@ -26,7 +26,7 @@ description: "BUG 修复循环。诊断→修复→验证循环，直到 BUG 复
 确保 `.work/` 下存在必要的目录：
 
 ```bash
-mkdir -p {task_dir}/.work/logs/screenshots
+mkdir -p {task_dir}/.work/logs
 ```
 
 `{task_dir}/.work/generated-assets.md` — 跨轮累积的资产生成记录。每轮 Step 3c 读取此文件做去重，Step 3g 追加本轮结果。文件不存在表示第一轮，无需额外初始化。
@@ -38,16 +38,6 @@ mkdir -p {task_dir}/.work/logs/screenshots
 - 结果提取：`{test_failure_grep}`，`{log_path}` 替换为对应的日志文件路径
 
 **Hard Gate：每次测试运行必须保存原始输出到 `.work/logs/`。** 不保存日志 = 本轮验证无效。管道可用于二次提取，但原始输出必须先完整保存到对应日志文件。
-
-**解析Screenshot 测试方法（以下方法在每轮验证步骤中只按名称引用）：**
-
-`Read ${CLAUDE_PLUGIN_ROOT}/references/{tech}/screenshot.md`
-- 截图命令: {从screenshot.md中提取}
-- 截图约束: {从screenshot.md中提取}
- 
-**Hard Gate
-- 每次运行截图命令,并且调取visual-qa skill获取结果后，必须保存visual-qa原始输出到 `.work/logs/`。** 不保存日志 = 本轮验证无效。
-- screenshot.md中的约束必须遵守。
 
 ### 每轮迭代
 
@@ -190,51 +180,7 @@ EOF
 
 跑 BUG 复现测试：
 
-**GUT 测试：** 使用[准备]中解析的**全量执行**方法跑目标 testsuite。使用[准备]中解析的**结果提取**方法获取失败详情。
-
-**Screenshot 测试：**
-步骤如下:
-1. 使用[准备]中解析的**截图命令**逐个 testcase 执行截图脚本
-参数: {output_path}: | {task_dir}/.work/logs/screenshots/{testcase_name}.png
-2. 读对应的 `.question` 文件，调用visual-qa skill 
-```
-Skill({skill: "game-dev:visual-qa", args: "--reference_image_path {截图路径} --question {.quistion文件内容}"})
-```
-3. 将 skill 输出写入 `{task_dir}/.work/logs/{testcase_name}_qa.log`
-- 结果提取：从 qa 日志文件中 visual-qa 的 `### Answer` 内容判断是否通过
-
-**Screenshot 验证硬门（强制执行）：** 每次截图验证后检查以下项目。任何 ❌ → 截图验证标记为 INCOMPLETE（不得标记为 PASS，不得退出循环）。
-
-| # | 检查项 | 状态 |
-|---|--------|------|
-| 1 | `{testcase_name}_qa.log` 已写入 .work/logs/（文件存在且非空） | ✅ / ❌ |
-| 2 | qa 日志中包含 `### Answer` 节（visual-qa 返回了有效结果，非 API error） | ✅ / ❌ |
-| 3 | Answer 内容判断通过（PASS）或失败原因已记录 | ✅ / ❌ |
-| 4 | 如 Answer 包含 `blank_screenshot: true` → 回到 Step 6 重截（见下方"空白截图处理"），重截后从 Step 6 的 visual-qa 步骤重新走 | ✅ / ❌ |
-
-**截图失败必做行为（硬门——任一步骤失败必须全部执行）：**
-
-| # | 检查项 | 状态 |
-|---|--------|------|
-| 1 | 已重新 `Read ${CLAUDE_PLUGIN_ROOT}/references/{tech}/screenshot.md` | ✅ / ❌ |
-| 2 | 已逐条对照 screenshot.md 确认截图命令合规 | ✅ / ❌ |
-| 3 | 已检查环境 | ✅ / ❌ |
-| 4 | 如环境不支持 → 已找到不支持的原因 并更新 fix-attempts.md | ✅ / ❌ |
-| 5 | 已检查 qa.log 是否含 `blank_screenshot: true`（visual-qa 的 blank 报告）| ✅ / ❌ |
-
-**空白截图处理（如硬门 #4 或失败必做 #5 发现 blank_screenshot: true）：**
-
-空白截图 = 渲染未完成就截了。处理步骤：
-
-1. 检查 screenshot.md 中的帧等待是否足够（Godot: 是否等了足够 `process_frame` + 一次 `RenderingServer.frame_post_draw`；Ren'Py: 是否 `pause` 了足够时间）
-2. **增加帧等待：** 在截图脚本中把帧等待翻倍（10 → 20、5 → 10），确保 GPU 提交完成
-3. 重新执行截图命令，写出新 PNG
-4. 重新调用 visual-qa skill 验证新截图
-5. 将空白截图原因和重试结果记录到 fix-attempts.md
-
-**如果连续 2 次重截仍是空白 → 标记 BLOCKED。** 不再浪费时间——可能是环境没有 GPU、渲染后端异常等根本性问题。
-
-**此硬门不可跳过。截图失败不做此检查 = 本轮验证无效。**
+使用[准备]中解析的**全量执行**方法跑目标 testsuite。使用[准备]中解析的**结果提取**方法获取失败详情。
 
 #### Step 7: 判定
 
@@ -243,19 +189,18 @@ Skill({skill: "game-dev:visual-qa", args: "--reference_image_path {截图路径}
 | # | 条件 | 状态 |
 |---|------|------|
 | 1 | GUT 测试已执行且输出已保存到 .work/logs/ | ✅ / ❌ |
-| 2 | 如有 screenshot testcase：每条有对应的 qa.log（文件存在且含 `### Answer`），或已标注 `环境不支持` | ✅ / ❌ |
 
-**任何 ❌ → 本轮验证无效。** 返回 Step 6 补全缺失的日志/验证，或标注 BLOCKED。
+**任何 ❌ → 本轮验证无效。** 返回 Step 6 补全缺失的日志/验证。
 
-- **全部 PASS（含 Screenshot visual-qa 全部 PASS 或已标注环境不支持）→ 退出循环。** 跳转到"完成"。
-- **任一 FAIL 或 INCOMPLETE → 继续下一轮。** 追加失败详情到 fix-attempts.md：
+- **全部 PASS → 退出循环。** 跳转到"完成"。
+- **任一 FAIL → 继续下一轮。** 追加失败详情到 fix-attempts.md：
 
 ```markdown
 ### 验证结果
 ❌ 失败
 
 #### 失败详情
-{具体 testcase 失败信息 + screenshot visual-qa 结论}
+{具体 testcase 失败信息}
 
 #### 失败原因分析
 {为什么没修好——根因判断错误？修复不完整？引入了新问题？}
@@ -300,7 +245,6 @@ Skill({skill: "game-dev:visual-qa", args: "--reference_image_path {截图路径}
 
 ## 验证
 - GUT: {N}/{N} 通过
-- Screenshot: {如有} PASS
 
 ## 尝试轮次
 {共 N 轮，每轮简述尝试了什么、为什么失败}

@@ -36,7 +36,7 @@ Either one fails → diagnose root cause → fix → re-run the ENTIRE path from
 读取 4 份文档建立完整上下文：
 
 ```
-{task_dir}/.work/requirements.md     — 行为清单 (含验证方式: behavior / screenshot)
+{task_dir}/.work/requirements.md     — 行为清单（含验证描述，指导视觉检查点）
 {task_dir}/.work/domain-design.md    — 领域模型 (状态机、资源管理、事件流)
 {task_dir}/.work/architecture.md     — 文件/模块结构、数据流、信号契约
 {task_dir}/.work/design.md           — 引擎层实现 (节点路径、API 选择、信号名)

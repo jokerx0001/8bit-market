@@ -34,7 +34,7 @@ Violating the letter of this rule is violating the spirit of this rule.
 2. 读取 4 份设计文档，逐一确认存在:
 
 ```
-{task_dir}/.work/requirements.md     — 行为清单 (含验证方式: behavior / screenshot)
+{task_dir}/.work/requirements.md     — 行为清单（含验证描述）
 {task_dir}/.work/domain-design.md    — 领域模型
 {task_dir}/.work/architecture.md     — 文件/模块结构、数据流
 {task_dir}/.work/design.md           — 引擎层实现

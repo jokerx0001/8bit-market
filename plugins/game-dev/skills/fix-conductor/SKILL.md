@@ -120,58 +120,12 @@ mkdir -p {task_dir}/.work
 |---|--------|------|
 | 1 | 预期行为已整理为清单并回显给用户 | ✅ / ❌ |
 | 2 | 用户已确认预期行为（回复 OK / 明确确认） | ✅ / ❌ |
-| 3 | 视觉关键词检测已执行（阶段 1b） | ✅ / ❌ |
-| 4 | 如有视觉关键词，截图验证需求已确认 | ✅ / ❌ |
-| 5 | requirements.md 已写入 {task_dir}/.work/ 且内容非空 | ✅ / ❌ |
-| 6 | spawn prompt 中预期行为的验证方式与 requirements.md 一致（逐条核对：screenshot 不能改写为 behavior，反之亦然） | ✅ / ❌ |
+| 3 | requirements.md 已写入 {task_dir}/.work/ 且内容非空 | ✅ / ❌ |
 
 任何 ❌ → STOP。返回对应阶段补完。
 ```
 
-### 阶段 1b：视觉验证检测
-
-预期行为确认后，检测 BUG 是否涉及视觉验证。视觉 BUG 需要额外增加截图验证，不能只看 GUT 测试结果。
-
-**自动检测规则：** 扫描 BUG 描述和预期行为文本，匹配视觉关键词（不区分大小写）。
-
-**强制执行 — 使用 grep 命令扫描（不可跳过）：**
-
-```bash
-VISUAL_CHECK=$(echo "{BUG 描述} {预期行为}" | grep -iE "显示|渲染|画面|布局|颜色|位置|大小|UI|界面|样式|字体|图标|动画|特效|遮挡|重叠|偏移|消失|闪烁|错位|裁剪|拉伸|变形|对齐|间距|尺寸|透明度|层级|视觉|像素|display|render|layout|color|position|size|visual|appear|look|style|font|icon|animation|effect|overlap|offset|clip|stretch|align|spacing|opacity|layer|pixel|z-order|可见|不可见|看不到|碰撞体")
-echo "VISUAL_CHECK_RESULT: ${VISUAL_CHECK:-NONE}" >> {task_dir}/.work/requirements.md
-```
-
-grep 返回非空 → 视觉 BUG 确认。grep 为空 → 无视觉 BUG，阶段 1b 通过。
-
-**此 grep 命令必须执行。跳过 = 违反铁律。** grep 结果追加到 requirements.md 底部作为执行证据，后续阶段可通过读取 requirements.md 验证 grep 确实执行了。
-
-**判定逻辑：**
-
-```
-匹配到视觉关键词 → 标注为包含视觉验证 BUG
-├── 自动在已有行为验证基础上增加一条视觉验证case
-│   ├── 行为涉及视觉状态（如"面板显示在屏幕中央""按钮颜色变为红色"）→ 增加一条screenshot测试验证
-├── 向用户确认：
-│   ```
-│   ## 视觉验证需求确认
-│
-│   此 BUG 涉及视觉问题。以下预期行为建议增加截图验证：
-│
-│   1. {行为 1} — 验证方式: screenshot（截图验证）
-│   ...
-│
-│   请确认：
-│   - 截图验证的行为是否正确？
-│   - 需要截图验证的行为，具体的视觉检查点是什么？
-│       例如："确认按钮是否显示在面板右下角""确认角色头像是否正确渲染"
-│   ```
-└── 用户确认后，记录每条行为的验证方式 + screenshot 行为的问题描述
-
-```
-
-**硬门：** 匹配到视觉关键词但用户未确认截图验证需求前，不得进入阶段 2。
-
-### 阶段 1c：写入 requirements.md（供 test-agent 使用）
+### 阶段 1b：写入 requirements.md（供 test-agent 使用）
 
 test-agent 的数据来源是文件（`{task_dir}/.work/requirements.md`），不是 spawn prompt。行为澄清完成后必须将确认的行为写入此文件。
 
@@ -183,9 +137,9 @@ cat > {task_dir}/.work/requirements.md << 'EOF'
 {BUG 描述原文}
 
 ## 预期行为
-{逐条列出，含验证方式}
-1. {行为 1}  — 验证方式: {behavior | screenshot: 问题描述}
-2. {行为 2}  — 验证方式: {behavior | screenshot: 问题描述}
+{逐条列出}
+1. {行为 1} — 验证: {可被 GUT 断言的事实}
+2. {行为 2} — 验证: {可被 GUT 断言的事实}
 3. ...
 EOF
 ```
@@ -213,31 +167,20 @@ RED
 ## BUG 描述（用户报告）
 {用户报告的 BUG}
 
-## 预期行为（含验证方式）
-{从 {task_dir}/.work/requirements.md 的"预期行为"表格逐条复制。每条的验证方式字段必须原样复制，不得修改——screenshot 不能改写为 behavior，反之亦然。}
-1. {行为 1}  — 验证方式: {逐字复制 requirements.md}
-2. {行为 2}  — 验证方式: {逐字复制 requirements.md}
+## 预期行为
+{从 {task_dir}/.work/requirements.md 的"预期行为"表格逐条复制}
+1. {行为 1} — 验证: {逐字复制 requirements.md}
+2. {行为 2} — 验证: {逐字复制 requirements.md}
 3. ...
 
 要求：
 - 测试必须复现 BUG——当前应 FAIL
 - 测试通过的标准是：实际行为 = 预期行为
 - 只写测试，不修改源代码
-- 标注为 screenshot 的行为必须创建截图脚本 + .question 文件
-- 截图 testcase 命名: test_{描述}_screenshot
 - **不得在 prompt 中包含任何根因分析或调查结论。test-agent 独立基于行为清单编写测试。**
 - **不得在 prompt 中指定具体的测试文件名称或"必交付物"清单。test-agent 从行为清单自行推导 testcase。**
   "
 })
-```
-
-**硬门：**
-- 测试必须 FAIL。如果 PASS → 检查测试是否真正覆盖了 BUG 场景，修正后重试。
-- 标注为 screenshot 的行为必须有对应的截图脚本 + .question 文件产出。缺失 → 重新 spawn test-agent。
-
-**硬门通过后 — 记录测试目标：**
-
-从 test-agent 的 RED report 提取 testsuite 名和 testcase 名列表（含 GUT + screenshot），在后续阶段 3 传入 fix-agent。
 
 **硬门检查点 — 阶段 2 → 阶段 3: spawn prompt 完整性验证（强制执行）：**
 
@@ -262,7 +205,7 @@ RED
 
 Spawn fix-agent，由它调用 fix-loop skill 进行修复循环（fix-loop 内部调用 debug-root-cause 做根因分析）。
 
-从阶段 2 的 RED report 提取 testsuite 名和 testcase 名列表（含 GUT 和 screenshot 两类——screenshot testcase 通过命名约定 `test_{描述}_screenshot` 区分）。
+从阶段 2 的 RED report 提取 testsuite 名和 testcase 名列表。
 
 ```
 Agent({
@@ -278,17 +221,17 @@ Agent({
 ## BUG 描述
 {用户报告的 BUG}
 
-## 预期行为（含验证方式）
-{从 {task_dir}/.work/requirements.md 的"预期行为"表格逐条复制。每条的验证方式字段必须原样复制，不得修改。}
-1. {行为 1}  — 验证方式: {逐字复制 requirements.md}
-2. {行为 2}  — 验证方式: {逐字复制 requirements.md}
+## 预期行为
+{从 {task_dir}/.work/requirements.md 的"预期行为"表格逐条复制}
+1. {行为 1} — 验证: {逐字复制 requirements.md}
+2. {行为 2} — 验证: {逐字复制 requirements.md}
 3. ...
 
 ## 目标 testsuite
 {从 RED report 提取的 suite 名}
 
 ## 目标 testcase
-{从 RED report 提取的 testcase 名列表（含 GUT + screenshot）}
+{从 RED report 提取的 testcase 名列表}
 
 **重要：本 prompt 不含任何根因分析。fix-agent 必须自行调用 fix-loop → debug-root-cause 进行独立诊断。**
   "
@@ -298,8 +241,7 @@ Agent({
 **conductor 禁止事项（Iron Law 强制执行）：**
 - ❌ 禁止在 spawn prompt 中写入 "调查结论"、"已知根因"、"不要重新调查"、"直接修" 等颠覆 agent 独立性的指示
 - ❌ 禁止在 spawn agent 前自行读取游戏源代码
-- ❌ 禁止将 requirements.md 中标注为 `screenshot` 的行为改写为 `behavior`。验证方式必须原样传递。
-- ✅ 只传入: project, task_dir, BUG 描述, 预期行为（含验证方式）, testsuite/testcase 列表
+- ✅ 只传入: project, task_dir, BUG 描述, 预期行为, testsuite/testcase 列表
 
 fix-agent 启动后读取参考文件 → 调用 `Skill("game-dev:fix-loop")` 开始修复循环 → 完成后返回。
 
@@ -316,12 +258,11 @@ fix-agent 返回后，conductor 必须执行以下检查。全部 ✅ 才允许�
 |---|--------|------|
 | 1 | `{task_dir}/.work/fix-summary.md` 存在且内容非空 | ✅ / ❌ |
 | 2 | `{task_dir}/.work/fix-attempts.md` 最后一轮验证结果为 PASS | ✅ / ❌ |
-| 3 | 如有 screenshot testcase：fix-attempts.md 中有 visual-qa 结果记录或已标注环境不支持 | ✅ / ❌ |
-| 4 | `{task_dir}/.work/logs/` 中有本轮验证的 GUT 日志和 screenshot qa 日志 | ✅ / ❌ |
+| 3 | `{task_dir}/.work/logs/` 中有本轮验证的 GUT 日志 | ✅ / ❌ |
 ```
 
 **任何 ❌ → STOP。** 不得进入阶段 4。检查缺失项：
-- 第 1-4 项缺失 → fix-agent 的 fix-loop 未完整执行完成步骤。重新 spawn fix-agent 或标记为 BLOCKED。
+- 第 1-3 项缺失 → fix-agent 的 fix-loop 未完整执行完成步骤。重新 spawn fix-agent 或标记为 BLOCKED。
 
 ### 阶段 4：VERIFY — 独立验证
 
@@ -350,11 +291,9 @@ GREEN
 - 全量测试全部通过（`test_cmd_full` 退出码 0）
 - BUG 复现测试 PASS
 - 已有测试全部通过（无回归）
-- 有 screenshot 验证方式的行为：截图验证通过 visual-qa
 
 **conductor 禁止事项（阶段 4）：**
-- ❌ 禁止在 VERIFY spawn prompt 中写入显式 Bash 命令（如 `godot --headless ...`）、测试命令、截图命令。test-agent 自行读取 config.md 解析命令，按 GREEN mode 标准过程执行。
-- ❌ 禁止在 VERIFY spawn prompt 中写入 "确认截图为非空 PNG" 等 file size 检查替代 visual-qa。screenshot 验证 = `Skill("game-dev:visual-qa")`，test-agent 自行按 screenshot测试执行方法 执行。
+- ❌ 禁止在 VERIFY spawn prompt 中写入显式 Bash 命令、测试命令。test-agent 自行读取 config.md 解析命令，按 GREEN mode 标准过程执行。
 - ✅ 只传入: 模式, project, task_dir, 任务描述。
 
 ---
@@ -379,7 +318,6 @@ GREEN
 - "根因很明显，直接告诉 agent 省一轮" → STOP。agent 必须独立诊断。conductor 不传根因。
 - "用户给了 tips 就是让我先去调查的" → STOP。tips 是行为澄清的输入，不是代码调查的入场券。
 - "--auto 模式可以跳过行为澄清" → STOP。--auto 跳过的是人工审查点，不是流程步骤。
-- "没有截图相关关键词，不用跑视觉检测 grep" → STOP。grep 命令必须执行，用结果说话。
 
 **以上任一条 → STOP。回到 Step 0b，读 config 并回显。**
 
@@ -392,7 +330,6 @@ GREEN
 | "用户给了 tips，说明希望我先调查" | tips 是行为澄清的输入。调查是 debug-root-cause 的职责。 |
 | "这个 BUG 很简单，不需要走完整流程" | 简单 BUG 也有根因。跳步骤 = 猜。每个 BUG 用自己的证据链说话。 |
 | "--auto 就是全自动，不用确认行为" | --auto 跳过的是人工审查点，不是流程步骤。行为澄清必须执行。 |
-| "视觉检测 grep 太机械了，我看一眼就知道" | grep 是强制执行的客观检查。主观判断不可靠。 |
 
 ## 约束
 
