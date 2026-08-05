@@ -1,0 +1,10 @@
+{
+  "name": "web2-dev",
+  "version": "0.1.0",
+  "description": "Web 服务开发全流程编排插件 — 覆盖后端与前端，从需求到部署的完整 TDD 工作流",
+  "author": {
+    "name": "jokerx"
+  },
+  "license": "Apache-2.0",
+  "keywords": ["web", "backend", "frontend", "tdd", "orchestration", "ops", "integration-test"]
+}
