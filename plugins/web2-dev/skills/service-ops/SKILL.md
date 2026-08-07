@@ -35,6 +35,25 @@ description: |
 
 仅作本次部署相关操作。不做无关修改。
 
+### 5. Spring Boot 项目部署
+
+检测到项目为 Spring Boot Web 后端时，按已验证的标准模式部署。ops-local.md 无特殊声明则采用此模式。
+
+**结构参考：** 读取 `${CLAUDE_PLUGIN_ROOT}/references/ops/springboot-deploy-pattern.md`，了解完整部署结构、约定和适配步骤。
+
+**模板文件：** `${CLAUDE_PLUGIN_ROOT}/references/ops/templates/springboot/` 下 6 个模板：
+`Dockerfile`、`build_docker_image.sh`、`start.sh`、`stop.sh`、`nginx.conf`、`Jenkinsfile`。
+
+**适配流程：**
+
+1. 读取 `pom.xml` → 提取 `artifactId`、`java.version`、`groupId`
+2. 读取 `ops-local.md` → 获取服务器、Registry、域名、证书路径
+3. 按 springboot-deploy-pattern.md 的变量映射表，逐个替换模板占位符
+4. 将替换后的文件写入项目对应路径
+5. 按 springboot-deploy-pattern.md 的部署流程执行
+
+**注意：** ops-local.md 中如声明了不同的部署方式（非 Docker、非 Nacos 等），以 ops-local.md 为准，模板仅作参考。
+
 ## 部署流程
 
 ```

@@ -1,0 +1,137 @@
+pipeline {
+    agent any
+
+    tools {
+        nodejs '{{NODEJS_TOOL}}'
+    }
+
+    environment {
+        CONTAINER_NAME      = "{{CONTAINER_NAME}}"
+        REGISTRY_IMAGE_NAME = "{{CONTAINER_NAME}}"
+        BUILD_CONTEXT       = "./{{PROJECT_NAME}}"
+        REGISTRY_URL        = "${env.REGISTRY_URL}"
+        NACOS_ADDR          = "${env.NACOS_ADDR}"
+        NACOS_NAMESPACE_CUR = "${env.NACOS_NAMESPACE}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Backend') {
+            steps {
+                script {
+                    echo "========================================="
+                    echo "构建 {{PROJECT_NAME}}"
+                    echo "========================================="
+                    echo "Registry: ${REGISTRY_URL}"
+                    echo "镜像: ${REGISTRY_IMAGE_NAME}"
+                    echo "目标服务器: ${DEPLOY_SERVER}"
+                    echo "========================================="
+                }
+
+                withMaven(globalMavenSettingsConfig: '',
+                          jdk: '{{JDK_TOOL}}',
+                          maven: '{{MAVEN_TOOL}}',
+                          mavenSettingsConfig: '',
+                          traceability: true) {
+                    sh 'mvn -f {{PROJECT_NAME}}/pom.xml clean package -DskipTests'
+                }
+
+                withCredentials([usernamePassword(credentialsId: 'docker-registry-cred',
+                                                  usernameVariable: 'REGISTRY_USER',
+                                                  passwordVariable: 'REGISTRY_PASS')]) {
+                    sh """
+                        echo ${REGISTRY_PASS} | docker login ${REGISTRY_URL} -u ${REGISTRY_USER} --password-stdin
+                        export REGISTRY_URL=${REGISTRY_URL}
+                        export REGISTRY_IMAGE_NAME=${REGISTRY_IMAGE_NAME}
+                        export BUILD_CONTEXT=${BUILD_CONTEXT}
+                        sh ./{{PROJECT_NAME}}/deploy/build_docker_image.sh
+                        docker logout ${REGISTRY_URL}
+                    """
+                }
+            }
+        }
+
+        stage('Deploy Backend') {
+            steps {
+                script {
+                    echo "部署 {{PROJECT_NAME}} 到服务器..."
+                }
+
+                withCredentials([usernamePassword(credentialsId: 'nacos-cred',
+                                                  usernameVariable: 'NACOS_USER',
+                                                  passwordVariable: 'NACOS_PASS'),
+                                 usernamePassword(credentialsId: 'docker-registry-cred',
+                                                  usernameVariable: 'REGISTRY_USER',
+                                                  passwordVariable: 'REGISTRY_PASS')]) {
+                    sshagent(credentials: ['jenkins-ssh-key']) {
+                        sh """
+                            scp -o StrictHostKeyChecking=no {{PROJECT_NAME}}/deploy/start.sh {{PROJECT_NAME}}/deploy/stop.sh {{DEPLOY_USER}}@{{DEPLOY_SERVER}}:/data/deploy/${CONTAINER_NAME}/
+                            ssh -o StrictHostKeyChecking=no {{DEPLOY_USER}}@{{DEPLOY_SERVER}} "
+                                set -e
+                                chmod 770 /data/deploy/${CONTAINER_NAME}/stop.sh
+                                chmod 770 /data/deploy/${CONTAINER_NAME}/start.sh
+                                chown -R {{DEPLOY_USER}}:developer /data/deploy/${CONTAINER_NAME}
+                                echo '\${REGISTRY_PASS}' | docker login ${REGISTRY_URL} -u \${REGISTRY_USER} --password-stdin
+                                export NACOS_USERNAME='\${NACOS_USER}'
+                                export NACOS_PASSWORD='\${NACOS_PASS}'
+                                export IMAGE=${REGISTRY_URL}/${REGISTRY_IMAGE_NAME}
+                                export CONTAINER_NAME=${CONTAINER_NAME}
+                                export NACOS_ADDR='\${NACOS_ADDR}'
+                                export NACOS_NAMESPACE='\${NACOS_NAMESPACE_CUR}'
+                                /data/deploy/${CONTAINER_NAME}/stop.sh
+                                /data/deploy/${CONTAINER_NAME}/start.sh
+                                docker logout ${REGISTRY_URL}
+                            "
+                        """
+                    }
+                }
+            }
+        }
+
+        {{#HAS_FRONTEND}}
+        stage('Build Frontend') {
+            steps {
+                script {
+                    echo "构建前端 {{FRONTEND_APP}}..."
+                    sh '''
+                        cd {{FRONTEND_APP}}
+                        {{FRONTEND_INSTALL_CMD}}
+                        {{FRONTEND_BUILD_CMD}}
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy Frontend') {
+            steps {
+                script {
+                    echo "部署前端静态文件..."
+                    sshagent(credentials: ['jenkins-ssh-key']) {
+                        sh '''
+                            ssh -o StrictHostKeyChecking=no {{DEPLOY_USER}}@{{DEPLOY_SERVER}} "mkdir -p {{FRONTEND_DEPLOY_PATH}}"
+                            scp -o StrictHostKeyChecking=no -r {{FRONTEND_APP}}/dist/* {{DEPLOY_USER}}@{{DEPLOY_SERVER}}:{{FRONTEND_DEPLOY_PATH}}/
+                        '''
+                    }
+                }
+            }
+        }
+        {{/HAS_FRONTEND}}
+    }
+
+    post {
+        success {
+            echo "✅ {{PROJECT_NAME}} 构建和部署成功"
+        }
+        failure {
+            echo "❌ 构建或部署失败，请检查日志"
+        }
+        always {
+            echo "📋 Pipeline 执行完成"
+        }
+    }
+}
