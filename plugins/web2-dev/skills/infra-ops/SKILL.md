@@ -17,7 +17,7 @@ description: |
 ## 数据来源
 
 **必须读取：**
-- 项目 CLAUDE.md — Ansible 项目路径、基础设施服务器地址、账户
+- 项目根目录 `ops-local.md` — Ansible 项目路径、基础设施服务器地址、账户
 - `${CLAUDE_PLUGIN_ROOT}/references/ops/ansible-patterns.md` — Ansible 最佳实践
 - `${CLAUDE_PLUGIN_ROOT}/references/ops/security.md` — 安全规范
 

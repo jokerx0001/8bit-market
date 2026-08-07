@@ -43,9 +43,11 @@ plan → 审查 → 用户批准 → exec
 
 ## 阶段执行
 
-### 阶段 0：检测技术栈 + 解析模式
+### 阶段 0：前置检查 + 检测技术栈 + 解析模式
 
-同 new-orchestrator 阶段 0。`--auto` 来源必须从 `user-prompt.md` 中 grep 验证。
+**前置检查（硬门）：** 同 new-orchestrator 阶段 0 Step 0a。检查项目根目录 `ops-local.md` 存在且非空，不满足则终止。
+
+`--auto` 来源必须从 `user-prompt.md` 中 grep 验证。
 
 回显确认：
 ```
