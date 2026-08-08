@@ -50,7 +50,7 @@ web2-dev is NOT game-dev adapted for web. It's a ground-up redesign:
 ```
 new/feat:
   stack-detect → grill → requirements → architecture(merged domain model)
-  → design(by module) → [frontend-design] → plan(task decomposition)
+  → design(by module) → [frontend-design] → [设计审查] → plan(task decomposition)
   → [review] → exec
 
 refactor:

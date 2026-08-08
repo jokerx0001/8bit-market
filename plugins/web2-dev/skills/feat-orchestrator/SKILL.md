@@ -3,7 +3,7 @@ name: web2-dev:feat-orchestrator
 description: |
   新功能开发工作流状态机。在已有项目上增加新功能：
   技术栈检测 → grill 前置采访 → 模块级需求 → 架构(含领域模型) → 详细设计(按模块)
-  → [frontend-design] → plan(任务分解) → [审查] → exec。
+  → [frontend-design] → [设计审查] → plan(任务分解) → [审查] → exec。
 
   与 new-orchestrator 唯一区别：产出模块级文档（新增/修改的模块），而非项目级全量文档。
 
@@ -28,7 +28,7 @@ description: |
 
 ```
 idle → [检测技术栈] → 保存用户原语 → grill → requirements → architecture → design
-     → [frontend-design] → plan → [审查] → exec → completed
+     → [frontend-design] → [设计审查] → plan → [审查] → exec → completed
 ```
 
 ## 两种模式
@@ -67,7 +67,7 @@ Skill({skill: "web2-dev:artifact-manager", args: "--kind feat --dev-dir {dev_dir
 
 ### 阶段 2：保存用户原语 + Grill 前置采访
 
-同 new-orchestrator 阶段 2（完整流程：保存 user-prompt.md → grilling → 硬门验证 → domain-modeling）。
+同 new-orchestrator 阶段 2（完整流程：保存 user-prompt.md → grilling → 硬门验证）。
 
 **不可跳过，auto 模式也不例外。**
 
@@ -104,6 +104,26 @@ Skill({skill: "frontend-design:frontend-design"})
 ```
 
 产出保存到 `{task_dir}/.work/layouts/`。**宁误判不漏判。**
+
+**设计审查（normal 模式硬门，auto 模式跳过）：**
+
+frontend-design 产出设计稿后，normal 模式必须暂停等待用户审查：
+
+```
+AskUserQuestion({
+  questions: [{
+    question: "UI 设计稿已生成，请审查 {task_dir}/.work/layouts/。是否满意？",
+    header: "Design Review",
+    options: [
+      {label: "满意", description: "设计稿通过，进入 plan 任务分解"},
+      {label: "需要修改", description: "描述修改意见，重新生成设计稿"}
+    ]
+  }])
+```
+
+- 用户选择"满意" → 进入阶段 6
+- 用户选择"需要修改" → 收集修改意见，重新调用 frontend-design（携带反馈）更新 layouts/，再次提交审查。**循环直到用户满意，才允许进入 plan。**
+- auto 模式跳过此审查点，直接进入阶段 6。
 
 ### 阶段 6：Plan — 任务分解
 

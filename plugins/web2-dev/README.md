@@ -27,7 +27,7 @@ web2-dev 是 neonbit-vibe-factory 的重构版本，核心理念：
 ```
 new/feat:
   技术栈检测 → grill → requirements → architecture → design
-  → [frontend-design] → plan(任务分解) → [审查]
+  → [frontend-design] → [设计审查] → plan(任务分解) → [审查]
   → exec:
       ops(基础设施) → 按任务循环(后端TDD + code-review)
       → 后端集成测试 → 部署 → 部署后集成测试
@@ -37,7 +37,7 @@ new/feat:
 
 ## 依赖插件
 
-- `mattpocock-skills` — TDD (tdd)、Grilling 采访 (grilling)、Domain Modeling (domain-modeling)
+- `mattpocock-skills` — TDD (tdd)、Grilling 采访 (grilling)
 - `frontend-design` — UI 设计稿生成
 
 ## 环境要求

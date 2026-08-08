@@ -3,7 +3,7 @@ name: web2-dev:new-orchestrator
 description: |
   新项目开发工作流状态机。从零开始构建项目：
   技术栈检测 → grill 前置采访 → 项目级需求 → 架构(含领域模型) → 详细设计(按模块)
-  → [frontend-design] → plan(任务分解) → [审查] → exec。
+  → [frontend-design] → [设计审查] → plan(任务分解) → [审查] → exec。
 
   <example>
   Context: 用户通过 /web2-dev:new 启动新项目
@@ -26,7 +26,7 @@ description: |
 
 ```
 idle → [检测技术栈] → 保存用户原语 → grill → requirements → architecture → design
-     → [frontend-design] → plan → [审查] → exec → completed
+     → [frontend-design] → [设计审查] → plan → [审查] → exec → completed
 ```
 
 ## 两种模式
@@ -133,14 +133,7 @@ test -s {task_dir}/.work/grill-interview.md && echo "GRILL_OK" || echo "GRILL_MI
 - `GRILL_MISSING` → **报告阻塞，不继续后续阶段。禁止自己写文件代替。**
 - `GRILL_OK` → 读回文件前 20 行，确认内容是对话/采访格式（有 `?` 或 `？`）。**零问句 → 不是采访 → STOP，回到 Step 2b 重新 grill。**
 
-**Step 2c — Domain Modeling 归档：**
-```
-Skill({skill: "mattpocock-skills:domain-modeling"})
-```
-
-domain-modeling 自行维护 `CONTEXT.md`（术语表）和 `docs/adr/`（架构决策记录）。**此步骤是补充性归档，返回空或失败不阻塞流程。**
-
-**Step 2d — 传递规则：**
+**Step 2c — 传递规则：**
 
 后面的所有设计环节（requirements、architecture、design、plan）**必须自己读取以下两份文件，综合理解去完成任务**：
 
@@ -194,6 +187,26 @@ Skill({skill: "frontend-design:frontend-design"})
 ```
 
 产出保存到 `{task_dir}/.work/layouts/`。
+
+**设计审查（normal 模式硬门，auto 模式跳过）：**
+
+frontend-design 产出设计稿后，normal 模式必须暂停等待用户审查：
+
+```
+AskUserQuestion({
+  questions: [{
+    question: "UI 设计稿已生成，请审查 {task_dir}/.work/layouts/。是否满意？",
+    header: "Design Review",
+    options: [
+      {label: "满意", description: "设计稿通过，进入 plan 任务分解"},
+      {label: "需要修改", description: "描述修改意见，重新生成设计稿"}
+    ]
+  }])
+```
+
+- 用户选择"满意" → 进入阶段 6
+- 用户选择"需要修改" → 收集修改意见，重新调用 frontend-design（携带反馈）更新 layouts/，再次提交审查。**循环直到用户满意，才允许进入 plan。**
+- auto 模式跳过此审查点，直接进入阶段 6。
 
 ### 阶段 6：Plan — 任务分解
 
@@ -268,6 +281,7 @@ Skill({skill: "web2-dev:exec", args: "--mode new --task-dir {task_dir}"})
 - "grilling 什么都没返回，我自己整理一份 grill-interview.md 就行" → STOP。grill-interview.md 只能由 grilling 的返回内容写入
 - "grill-interview.md 已经存在了，不用再调 grilling" → STOP。没经过 grilling 返回的文件不能信任
 - "这个任务不需要 frontend-design，虽然有新界面但是标准控件" → STOP。有没有新界面是客观事实，不是风格判断
+- "设计稿已经生成了，直接进 plan，不用问用户（normal 模式）" → STOP。设计审查是硬门——用户不满意必须循环修改到满意，不能默认用户满意
 - "问号检测太机械了，内容明显是对话格式" → STOP。硬门就是硬门——没有问号 = 不是采访
 
 **以上任一条 → STOP。**
