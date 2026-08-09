@@ -141,6 +141,12 @@ Skill({skill: "web2-dev:exec", args: "--mode refactor --task-dir {task_dir}"})
 - 已有测试被破坏 → 立即反馈修复，最高优先级
 - 重构范围不得超出 impact.md 的硬约束
 
+**分支与部署（实现完成后）：**
+
+- 代码写完、准备部署到开发服务器时，创建分支 `refactor-{任务名}`（与任务名对应，如任务目录 `refactor-1` → 分支 `refactor-1`；所有 refactor 任务共用一个 `refactor` 分支会冲突），commit + push 到远程触发部署
+- push 后必须检查部署是否成功：构建可能仍在部署中，也可能失败；失败则寻找原因解决问题
+- 未修改代码时（仅查询状态/触发构建），直接用 Jenkins API，无需 push
+
 ### 阶段 9：Completed
 
 ```

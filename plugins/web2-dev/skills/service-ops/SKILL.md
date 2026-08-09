@@ -65,6 +65,35 @@ description: |
 6. 成功 → 输出部署报告
 ```
 
+## Jenkins 部署与操作
+
+ops-local.md 声明了 Jenkins 部署方式时，按本节执行。
+
+### Jenkins 操作要求
+
+所有 Jenkins 操作使用 Jenkins API（REST API + API token）。具体命令与官方文档见 `${CLAUDE_PLUGIN_ROOT}/references/ops/jenkins-api-patterns.md`。
+
+**禁止模拟浏览器表单登录**（`j_spring_security_check` + crumb 流程）。
+
+### 环境变量（Jenkins API 认证）
+
+值由项目根 `.env` 提供，Claude Code 自动加载：
+
+| 变量 | 用途 |
+|------|------|
+| `JENKINS_USER` | Jenkins 用户名 |
+| `JENKINS_API_TOKEN` | Jenkins API token（Jenkins 用户设置页 Security → API Token 生成，只显示一次） |
+
+- 命令只准用变量引用形式（`"$JENKINS_USER:$JENKINS_API_TOKEN"`），日志不落真实值
+- 禁止 Read/cat/grep `.env` 文件，禁止 echo/printenv 变量值
+- 变量缺失 → 输出配置说明并停止，**不得降级用密码登录**
+
+### 部署状态检查
+
+- 部署触发后（分支 push 或 API 触发），必须检查部署是否成功
+- 构建可能仍在进行中（部署中）→ 查询最新构建状态确认结果
+- 构建失败 → 寻找原因并解决问题（查看构建日志/错误输出），不得把失败当完成
+
 ## 部署报告格式
 
 ```

@@ -143,6 +143,12 @@ Skill({skill: "web2-dev:plan", args: "--task-dir {task_dir} --tech {tech}"})
 Skill({skill: "web2-dev:exec", args: "--mode feat --task-dir {task_dir}"})
 ```
 
+**分支与部署（实现完成后）：**
+
+- 代码写完、准备部署到开发服务器时，创建分支 `feat-{任务名}`（与任务名对应，如任务目录 `feat-1` → 分支 `feat-1`；所有 feat 任务共用一个 `feat` 分支会冲突），commit + push 到远程触发部署
+- push 后必须检查部署是否成功：构建可能仍在部署中，也可能失败；失败则寻找原因解决问题
+- 未修改代码时（仅查询状态/触发构建），直接用 Jenkins API，无需 push
+
 ### 阶段 9：Completed
 
 ```

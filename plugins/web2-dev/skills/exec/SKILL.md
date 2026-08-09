@@ -253,6 +253,9 @@ service-ops
 
 ## 任务
 按 CLAUDE.md 中的部署方式将后端服务部署到开发服务器。
+{feat/refactor/fix 模式}：创建分支 {mode}-{任务名}（与任务名对应，如任务目录 feat-1 → 分支 feat-1），
+commit + push 到远程触发部署；push 后检查部署状态，失败则寻找原因解决问题。
+{new 模式}：按 CLAUDE.md 部署方式执行，不创建特性分支。
 部署完成后执行健康检查。
   "
 })

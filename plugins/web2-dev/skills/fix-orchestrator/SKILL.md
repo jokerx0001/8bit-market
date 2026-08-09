@@ -184,6 +184,34 @@ Skill({skill: "web2-dev:code-review", args: "--task-dir {task_dir}"})
 
 检查：修复是否解决了预期行为、测试覆盖是否充分、已有测试无回归。
 
+### 阶段 3b：部署（修复完成后）
+
+修复通过 code-review 后，部署到开发服务器验证：
+
+```
+Agent({
+  subagent_type: "ops",
+  description: "Deploy fix to dev server",
+  prompt: "
+## 操作类型
+service-ops
+
+## task_dir
+{task_dir}
+
+## 任务
+按 CLAUDE.md 中的部署方式将修复部署到开发服务器。
+创建分支 fix-{任务名}（与任务名对应，如任务目录 fix-1 → 分支 fix-1），
+commit + push 到远程触发部署。部署完成后检查部署状态。
+  "
+})
+```
+
+- 所有 fix 任务共用一个 `fix` 分支会冲突，分支名必须带任务名（`fix-*`）
+- push 后必须检查部署是否成功：构建可能仍在部署中，也可能失败；失败则寻找原因解决问题
+- 未修改代码时（仅查询状态/触发构建），直接用 Jenkins API，无需 push
+- 部署方式遵循 ops-local.md，Jenkins 操作见 service-ops skill 的 Jenkins 章节
+
 ### 阶段 4：Completed
 
 ```
