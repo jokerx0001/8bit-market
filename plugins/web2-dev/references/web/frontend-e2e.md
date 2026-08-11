@@ -16,6 +16,62 @@ export default defineConfig({
 });
 ```
 
+## 环境连接模式（本地 E2E）
+
+前端本地 dev server 运行，通过 dev server 代理连开发环境后端（禁止为测试在开发环境后端开 CORS）。
+
+```
+本地（E2E 时）              开发环境
+┌─────────────────┐        ┌──────────────┐
+│ Playwright 浏览器 │        │              │
+│   ↓              │        │              │
+│ 前端 dev server   │        │  后端服务      │
+│ (localhost:{port})│        │              │
+│  页面 + /api/*    │ ──代理──→│  API 入口     │
+└─────────────────┘        └──────────────┘
+```
+
+### 代理配置示例
+
+Vite:
+
+```typescript
+// vite.config.ts
+export default defineConfig({
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://dev.example.com', // 开发环境 API 入口，从 ops-local.md 环境地址清单读取
+        changeOrigin: true,
+      },
+    },
+  },
+});
+```
+
+webpack:
+
+```javascript
+// webpack.dev.js
+devServer: {
+  proxy: {
+    '/api': {
+      target: 'https://dev.example.com', // 从 ops-local.md 环境地址清单读取
+      changeOrigin: true,
+    },
+  },
+}
+```
+
+### 验证方法
+
+dev server 启动后，请求 `http://localhost:{port}/api/<任意接口>`——响应正常（非 CORS 错误）= 代理转发 OK。
+
+### CORS 禁令
+
+- 禁止为测试在开发环境后端开 CORS——白名单扩大攻击面，且掩盖代理配置缺失
+- 浏览器报 CORS 错误 = dev server 代理缺失/配置错误 → 修复前端代理配置，不是去后端开 CORS
+
 ## 测试结构
 
 ```

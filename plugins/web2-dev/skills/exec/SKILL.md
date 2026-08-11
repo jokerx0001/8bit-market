@@ -232,6 +232,7 @@ integration-test
 ## 任务
 按 CLAUDE.md 中的方式在本地启动后端服务。
 对 design.md 中每个模块的 API 接口运行集成测试（成功 + 失败场景）。
+对 design.md 中声明的集成验证/全链路要求（如"跑通 爬取→MQ→消费→入库→精炼 全链路"）执行端到端验证——不限于单接口，最后一环是页面数据源查询接口返回该批次数据。
 
 调用 Skill(\"web2-dev:backend-integration-test\") 完成测试 + 自修复循环。
   "
@@ -276,6 +277,7 @@ integration-test
 
 ## 任务
 对部署后的后端服务运行 API 测试（地址从 CLAUDE.md 获取）。
+对 design.md 中声明的集成验证/全链路要求执行端到端验证（例如含页面数据源查询接口返回该批次数据）。
 调用 Skill(\"web2-dev:backend-integration-test\") 完成测试 + 自修复。
   "
 })

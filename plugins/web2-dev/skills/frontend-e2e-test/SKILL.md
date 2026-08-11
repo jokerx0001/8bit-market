@@ -34,6 +34,22 @@ EVERY FAILURE GETS A SCREENSHOT. NO SCREENSHOT = NO DIAGNOSIS.
 | 错误处理 | 网络错误、后端返回错误时的 UI 反馈 |
 | 状态变更 | 操作后页面状态正确更新 |
 
+## 前置条件
+
+后端一律使用开发环境（ops 部署），前端本地启动——**不本地启动后端**。
+
+| 场景 | 前端 | 浏览器打开 | 后端连接 |
+|------|------|-----------|---------|
+| 本地 E2E（开发迭代） | 本地 dev server（带代理） | `localhost:{port}` | dev server 代理 `/api/*` → 开发环境（地址见 ops-local.md 环境地址清单） |
+| 部署后 E2E | 开发环境 nginx | nginx 入口 | 同源（nginx 路由 /api → 后端） |
+
+前置检查：
+
+- dev server 启动 + 就绪等待
+- 代理转发验证：请求 `/api` 任一接口，响应正常（非 CORS 错误）
+- 浏览器报 CORS 错误 → dev server 代理缺失/配置错误 → 修复前端代理配置（模式见 `${CLAUDE_PLUGIN_ROOT}/references/web/frontend-e2e.md`）
+- E2E 数据带测试标识，测试后清理——不污染开发环境真实数据
+
 ## 测试方式
 
 使用 Playwright，测试文件放在 `{task_dir}/.work/e2e/` 下。
@@ -46,7 +62,7 @@ EVERY FAILURE GETS A SCREENSHOT. NO SCREENSHOT = NO DIAGNOSIS.
 ## 自修复循环
 
 ```
-Phase 1: 启动前端 → 运行全量 E2E → 收集结果
+Phase 1: 启动前端（连开发环境后端）→ 运行全量 E2E → 收集结果
   ├── 全部通过 → 返回成功报告
   └── 有失败 → Phase 2
 
@@ -113,5 +129,6 @@ Phase 3: 重跑全量确认 → 报告
 - "几个用例失败看起来是同一个原因，一起修" → STOP。逐个击破——不假设根因相同
 - "Playwright 选择器不稳定，换个定位方式就行" → STOP。先诊断为什么不稳定，不要跳过根因分析
 - "这个元素渲染位置偏了几个像素，不影响功能" → STOP。与设计稿不一致 = 不合格
+- "后端加个 CORS 白名单就能通了，一劳永逸" → STOP。禁止为测试在开发环境后端开 CORS——根因是本地 dev server 代理缺失/错误，修复代理配置
 
 **以上任一条 → STOP。回到 Phase 2 逐个诊断。**
