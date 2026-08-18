@@ -16,7 +16,7 @@ description: |
   user: "将用户模块部署到开发服务器"
   assistant: "ops agent spawned — 遵循 CLAUDE.md 中的部署方式操作。"
   </example>
-model: inherit
+model: sonnet
 color: red
 tools: ["Read", "Write", "Edit", "Bash", "Grep", "Skill"]
 ---

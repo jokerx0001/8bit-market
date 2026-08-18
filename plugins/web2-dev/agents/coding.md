@@ -15,7 +15,7 @@ description: |
   user: "后端集成测试失败，修复接口 /api/users/register"
   assistant: "coding agent spawned — 分析测试失败日志，修复代码，重跑测试。"
   </example>
-model: inherit
+model: sonnet
 color: green
 tools: ["Read", "Write", "Edit", "Bash", "Grep", "Skill"]
 ---

@@ -95,7 +95,7 @@
     {
       "name": "web2-dev",
       "description": "Web 服务开发全流程编排插件 — 覆盖后端与前端，从需求到部署的完整 TDD 工作流，含基础设施运维与集成测试",
-      "version": "0.1.7",
+      "version": "0.1.8",
       "source": "./plugins/web2-dev",
       "category": "development",
       "author": {
