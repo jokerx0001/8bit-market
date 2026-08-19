@@ -43,7 +43,7 @@ Violating the letter of this rule is violating the spirit of this rule.
 阶段 1: spawn ops agent → 基础设施部署（infra-ops）
 
 阶段 2: 按任务串行循环（每个 plan.md 任务）
-  ├── spawn coding agent (TDD via mattpocock-skills:tdd)
+  ├── spawn coding agent (TDD via tdd skill)
   ├── 主agent code-review (设计一致性 + 测试覆盖)
   └── 不合格? spawn coding agent 一次性修复全部 → re-review
 
@@ -122,6 +122,12 @@ ops agent 返回后验证部署结果。
 
 ---
 
+## 阶段 1b：基础设施完成验证（硬门）
+
+ops agent 返回后，主 agent 验证基础设施可用性（端口监听 / 连接测试任选其一，必须有产物证据）。验证失败 → 不进入阶段 2，重新 spawn ops agent（最多 3 轮，仍失败 → 报告阻塞）。
+
+---
+
 ## 阶段 2：按任务串行循环
 
 读取 `{task_dir}/plan.md` 中的任务列表。**按顺序逐个处理，不跳过不并行。**
@@ -151,7 +157,7 @@ TDD
 从 {task_dir}/.work/design.md 中读取 {模块名} 的详细设计（DB + API + 交互）。
 从 {task_dir}/.work/requirements.md 中读取对应的行为清单。
 
-调用 Skill(\"mattpocock-skills:tdd\") 完成 RED→GREEN 循环：
+调用 Skill(\"tdd\") 完成 RED→GREEN 循环：
 1. 从行为清单确认 seam（公共接口边界）
 2. 逐个 seam: RED(写失败测试) → verify RED → GREEN(最小实现) → verify GREEN
 3. 全部通过后返回报告
@@ -213,6 +219,21 @@ code-review-fix
 
 「阶段 3-10 的 spawn prompt 模板结构与阶段 1/2 一致，均使用 `Agent({subagent_type, description, prompt: "## 模式\\n..."})` 格式，省略重复。」
 
+**阶段完成记录（阶段 3-10 每阶段结束时强制，不可省略）：**
+
+每个阶段（集成测试/部署/前端/E2E）完成后，更新 `{task_dir}/progress.json`：
+
+```json
+{
+  "current_stage": "{下一阶段名}",
+  "current_task": {当前任务序号},
+  "completed_tasks": [...],
+  "stages_completed": ["...", "{刚完成的阶段名}"]
+}
+```
+
+`stages_completed` 只追加刚完成的阶段；`current_stage` 指向下一阶段。阶段 4（部署后端）完成的标准见阶段 4b 硬门——未满足硬门不得标记完成。
+
 ### 阶段 3：后端集成测试（本地）
 
 ```
@@ -262,6 +283,15 @@ commit + push 到远程触发部署；push 后检查部署状态，失败则寻�
 })
 ```
 
+### 阶段 4b：部署完成验证（硬门，不可跳过）
+
+ops agent 返回后，主 agent 必须验证以下两项（有产物证据才算通过）：
+
+1. `ops-local.md` 已含环境地址清单节（外网入口 / API baseURL / 健康检查 / 中间件连接）
+2. 健康检查端点可达：`curl -s {健康检查地址}` 返回 200
+
+**任一失败 → 不进入阶段 5。** 重新 spawn ops agent 修复（最多 3 轮，仍失败 → 报告阻塞，列出部署失败详情）。部署未达完成态时 progress.json 不得标记 deploy_backend 完成。
+
 ### 阶段 5：后端集成测试（部署后）
 
 ```
@@ -303,7 +333,7 @@ frontend
 开发前端。
 
 1. 逻辑层（hooks、stores、utils）：
-   调用 Skill(\"mattpocock-skills:tdd\") 完成 TDD 循环
+   调用 Skill(\"tdd\") 完成 TDD 循环
 
 2. UI 层（组件、页面）：
    参照 {task_dir}/.work/layouts/ 中的 HTML 设计稿编码
@@ -408,6 +438,7 @@ exec 启动时读取 progress.json，从上次中断处继续。**in_progress �
 | 集成测试自修复 5 轮仍失败 | 报告阻塞，列出失败详情 |
 | 已有测试被破坏（refactor） | 立即反馈 coding agent 修复，最高优先级 |
 | 后端部署后健康检查失败 | 执行回滚命令 |
+| 部署停滞 / 构建状态不可确认 | AskUserQuestion 报告用户（继续等待 / 中断），不无限重试 |
 | 用户中断 | 保存 progress.json，下次启动可继续 |
 
 ---

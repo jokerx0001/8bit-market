@@ -52,6 +52,8 @@ description: |
 
 **强制确认门：未收到用户 OK 确认前不落盘。**
 
+**auto 模式分支（`--auto`）：** 检测规则表单条命中（语言+框架无歧义，如 pom.xml 唯一匹配 Java/Spring Boot）→ 允许跳过用户确认落盘，但 stack.json 必须标注 `"confirmed": "auto-unambiguous"`。检测结果冲突或特征不明确（多语言候选）→ **即使 auto 也必须向用户确认后才落盘**——auto 跳过的是人工审查点，不是技术栈确认。
+
 ## 产出
 
 ### stack.json

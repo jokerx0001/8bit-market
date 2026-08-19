@@ -37,7 +37,7 @@ Violating the letter of this rule is violating the spirit of this rule.
 
 ```
 [检测技术栈] → 行为澄清 → requirements.md
-→ spawn coding agent (写 BUG 复现测试 + 修复，调用 mattpocock tdd)
+→ spawn coding agent (写 BUG 复现测试 + 修复，调用 tdd skill)
 → 主agent code-review → completed
 ```
 
@@ -114,7 +114,7 @@ EOF
 
 ### 阶段 2：Coding Agent — BUG 复现测试 + 修复
 
-coding agent 调用 `mattpocock-skills:tdd` 完成 RED→GREEN：
+coding agent 调用 `tdd` skill 完成 RED→GREEN：
 1. RED：写复现 BUG 的测试，确认测试 FAIL（BUG 存在）
 2. GREEN：最小实现修复 BUG
 3. 自验证：确认修复后测试 PASS 且已有测试无回归
@@ -144,7 +144,7 @@ fix
 ## 要求
 - 先写复现 BUG 的测试（必须当前 FAIL —— BUG 存在）
 - 再实现修复使测试 PASS
-- 调用 Skill(\"mattpocock-skills:tdd\") 完成 RED→GREEN 循环
+- 调用 Skill(\"tdd\") 完成 RED→GREEN 循环
 - 不修改已有测试文件
 - 修复后跑全量测试，确认已有测试无回归
 

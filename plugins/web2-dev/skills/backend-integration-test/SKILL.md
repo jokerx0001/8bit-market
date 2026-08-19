@@ -62,8 +62,8 @@ Phase 1: 启动服务 → 运行全量测试 → 收集结果
 Phase 2: 逐个失败用例系统性循环
   ├── 2a. 读取 {task_dir}/.work/fix-attempts.md 失败经验（告诉自己：不重复错误路径，必须换思路）
   ├── 2b. 收集失败上下文（错误信息、响应内容、预期值）
-  ├── 2c. 调用 Skill("web2-dev:debug-root-cause") 深度根因分析
-  │      → 产出 {task_dir}/.work/debug-analysis-{case}.md（逆向追踪 + 最小验证 + 证据链）
+  ├── 2c. 调用 Skill("web2-dev:debug-root-cause") 深度根因分析（每个失败用例必须调用——自行内联诊断不算）
+  │      → 产出 {task_dir}/.work/debug-analysis-{case}.md（逆向追踪 + 最小验证 + 证据链；不产出文件 = 本轮修复无效）
   ├── 2d. 按已验证根因修复：接口代码问题 → 修复代码 / 测试写法问题 → 修复测试
   ├── 2e. 重跑该用例 → 通过 → 下一个 / 失败 → 追加失败详情到 fix-attempts.md → 回到 2a
   └── 全部通过 → Phase 3
@@ -83,9 +83,18 @@ Phase 3: 重跑全量确认 → 报告
 每轮失败修复后必须：
 
 - [ ] 追加失败详情到 `{task_dir}/.work/fix-attempts.md`（按用例分节 `## {case} 第 {N} 轮`）
-- [ ] 调用过 debug-root-cause 的用例产出 `{task_dir}/.work/debug-analysis-{case}.md`
+- [ ] 每个失败用例必须产出 `{task_dir}/.work/debug-analysis-{case}.md`（见 Phase 2c——诊断一律走 debug-root-cause，无豁免条件）
 
-任一缺失 → STOP。回到 Phase 2 补记录。不记录不得进入 Phase 3——没有失败经验文件的修复记录 = 本轮修复无效。
+**机械检查（Phase 3 重跑全量前强制执行，不可跳过）：**
+
+```bash
+# 1) 失败经验已记录（有失败用例时必有 case 节）
+C=$(grep -c '^## case=' {task_dir}/.work/fix-attempts.md 2>/dev/null || echo 0); test "$C" -ge 1 && echo "ATTEMPTS_OK ($C cases)" || echo "ATTEMPTS_MISSING"
+# 2) 每个失败用例有独立 debug-analysis 文件
+A=$(ls {task_dir}/.work/debug-analysis-*.md 2>/dev/null | wc -l); test "$A" -ge "$C" && echo "ANALYSIS_OK ($A files)" || echo "ANALYSIS_MISSING (need $C, have $A)"
+```
+
+- `ATTEMPTS_MISSING` 或 `ANALYSIS_MISSING` → **STOP。** 回到 Phase 2 补记录（文件不存在就补写，case 没诊断过就补 debug-root-cause）。不记录不得进入 Phase 3——没有失败经验文件的修复记录 = 本轮修复无效。
 
 ### 深度根因分析
 

@@ -2,12 +2,12 @@
 name: coding
 description: |
   Web 服务开发的代码实现 agent。被 exec 或 orchestrator spawn 时，
-  调用 mattpocock-skills:tdd 完成 RED→GREEN 循环，或执行集成测试/E2E 自修复。
+  调用 tdd skill 完成 RED→GREEN 循环，或执行集成测试/E2E 自修复。
   
   <example>
   Context: exec 按任务循环 spawn coding agent
   user: "实现用户模块的注册功能，设计文档在 {task_dir}/.work/"
-  assistant: "coding agent spawned — 读取设计文档，调用 mattpocock-skills:tdd 完成 TDD 循环。"
+  assistant: "coding agent spawned — 读取设计文档，调用 tdd skill 完成 TDD 循环。"
   </example>
 
   <example>
@@ -39,7 +39,7 @@ tools: ["Read", "Write", "Edit", "Bash", "Grep", "Skill"]
    - `{task_dir}/.work/architecture.md` — 模块结构、数据流
    - `{task_dir}/.work/design.md` — 详细设计（DB、API、模块交互）
 3. 读取对应技术栈规范：`${CLAUDE_PLUGIN_ROOT}/references/rules/{lang}/`
-4. 调用 `Skill("mattpocock-skills:tdd")` 执行 RED→GREEN 循环
+4. 调用 `Skill("tdd")` 执行 RED→GREEN 循环
 
 ## 自验证
 

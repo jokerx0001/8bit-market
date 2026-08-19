@@ -81,6 +81,15 @@ plan → 直接进入 exec → 完成
 {auto → "全自动模式 — 不在审查点暂停，全流程自动执行"}
 ```
 
+**模式判定产物化：** 回显后写入 `{task_dir}/.work/mode.md`：
+
+```
+mode: {auto|normal}
+source: {grep 结果，如 "user-prompt.md 含 --auto"}
+```
+
+供后续阶段与断点续跑审计模式判定来源。
+
 **Step 0c — 调用 stack-detector：**
 ```
 Skill({skill: "web2-dev:stack-detector"})
@@ -113,8 +122,10 @@ artifact-manager 读取 `current-state.json`、递增计数器、创建 `{dev_di
 
 **Step 2b — 运行 Grilling 采访：**
 ```
-Skill({skill: "mattpocock-skills:grilling"})
+Skill({skill: "grilling"})
 ```
+
+**Skill 调用失败 → 报告阻塞，禁止临场自办采访或补写文件。** 引用的是用户级安装的 grilling skill（`~/.claude/skills/grilling`，裸名）。若调用报"skill not found"，说明环境缺少依赖——输出安装说明，终止本步骤，绝不自己"假装"采访。
 
 **铁律：grill-interview.md 只能由 grilling skill 的返回内容写入。orchestrator 绝不自己创建、自己整理、自己补写此文件。**
 
@@ -278,6 +289,7 @@ Skill({skill: "web2-dev:exec", args: "--mode new --task-dir {task_dir}"})
 - "plan 完成后不需要 AskUserQuestion，用户肯定批准"
 - "--auto 模式下 grill 也可以跳过" → STOP。grill 不可跳过，auto 模式也不例外
 - "--auto 模式下我可以自己完成 grill 采访（self-directed grilling）" → STOP。grill 的核心价值是向用户提问获取真实反馈。AI 自我分析不是 grill
+- "auto 模式下用户没回答，我编一份用户回答写进 grill-interview.md" / "In auto mode the user didn't answer, I'll fabricate the answers" → STOP。回答必须来自用户真实输入——grill-interview.md 含任何非用户输入的"回答" = 违反铁律
 - "grilling 什么都没返回，我自己整理一份 grill-interview.md 就行" → STOP。grill-interview.md 只能由 grilling 的返回内容写入
 - "grill-interview.md 已经存在了，不用再调 grilling" → STOP。没经过 grilling 返回的文件不能信任
 - "这个任务不需要 frontend-design，虽然有新界面但是标准控件" → STOP。有没有新界面是客观事实，不是风格判断

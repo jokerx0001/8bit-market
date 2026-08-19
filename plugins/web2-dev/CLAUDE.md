@@ -38,7 +38,7 @@ All commands support `--auto` to skip human review checkpoints.
 
 web2-dev is NOT game-dev adapted for web. It's a ground-up redesign:
 
-- No separate test-agent — coding agent calls mattpocock-skills:tdd for both test writing and implementation
+- No separate test-agent — coding agent calls tdd skill for both test writing and implementation
 - No concept-art / asset-extract / ui-restoration — web doesn't need these
 - No multi-engine tech detection — web is web
 - plan.md is task decomposition, not design doc
@@ -69,7 +69,7 @@ exec:
   spawn ops agent → infrastructure (infra-ops)
 
   For each task in plan.md (serial):
-    spawn coding agent (TDD via mattpocock-skills:tdd)
+    spawn coding agent (TDD via tdd skill)
     → main agent code-review (design consistency + test coverage)
     → fail? spawn coding agent fix all → re-review
 
@@ -126,13 +126,12 @@ references/             # Tech stack rules + ops patterns
     ├── layouts/         # Frontend design mockups
     ├── integration/     # Backend integration test scripts
     ├── e2e/             # Frontend E2E test scripts
-    ├── coding/          # Coding agent logs
-    └── tdd-iterations.md
+    └── fix-attempts.md  # Integration/E2E failure experience (per-case sections)
 ```
 
 ## Key Constraints
 
-- **No production code without TDD** — coding agent calls mattpocock-skills:tdd for RED→GREEN
+- **No production code without TDD** — coding agent calls tdd skill for RED→GREEN
 - **No test-only agent** — coding agent owns both test writing and implementation
 - **Plan.md is task decomposition** — not a design document
 - **Code review is mandatory** — design consistency + test coverage for every module

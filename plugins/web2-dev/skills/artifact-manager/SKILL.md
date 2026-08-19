@@ -77,8 +77,8 @@ task_dir = {dev_dir}/{kind}-{N}
     ├── layouts/               # frontend-design 产出的 UI 设计稿
     ├── integration/           # 后端集成测试脚本
     ├── e2e/                   # 前端 E2E 测试脚本
-    ├── coding/                # coding agent 日志
-    └── tdd-iterations.md      # TDD 迭代记录
+    ├── fix-attempts.md        # 集成/E2E 失败经验（按用例分节）
+    └── debug-analysis-*.md    # 集成/E2E 失败用例根因分析
 ```
 
 ## 约束

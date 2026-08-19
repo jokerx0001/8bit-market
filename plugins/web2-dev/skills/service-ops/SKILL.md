@@ -63,6 +63,11 @@ description: |
 4. 健康检查 → curl /health 或对应检查端点
 5. 失败 → 输出部署失败报告
 6. 成功 → 产出/更新环境地址清单（见下节）→ 写入 ops-local.md
+   **机械自检（输出部署报告前强制执行）：**
+   ```bash
+   grep -c '外网入口\|API baseURL\|健康检查' ops-local.md | xargs -I{} test {} -ge 3 && echo "ADDRLIST_OK" || echo "ADDRLIST_MISSING"
+   ```
+   `ADDRLIST_MISSING` → 环境地址清单未写入，禁止声明部署成功——回到流程 4 验证服务，补齐清单后再报告。
 7. 输出部署报告
 ```
 
