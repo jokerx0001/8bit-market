@@ -33,6 +33,7 @@ Violating the letter of this rule is violating the spirit of this rule.
 - `{task_dir}/.work/design.md` — 详细设计（按模块，coding agent 按模块名查找）
 - `{task_dir}/.work/architecture.md` — 架构设计
 - `{task_dir}/.work/requirements.md` — 行为清单
+- `{dev_dir}/stack.json` — 技术栈，`language` 字段用于替换 spawn prompt 中的 `{lang}`（stack-detector 产出，见 stack-detector skill）
 - 项目 CLAUDE.md — 服务器、账户、部署方式
 
 ---
@@ -153,19 +154,16 @@ TDD
 ## 模块
 {模块名}
 
+## lang
+{lang}
+
 ## 目标
 从 {task_dir}/.work/design.md 中读取 {模块名} 的详细设计（DB + API + 交互）。
 从 {task_dir}/.work/requirements.md 中读取对应的行为清单。
 
-调用 Skill(\"tdd\") 完成 RED→GREEN 循环（tdd 是用户级全局 skill，必须以裸名调用，禁止写成 web2-dev:tdd）：
-1. 从行为清单确认 seam（公共接口边界）
-2. 逐个 seam: RED(写失败测试) → verify RED → GREEN(最小实现) → verify GREEN
-3. 全部通过后返回报告
-
 ## 规则
-- 只测试有逻辑的方法——跳过纯 CRUD/透传/配置方法
+- 测试代码写完后,实现之前自查，对照 ${CLAUDE_PLUGIN_ROOT}/references/rules/{lang}/test/ 的规则删除无效测试
 - 遵守 ${CLAUDE_PLUGIN_ROOT}/references/rules/{lang}/ 中的编码规范
-- 不写空壳/假代码
   "
 })
 ```

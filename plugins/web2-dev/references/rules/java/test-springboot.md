@@ -65,3 +65,14 @@ s,Elasticsearch
 8. UserJwt这种入参对象允许自己创建 例 UserJwt userjwt = new UserJwt(....) 如此来测试
 9.如待尝试的Service类的逻辑涉及到properties,yaml等spring配置文件改动，属性配置应写在对应的配置文件里而不是注解里
 
+## 无效测试负面清单
+
+发现即删，四类：
+
+1. **覆盖无效**：纯 CRUD/透传方法（无分支、无校验、无计算）不写测试；Service 中无逻辑的 getter/setter 转发不写
+2. **断言无效**：预期值必须独立（字面量/手工算例）——禁止 `assertEquals(actual, calculateExpected())` 同源断言；
+   禁止无断言、只 `assertNotNull`、只 `assertDoesNotThrow` 的测试
+3. **结构无效**：不用 Mockito mock Service 的内部协作者验证协作调用——测行为结果（返回值/异常/落库数据），
+   不测"调用了哪个方法几次"；不测私有方法/内部状态
+4. **重复凑数**：同一行为一份测试；参数化只用于真正不同的代码路径，不用于同路径不同输入刷用例
+
