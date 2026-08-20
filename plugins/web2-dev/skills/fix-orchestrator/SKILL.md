@@ -144,7 +144,7 @@ fix
 ## 要求
 - 先写复现 BUG 的测试（必须当前 FAIL —— BUG 存在）
 - 再实现修复使测试 PASS
-- 调用 Skill(\"tdd\") 完成 RED→GREEN 循环
+- 调用 Skill(\"tdd\") 完成 RED→GREEN 循环（tdd 是用户级全局 skill，必须以裸名调用，禁止写成 web2-dev:tdd）
 - 不修改已有测试文件
 - 修复后跑全量测试，确认已有测试无回归
 

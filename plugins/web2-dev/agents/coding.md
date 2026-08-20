@@ -39,7 +39,7 @@ tools: ["Read", "Write", "Edit", "Bash", "Grep", "Skill"]
    - `{task_dir}/.work/architecture.md` — 模块结构、数据流
    - `{task_dir}/.work/design.md` — 详细设计（DB、API、模块交互）
 3. 读取对应技术栈规范：`${CLAUDE_PLUGIN_ROOT}/references/rules/{lang}/`
-4. 调用 `Skill("tdd")` 执行 RED→GREEN 循环
+4. 调用 `Skill("tdd")` 执行 RED→GREEN 循环（tdd 是用户级全局 skill，必须以裸名调用，禁止写成 web2-dev:tdd）
 
 ## 自验证
 

@@ -157,7 +157,7 @@ TDD
 从 {task_dir}/.work/design.md 中读取 {模块名} 的详细设计（DB + API + 交互）。
 从 {task_dir}/.work/requirements.md 中读取对应的行为清单。
 
-调用 Skill(\"tdd\") 完成 RED→GREEN 循环：
+调用 Skill(\"tdd\") 完成 RED→GREEN 循环（tdd 是用户级全局 skill，必须以裸名调用，禁止写成 web2-dev:tdd）：
 1. 从行为清单确认 seam（公共接口边界）
 2. 逐个 seam: RED(写失败测试) → verify RED → GREEN(最小实现) → verify GREEN
 3. 全部通过后返回报告
@@ -333,7 +333,7 @@ frontend
 开发前端。
 
 1. 逻辑层（hooks、stores、utils）：
-   调用 Skill(\"tdd\") 完成 TDD 循环
+   调用 Skill(\"tdd\") 完成 TDD 循环（tdd 是用户级全局 skill，必须以裸名调用，禁止写成 web2-dev:tdd）
 
 2. UI 层（组件、页面）：
    参照 {task_dir}/.work/layouts/ 中的 HTML 设计稿编码

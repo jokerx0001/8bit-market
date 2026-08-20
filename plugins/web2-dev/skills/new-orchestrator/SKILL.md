@@ -125,7 +125,11 @@ artifact-manager 读取 `current-state.json`、递增计数器、创建 `{dev_di
 Skill({skill: "grilling"})
 ```
 
-**Skill 调用失败 → 报告阻塞，禁止临场自办采访或补写文件。** 引用的是用户级安装的 grilling skill（`~/.claude/skills/grilling`，裸名）。若调用报"skill not found"，说明环境缺少依赖——输出安装说明，终止本步骤，绝不自己"假装"采访。
+**grilling 是用户级全局 skill（`~/.claude/skills/grilling`），必须以裸名 `grilling` 调用。禁止添加插件前缀——不要写成 `web2-dev:grilling`（本插件不提供该 skill，写了必然 Unknown skill）。**
+
+**调用失败区分两种：**
+- 报 `Unknown skill: grilling` → 环境缺少依赖——输出安装说明，终止本步骤，绝不自己"假装"采访
+- 报 `Unknown skill: web2-dev:grilling` → 本次调用写错了名字——用裸名 `grilling` 重新调用，不是阻塞
 
 **铁律：grill-interview.md 只能由 grilling skill 的返回内容写入。orchestrator 绝不自己创建、自己整理、自己补写此文件。**
 

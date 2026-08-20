@@ -39,7 +39,7 @@ new/feat:
 
 - `grilling`（用户级 skill，`~/.claude/skills/grilling`）— Grill 前置采访。来自 Matt Pocock 的 skills 仓库，通过 `setup-matt-pocock-skills` 安装为裸名用户级 skill。
 - `tdd`（用户级 skill，`~/.claude/skills/tdd`）— TDD RED→GREEN 循环。安装方式同上。
-  - 注意：本插件按裸名 `grilling` / `tdd` 引用。若以 `mattpocock-skills` 插件形式安装（插件前缀 `mattpocock-skills:grilling` 等），需将 `skills/new-orchestrator/SKILL.md`、`skills/exec/SKILL.md`、`agents/coding.md` 中的引用改为对应插件前缀。
+  - 注意：本插件按裸名 `grilling` / `tdd` 引用——用户级全局 skill 的调用名就是裸名（目录名），不存在插件前缀形式。Skill 工具做精确匹配，**调用失败报 `Unknown skill: web2-dev:grilling` 说明是本次调用被误加了插件前缀（模型模式补全），用裸名重试即可**；报 `Unknown skill: grilling` 才是依赖缺失。
 - `frontend-design` — UI 设计稿生成
 
 ## 环境要求
